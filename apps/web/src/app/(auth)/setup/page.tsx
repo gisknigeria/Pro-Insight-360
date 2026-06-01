@@ -1,0 +1,188 @@
+'use client';
+
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+
+function SetupForm() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const token = searchParams.get('token');
+
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!token) {
+      setError(
+        'This setup link is missing a token. Please use the link from your invitation email.',
+      );
+    }
+  }, [token]);
+
+  const passwordRules = [
+    { label: 'At least 12 characters', met: password.length >= 12 },
+    { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
+    { label: 'One lowercase letter', met: /[a-z]/.test(password) },
+    { label: 'One number', met: /\d/.test(password) },
+    { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
+  ];
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+
+    if (password !== confirm) {
+      setError('Passwords do not match. Please check and try again.');
+      return;
+    }
+
+    const unmet = passwordRules.filter((r) => !r.met);
+    if (unmet.length > 0) {
+      setError(`Password must meet all requirements listed below.`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/setup`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password }),
+        },
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message ?? 'Something went wrong. Please try again.');
+        return;
+      }
+
+      setDone(true);
+      setTimeout(() => router.push('/login'), 3000);
+    } catch {
+      setError('Unable to connect. Please check your internet connection.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="text-center">
+        <span className="text-5xl mb-4 block" aria-hidden="true">✅</span>
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">
+          Account set up successfully
+        </h2>
+        <p className="text-slate-500 text-sm">
+          Redirecting you to the login page…
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+      <h2 className="text-xl font-semibold text-slate-900 mb-1">
+        Set up your account
+      </h2>
+      <p className="text-slate-500 text-sm mb-6">
+        Create a password to activate your Pro-Insight 360 account.
+      </p>
+
+      <form onSubmit={handleSubmit} noValidate>
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm"
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="mb-4">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            New password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          />
+          {/* Password strength checklist */}
+          {password.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {passwordRules.map((rule) => (
+                <li
+                  key={rule.label}
+                  className={`flex items-center gap-2 text-xs ${rule.met ? 'text-green-600' : 'text-slate-400'}`}
+                >
+                  <span aria-hidden="true">{rule.met ? '✓' : '○'}</span>
+                  {rule.label}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="mb-6">
+          <label
+            htmlFor="confirm"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            Confirm password
+          </label>
+          <input
+            id="confirm"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          />
+          {confirm.length > 0 && password !== confirm && (
+            <p className="mt-1 text-xs text-red-600">
+              Passwords do not match.
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading || !token}
+          className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          {loading ? 'Setting up…' : 'Set up my account'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default function SetupPage() {
+  return (
+    <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-slate-900">Pro-Insight 360</h1>
+          <p className="text-slate-500 mt-1 text-sm">Evaluate. Diagnose. Transform.</p>
+        </div>
+        <Suspense fallback={<div className="text-center text-slate-500 text-sm">Loading…</div>}>
+          <SetupForm />
+        </Suspense>
+      </div>
+    </main>
+  );
+}

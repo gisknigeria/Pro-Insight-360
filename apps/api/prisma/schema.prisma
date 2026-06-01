@@ -1,0 +1,489 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  CONSULTANT
+  CLIENT_ADMIN
+  HOD
+  RESPONDENT
+}
+
+enum EvaluationStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum ResponseStatus {
+  DRAFT
+  SUBMITTED
+  SYNCED
+  QUARANTINED
+}
+
+enum DiagnosisStatus {
+  PENDING_REVIEW
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ReportFormat {
+  PDF
+  DOCX
+  XLSX
+}
+
+enum ConflictType {
+  NUMERIC_VARIANCE
+  CONTRADICTORY_CHOICE
+}
+
+enum ScoreScope {
+  ORGANISATION
+  DEPARTMENT
+  RESPONDENT
+}
+
+enum ScoreType {
+  DIGITAL_READINESS
+  GIS_READINESS
+  DIMENSION
+  CATEGORY
+  INFRASTRUCTURE
+}
+
+enum OrganogramRenderStatus {
+  PENDING
+  RENDERED
+  ERROR
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCING
+  SYNCED
+  ERROR
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Organisation {
+  id         String    @id @default(uuid())
+  name       String    @db.VarChar(255)
+  sector     String?   @db.VarChar(100)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  archivedAt DateTime? @map("archived_at")
+
+  users       User[]
+  evaluations Evaluation[]
+
+  @@map("organisations")
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  organisationId      String?   @map("organisation_id")
+  email               String    @unique @db.VarChar(255)
+  passwordHash        String    @map("password_hash")
+  role                UserRole
+  mfaEnabled          Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret           String?   @map("mfa_secret")
+  failedLoginCount    Int       @default(0) @map("failed_login_count") @db.SmallInt
+  lockedUntil         DateTime? @map("locked_until")
+  setupToken          String?   @map("setup_token")
+  setupTokenExpiresAt DateTime? @map("setup_token_expires_at")
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  organisation         Organisation?          @relation(fields: [organisationId], references: [id])
+  formAssignments      FormAssignment[]
+  responses            Response[]
+  resolvedConflicts    Conflict[]             @relation("ResolvedBy")
+  reviewedDiagnoses    Diagnosis[]            @relation("ReviewedBy")
+  generatedReports     Report[]
+  uploadedDocuments    Document[]
+  auditLogs            AuditLog[]
+  evaluationConsultants EvaluationConsultant[]
+  createdForms         Form[]
+  createdEvaluations   Evaluation[]
+  createdTemplates     Template[]
+  sharedLinks          SharedLink[]
+  updatedWeights       ScoringWeight[]
+
+  @@map("users")
+}
+
+model Evaluation {
+  id             String           @id @default(uuid())
+  organisationId String           @map("organisation_id")
+  title          String           @db.VarChar(255)
+  status         EvaluationStatus @default(DRAFT)
+  startDate      DateTime?        @map("start_date") @db.Date
+  endDate        DateTime?        @map("end_date") @db.Date
+  createdById    String           @map("created_by")
+  archivedAt     DateTime?        @map("archived_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  organisation  Organisation           @relation(fields: [organisationId], references: [id])
+  createdBy     User                   @relation(fields: [createdById], references: [id])
+  consultants   EvaluationConsultant[]
+  forms         Form[]
+  diagnoses     Diagnosis[]
+  reports       Report[]
+  workflowMaps  WorkflowMap[]
+  organograms   Organogram[]
+  scoreResults  ScoreResult[]
+  conflicts     Conflict[]
+  documents     Document[]
+
+  @@map("evaluations")
+}
+
+model EvaluationConsultant {
+  evaluationId String   @map("evaluation_id")
+  consultantId String   @map("consultant_id")
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  consultant User       @relation(fields: [consultantId], references: [id])
+
+  @@id([evaluationId, consultantId])
+  @@map("evaluation_consultants")
+}
+
+model Template {
+  id             String   @id @default(uuid())
+  name           String   @db.VarChar(255)
+  sector         String?  @db.VarChar(100)
+  evaluationType String?  @map("evaluation_type") @db.VarChar(100)
+  version        Int      @default(1)
+  definition     Json
+  isPublished    Boolean  @default(false) @map("is_published")
+  createdById    String   @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  createdBy User              @relation(fields: [createdById], references: [id])
+  versions  TemplateVersion[]
+  forms     Form[]
+
+  @@map("templates")
+}
+
+model TemplateVersion {
+  id         String   @id @default(uuid())
+  templateId String   @map("template_id")
+  version    Int
+  definition Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@map("template_versions")
+}
+
+model Form {
+  id               String     @id @default(uuid())
+  evaluationId     String     @map("evaluation_id")
+  templateId       String?    @map("template_id")
+  templateVersion  Int?       @map("template_version")
+  title            String     @db.VarChar(255)
+  definition       Json
+  status           FormStatus @default(DRAFT)
+  responseDeadline DateTime?  @map("response_deadline")
+  createdById      String     @map("created_by")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  evaluation      Evaluation       @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  template        Template?        @relation(fields: [templateId], references: [id])
+  createdBy       User             @relation(fields: [createdById], references: [id])
+  questions       Question[]
+  formAssignments FormAssignment[]
+  responses       Response[]
+
+  @@map("forms")
+}
+
+model Question {
+  id         String   @id @default(uuid())
+  formId     String   @map("form_id")
+  externalId String   @map("external_id") @db.VarChar(100)
+  type       String   @db.VarChar(50)
+  label      String
+  config     Json     @default("{}")
+  isRequired Boolean  @default(false) @map("is_required")
+  position   Int
+  dimensions String[] @default([])
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  form             Form               @relation(fields: [formId], references: [id], onDelete: Cascade)
+  conditionalLogic ConditionalLogic[]
+  answers          Answer[]
+  conflicts        Conflict[]
+
+  @@map("questions")
+}
+
+model ConditionalLogic {
+  id         String @id @default(uuid())
+  questionId String @map("question_id")
+  condition  Json
+  action     String @db.VarChar(20)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("conditional_logic")
+}
+
+model FormAssignment {
+  id          String    @id @default(uuid())
+  formId      String    @map("form_id")
+  respondentId String   @map("respondent_id")
+  assignedAt  DateTime  @default(now()) @map("assigned_at")
+  notifiedAt  DateTime? @map("notified_at")
+
+  form       Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+  respondent User @relation(fields: [respondentId], references: [id])
+
+  @@unique([formId, respondentId])
+  @@map("form_assignments")
+}
+
+model Response {
+  id            String         @id @default(uuid())
+  formId        String         @map("form_id")
+  respondentId  String         @map("respondent_id")
+  status        ResponseStatus @default(DRAFT)
+  submittedAt   DateTime?      @map("submitted_at")
+  syncedAt      DateTime?      @map("synced_at")
+  rawCacheJson  String?        @map("raw_cache_json")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  form       Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  respondent User     @relation(fields: [respondentId], references: [id])
+  answers    Answer[]
+
+  @@map("responses")
+}
+
+model Answer {
+  id          String   @id @default(uuid())
+  responseId  String   @map("response_id")
+  questionId  String   @map("question_id")
+  value       Json
+  answeredAt  DateTime @default(now()) @map("answered_at")
+
+  response Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@map("answers")
+}
+
+model Conflict {
+  id               String       @id @default(uuid())
+  evaluationId     String       @map("evaluation_id")
+  questionId       String       @map("question_id")
+  conflictType     ConflictType @map("conflict_type")
+  conflictingValues Json        @map("conflicting_values")
+  isResolved       Boolean      @default(false) @map("is_resolved")
+  resolutionNote   String?      @map("resolution_note")
+  resolvedById     String?      @map("resolved_by")
+  resolvedAt       DateTime?    @map("resolved_at")
+
+  evaluation  Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  question    Question   @relation(fields: [questionId], references: [id])
+  resolvedBy  User?      @relation("ResolvedBy", fields: [resolvedById], references: [id])
+
+  @@map("conflicts")
+}
+
+model ScoreResult {
+  id              String     @id @default(uuid())
+  evaluationId    String     @map("evaluation_id")
+  scope           ScoreScope
+  scopeId         String     @map("scope_id")
+  scoreType       ScoreType  @map("score_type")
+  category        String?    @db.VarChar(100)
+  score           Decimal    @db.Decimal(5, 2)
+  band            String?    @db.VarChar(50)
+  computedAt      DateTime   @default(now()) @map("computed_at")
+  weightsSnapshot Json?      @map("weights_snapshot")
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@map("score_results")
+}
+
+model Diagnosis {
+  id            String          @id @default(uuid())
+  evaluationId  String          @map("evaluation_id")
+  version       Int             @default(1)
+  content       Json
+  status        DiagnosisStatus @default(PENDING_REVIEW)
+  isAiGenerated Boolean         @default(true) @map("is_ai_generated")
+  generatedAt   DateTime        @default(now()) @map("generated_at")
+  reviewedById  String?         @map("reviewed_by")
+  reviewedAt    DateTime?       @map("reviewed_at")
+  editsMade     Boolean         @default(false) @map("edits_made")
+  rejectionReason String?       @map("rejection_reason")
+
+  evaluation       Evaluation         @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  reviewedBy       User?              @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  versions         DiagnosisVersion[]
+  recommendations  Recommendation[]
+
+  @@map("diagnoses")
+}
+
+model DiagnosisVersion {
+  id          String   @id @default(uuid())
+  diagnosisId String   @map("diagnosis_id")
+  version     Int
+  content     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  diagnosis Diagnosis @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+
+  @@map("diagnosis_versions")
+}
+
+model Recommendation {
+  id             String   @id @default(uuid())
+  diagnosisId    String   @map("diagnosis_id")
+  title          String   @db.VarChar(255)
+  description    String
+  priority       String   @db.VarChar(20)
+  dimension      String?  @db.VarChar(20)
+  effort         String?  @db.VarChar(20)
+  expectedBenefit String? @map("expected_benefit")
+  timeline       String?  @db.VarChar(255)
+  position       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  diagnosis Diagnosis @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+
+  @@map("recommendations")
+}
+
+model Report {
+  id               String       @id @default(uuid())
+  evaluationId     String       @map("evaluation_id")
+  version          Int          @default(1)
+  format           ReportFormat
+  includedSections Json         @map("included_sections")
+  storageKey       String?      @map("storage_key") @db.VarChar(500)
+  generatedById    String       @map("generated_by")
+  generatedAt      DateTime     @default(now()) @map("generated_at")
+  fileSizeBytes    BigInt?      @map("file_size_bytes")
+
+  evaluation   Evaluation   @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  generatedBy  User         @relation(fields: [generatedById], references: [id])
+  sharedLinks  SharedLink[]
+
+  @@map("reports")
+}
+
+model SharedLink {
+  id          String    @id @default(uuid())
+  reportId    String    @map("report_id")
+  token       String    @unique @db.VarChar(255)
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdById String    @map("created_by")
+
+  report     Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  createdBy  User   @relation(fields: [createdById], references: [id])
+
+  @@map("shared_links")
+}
+
+model Organogram {
+  id            String                 @id @default(uuid())
+  evaluationId  String                 @map("evaluation_id")
+  rawData       Json                   @map("raw_data")
+  renderStatus  OrganogramRenderStatus @default(PENDING) @map("render_status")
+  errorDetail   String?                @map("error_detail")
+  storageKey    String?                @map("storage_key") @db.VarChar(500)
+  createdAt     DateTime               @default(now()) @map("created_at")
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@map("organograms")
+}
+
+model WorkflowMap {
+  id               String   @id @default(uuid())
+  evaluationId     String   @map("evaluation_id")
+  title            String   @db.VarChar(255)
+  bpmnXml          String?  @map("bpmn_xml")
+  nodes            Json     @default("[]")
+  edges            Json     @default("[]")
+  inefficientNodes String[] @map("inefficient_nodes")
+  storageKey       String?  @map("storage_key") @db.VarChar(500)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@map("workflow_maps")
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  evaluationId  String   @map("evaluation_id")
+  name          String   @db.VarChar(255)
+  mimeType      String   @map("mime_type") @db.VarChar(100)
+  storageKey    String   @map("storage_key") @db.VarChar(500)
+  fileSizeBytes BigInt   @map("file_size_bytes")
+  uploadedById  String   @map("uploaded_by")
+  uploadedAt    DateTime @default(now()) @map("uploaded_at")
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  uploadedBy User       @relation(fields: [uploadedById], references: [id])
+
+  @@map("documents")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?  @map("user_id")
+  action       String   @db.VarChar(100)
+  resourceType String?  @map("resource_type") @db.VarChar(100)
+  resourceId   String?  @map("resource_id")
+  metadata     Json?
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model ScoringWeight {
+  id          String   @id @default(uuid())
+  category    String   @unique @db.VarChar(100)
+  weight      Decimal  @db.Decimal(5, 4)
+  updatedById String   @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  updatedBy User @relation(fields: [updatedById], references: [id])
+
+  @@map("scoring_weights")
+}
