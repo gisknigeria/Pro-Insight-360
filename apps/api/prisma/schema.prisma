@@ -101,6 +101,8 @@ model User {
   id                  String    @id @default(uuid())
   organisationId      String?   @map("organisation_id")
   email               String    @unique @db.VarChar(255)
+  name                String?   @db.VarChar(255)
+  department          String?   @db.VarChar(255)
   passwordHash        String    @map("password_hash")
   role                UserRole
   mfaEnabled          Boolean   @default(false) @map("mfa_enabled")

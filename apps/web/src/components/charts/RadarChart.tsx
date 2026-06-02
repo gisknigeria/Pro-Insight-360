@@ -92,7 +92,7 @@ export default function RadarChart({
   compareData,
   emptyMessage = "No data available for radar chart",
 }: RadarChartProps) {
-  const chartData = data || generateSampleData();
+  const chartData: RadarDataPoint[] = data || generateSampleData();
 
   if (!chartData || chartData.length === 0) {
     return (
@@ -148,7 +148,7 @@ export default function RadarChart({
                   fontSize: "12px",
                 }}
                 labelStyle={{ fontWeight: 600, color: chartColors.text }}
-                formatter={(value: number) => [`${value}/100`, "Score"]}
+                formatter={(value) => [`${value}/100`, "Score"]}
               />
             )}
             {showLegend && (

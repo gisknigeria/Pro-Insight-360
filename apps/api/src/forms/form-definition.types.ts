@@ -67,6 +67,7 @@ export interface FormPage {
   pageId: string;
   title?: string;
   questions: QuestionDefinition[];
+  conditionalLogic?: ConditionalRule[];
 }
 
 export interface FormDefinition {

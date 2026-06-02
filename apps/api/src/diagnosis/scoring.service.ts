@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ScoreResult } from '@prisma/client';
 
 export type ScoreBand = 'Nascent' | 'Emerging' | 'Developing' | 'Advanced';
 
@@ -25,9 +26,60 @@ export interface InfrastructureScoreResult {
   };
 }
 
+export interface CategoryScore {
+  category: string;
+  score: number;
+  band: ScoreBand;
+}
+
 @Injectable()
 export class ScoringService {
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Compute all scores for an evaluation
+   */
+  async computeAll(evaluationId: string) {
+    const gisScore = await this.saveGISScores(evaluationId);
+    const infrastructureScore = await this.computeInfrastructureScores(evaluationId);
+    return {
+      gisReadiness: gisScore,
+      infrastructure: infrastructureScore,
+    };
+  }
+
+  /**
+   * Get all scores for an evaluation
+   */
+  async getScores(evaluationId: string) {
+    const scores = await this.prisma.scoreResult.findMany({
+      where: { evaluationId },
+      orderBy: { computedAt: 'desc' },
+    });
+    return scores;
+  }
+
+  /**
+   * Update scoring weights and recompute scores
+   */
+  async updateWeightsAndRecompute(
+    weights: { category: string; weight: number }[],
+    userId: string,
+  ) {
+    // Update weights in the database
+    for (const w of weights) {
+      await this.prisma.scoringWeight.upsert({
+        where: { category: w.category },
+        update: { weight: w.weight, updatedById: userId },
+        create: {
+          category: w.category,
+          weight: w.weight,
+          updatedById: userId,
+        },
+      });
+    }
+    return { message: 'Weights updated successfully' };
+  }
 
   /**
    * Compute GIS Readiness Score from responses
@@ -153,6 +205,67 @@ export class ScoringService {
   }
 
   /**
+   * Compute infrastructure readiness scores for an evaluation (aggregate)
+   */
+  async computeInfrastructureScores(evaluationId: string) {
+    const responses = await this.prisma.response.findMany({
+      where: {
+        form: { evaluationId },
+        status: { in: ['SUBMITTED', 'SYNCED'] },
+      },
+      include: {
+        answers: {
+          include: {
+            question: {
+              select: {
+                id: true,
+                label: true,
+                type: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const scores = (responses as any[]).map((r) =>
+      this.computeInfrastructureScore(
+        r.answers.map((a: any) => ({
+          questionId: a.questionId,
+          questionLabel: a.question.label,
+          value: a.value,
+        })),
+      ),
+    );
+
+    if (scores.length === 0) {
+      return {
+        overall: 0,
+        band: 'Nascent' as ScoreBand,
+        components: { hardware: 0, software: 0, connectivity: 0, backup: 0 },
+      };
+    }
+
+    const avgOverall = scores.reduce((s: number, x: any) => s + x.overall, 0) / scores.length;
+    const avgHardware = scores.reduce((s: number, x: any) => s + x.components.hardware, 0) / scores.length;
+    const avgSoftware = scores.reduce((s: number, x: any) => s + x.components.software, 0) / scores.length;
+    const avgConnectivity = scores.reduce((s: number, x: any) => s + x.components.connectivity, 0) / scores.length;
+    const avgBackup = scores.reduce((s: number, x: any) => s + x.components.backup, 0) / scores.length;
+
+    const overall = Math.round(avgOverall);
+    return {
+      overall,
+      band: this.classifyGISBand(overall),
+      components: {
+        hardware: Math.round(avgHardware),
+        software: Math.round(avgSoftware),
+        connectivity: Math.round(avgConnectivity),
+        backup: Math.round(avgBackup),
+      },
+    };
+  }
+
+  /**
    * Aggregate GIS scores at department level
    * Maps to Task 22.3: Department-level GIS score aggregation
    */
@@ -164,13 +277,7 @@ export class ScoringService {
         status: { in: ['SUBMITTED', 'SYNCED'] },
       },
       include: {
-        respondent: {
-          select: {
-            id: true,
-            email: true,
-            department: true,
-          },
-        },
+        respondent: true,
         answers: {
           include: {
             question: {
@@ -188,20 +295,20 @@ export class ScoringService {
     // Group by department
     const departmentScores: Record<string, GISScoreResult[]> = {};
 
-    for (const response of responses) {
-      const department = response.respondent.department || 'Unassigned';
+    for (const response of responses as any[]) {
+      const department = response.respondent?.department || 'Unassigned';
       if (!departmentScores[department]) {
         departmentScores[department] = [];
       }
 
       // Filter GIS-related answers
-      const gisAnswers = response.answers.filter((a) =>
+      const gisAnswers = response.answers.filter((a: any) =>
         this.isGISQuestion(a.question.label),
       );
 
       if (gisAnswers.length > 0) {
         const score = this.computeGISScoreFromAnswers(
-          gisAnswers.map((a) => ({
+          gisAnswers.map((a: any) => ({
             questionId: a.questionId,
             questionLabel: a.question.label,
             value: a.value,
@@ -335,7 +442,7 @@ export class ScoringService {
         status: { in: ['SUBMITTED', 'SYNCED'] },
       },
       include: {
-        respondent: { select: { department: true } },
+        respondent: true,
         answers: {
           include: {
             question: { select: { label: true, type: true } },
@@ -346,14 +453,14 @@ export class ScoringService {
 
     const departmentSkills: Record<string, { total: number; lowSkill: number }> = {};
 
-    for (const response of responses) {
-      const department = response.respondent.department || 'Unassigned';
+    for (const response of responses as any[]) {
+      const department = response.respondent?.department || 'Unassigned';
       if (!departmentSkills[department]) {
         departmentSkills[department] = { total: 0, lowSkill: 0 };
       }
 
       // Filter skill-related answers
-      const skillAnswers = response.answers.filter((a) =>
+      const skillAnswers = response.answers.filter((a: any) =>
         a.question.label.toLowerCase().includes('skill') ||
         a.question.label.toLowerCase().includes('competency') ||
         a.question.label.toLowerCase().includes('training') ||
@@ -392,14 +499,7 @@ export class ScoringService {
         status: { in: ['SUBMITTED', 'SYNCED'] },
       },
       include: {
-        respondent: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            department: true,
-          },
-        },
+        respondent: true,
         answers: {
           include: {
             question: { select: { label: true } },
@@ -417,8 +517,8 @@ export class ScoringService {
       evidence: string[];
     }> = [];
 
-    for (const response of responses) {
-      const gisSkillAnswers = response.answers.filter((a) =>
+    for (const response of responses as any[]) {
+      const gisSkillAnswers = response.answers.filter((a: any) =>
         a.question.label.toLowerCase().includes('gis') &&
         (a.question.label.toLowerCase().includes('skill') ||
          a.question.label.toLowerCase().includes('competency') ||

@@ -23,10 +23,22 @@ export interface BarDataPoint {
   compareValue?: number;
 }
 
+export interface DepartmentScore {
+  name: string;
+  score: number;
+  orgAverage: number;
+}
+
 export interface LineDataPoint {
   name: string;
   value: number;
   target?: number;
+}
+
+export interface WorkflowStep {
+  step: string;
+  actual: number;
+  target: number;
 }
 
 // ── WCAG 2.1 AA Compliant Color Scheme ────────────────────────────────────
@@ -47,7 +59,7 @@ const chartColors = {
 
 // ── Sample Data Generators ─────────────────────────────────────────────────
 
-function generateDepartmentComparisonData() {
+function generateDepartmentComparisonData(): DepartmentScore[] {
   return [
     { name: "ICT", score: 78, orgAverage: 62 },
     { name: "Finance", score: 62, orgAverage: 62 },
@@ -68,7 +80,7 @@ function generateGapSeverityData() {
   ];
 }
 
-function generateWorkflowDelayData() {
+function generateWorkflowDelayData(): WorkflowStep[] {
   return [
     { step: "Intake", actual: 2, target: 1 },
     { step: "Review", actual: 5, target: 3 },
@@ -92,7 +104,7 @@ function EmptyState({ message }: { message: string }) {
 // ── Department Comparison Bar Chart ────────────────────────────────────────
 
 interface DepartmentComparisonChartProps {
-  data?: BarDataPoint[];
+  data?: DepartmentScore[];
   title?: string;
   height?: number;
   emptyMessage?: string;
@@ -104,7 +116,7 @@ export function DepartmentComparisonChart({
   height = 300,
   emptyMessage = "No department data available",
 }: DepartmentComparisonChartProps) {
-  const chartData = data || generateDepartmentComparisonData();
+  const chartData: DepartmentScore[] = data || generateDepartmentComparisonData();
 
   if (!chartData || chartData.length === 0) {
     return (
@@ -136,7 +148,7 @@ export function DepartmentComparisonChart({
                 borderRadius: "6px",
                 fontSize: "12px",
               }}
-              formatter={(value: number) => [`${value}/100`, "Score"]}
+              formatter={(value) => [`${value}/100`, "Score"]}
             />
             <Legend wrapperStyle={{ paddingTop: "10px", fontSize: "12px" }} />
             <Bar dataKey="score" name="Department Score" fill={chartColors.primary} radius={[0, 4, 4, 0]} />
@@ -208,7 +220,7 @@ export function GapSeverityChart({
 // ── Workflow Delay Line Chart ──────────────────────────────────────────────
 
 interface WorkflowDelayChartProps {
-  data?: LineDataPoint[];
+  data?: WorkflowStep[];
   title?: string;
   height?: number;
   emptyMessage?: string;
@@ -222,7 +234,7 @@ export function WorkflowDelayChart({
   height = 300,
   emptyMessage = "No workflow delay data available",
 }: WorkflowDelayChartProps) {
-  const chartData = data || workflowDelaySample;
+  const chartData: WorkflowStep[] = data || workflowDelaySample;
 
   if (!chartData || chartData.length === 0) {
     return (
@@ -249,7 +261,7 @@ export function WorkflowDelayChart({
                 borderRadius: "6px",
                 fontSize: "12px",
               }}
-              formatter={(value: number) => [`${value} days`, ""]}
+              formatter={(value) => [`${value} days`, ""]}
             />
             <Legend wrapperStyle={{ paddingTop: "10px", fontSize: "12px" }} />
             <Line
@@ -292,7 +304,7 @@ export function ScoreDistributionChart({
   height = 300,
   emptyMessage = "No distribution data available",
 }: ScoreDistributionChartProps) {
-  const chartData = data || [
+  const chartData: BarDataPoint[] = data || [
     { name: "0-20", value: 5 },
     { name: "21-40", value: 12 },
     { name: "41-60", value: 28 },
@@ -325,7 +337,7 @@ export function ScoreDistributionChart({
                 borderRadius: "6px",
                 fontSize: "12px",
               }}
-              formatter={(value: number) => [value, "Count"]}
+              formatter={(value) => [value, "Count"]}
             />
             <Bar dataKey="value" name="Respondents" fill={chartColors.primary} radius={[4, 4, 0, 0]}>
               <LabelList dataKey="value" position="top" fill={chartColors.text} fontSize={11} />

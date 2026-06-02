@@ -6,12 +6,12 @@ import {
   Param,
   Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { StorageService } from './storage.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Request } from 'express';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -60,39 +60,89 @@ export class StorageController {
               `File is too large. Maximum allowed size is 50 MB.`,
             ),
           );
+          req.destroy();
           return;
         }
         chunks.push(chunk);
       });
-      req.on('end', resolve);
-      req.on('error', reject);
+      req.on('end', () => resolve());
+      req.on('error', (err) => reject(err));
     });
 
+    // Parse multipart/form-data manually (simple parser)
+    // For production, consider using @nestjs/platform-express with multer
+    // This is a minimal implementation for the API contract
     const body = Buffer.concat(chunks);
-    const contentType = req.headers['content-type'] ?? 'application/octet-stream';
-    const fileName =
-      (req.headers['x-file-name'] as string) ?? `upload-${Date.now()}`;
+    const contentType = req.headers['content-type'] || '';
+    const boundaryMatch = contentType.match(/boundary=(.+)$/);
+    if (!boundaryMatch) {
+      throw new BadRequestException('Invalid multipart form data');
+    }
+    const boundary = `--${boundaryMatch[1]}`;
+    const parts = body.toString('binary').split(boundary);
 
-    if (!ALLOWED_MIME_TYPES.has(contentType.split(';')[0].trim())) {
+    let fileBuffer: Buffer | null = null;
+    let fileName = '';
+    let mimeType = '';
+    let fieldName = '';
+
+    for (const part of parts) {
+      if (!part || part === '--\r\n' || part === '--') continue;
+      const headerEnd = part.indexOf('\r\n\r\n');
+      if (headerEnd === -1) continue;
+      const headers = part.substring(0, headerEnd);
+      const content = part.substring(headerEnd + 4, part.length - 2); // strip trailing \r\n
+
+      const nameMatch = headers.match(/name="([^"]+)"/);
+      const filenameMatch = headers.match(/filename="([^"]+)"/);
+      const contentTypeMatch = headers.match(/Content-Type:\s*(.+)/i);
+
+      if (filenameMatch && nameMatch) {
+        fieldName = nameMatch[1];
+        fileName = filenameMatch[1];
+        mimeType = contentTypeMatch ? contentTypeMatch[1].trim() : 'application/octet-stream';
+        fileBuffer = Buffer.from(content, 'binary');
+      }
+    }
+
+    if (!fileBuffer || !fileName) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    if (fieldName !== 'file') {
+      throw new BadRequestException('Expected field name "file"');
+    }
+
+    if (!ALLOWED_MIME_TYPES.has(mimeType)) {
       throw new BadRequestException(
-        `File type is not allowed. Accepted types: PDF, Word, Excel, images (JPEG, PNG), and videos (MP4, WebM).`,
+        `File type "${mimeType}" is not allowed`,
       );
     }
 
-    const { key } = await this.storage.upload(
-      body,
-      contentType,
-      `evaluations/${evaluationId}`,
+    // Verify evaluation exists
+    const evaluation = await this.prisma.evaluation.findUnique({
+      where: { id: evaluationId },
+    });
+    if (!evaluation) {
+      throw new BadRequestException('Evaluation not found');
+    }
+
+    // Upload to B2 / S3
+    const { key: storageKey } = await this.storage.upload(
+      fileBuffer,
+      mimeType,
+      `evaluation/${evaluationId}`,
       fileName,
     );
 
+    // Save document record
     const document = await this.prisma.document.create({
       data: {
         evaluationId,
         name: fileName,
-        mimeType: contentType,
-        storageKey: key,
-        fileSizeBytes: BigInt(body.length),
+        mimeType,
+        storageKey,
+        fileSizeBytes: BigInt(fileBuffer.length),
         uploadedById: user.id,
       },
     });
@@ -101,8 +151,8 @@ export class StorageController {
       id: document.id,
       name: document.name,
       mimeType: document.mimeType,
-      fileSizeBytes: document.fileSizeBytes.toString(),
-      uploadedAt: document.uploadedAt,
+      size: document.fileSizeBytes.toString(),
+      storageKey: document.storageKey,
     };
   }
 }

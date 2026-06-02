@@ -1,5 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { createCipheriv, createDecipheriv, randomBytes, scrypt } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  scrypt,
+  scryptSync,
+} from 'crypto';
 
 /**
  * AES-256 Encryption Service
@@ -32,10 +38,10 @@ export class EncryptionService {
 
     const iv = randomBytes(16);
     const cipher = createCipheriv(this.algorithm, this.key, iv);
-    
+
     let ciphertext = cipher.update(plaintext, 'utf8', 'hex');
     ciphertext += cipher.final('hex');
-    
+
     const authTag = cipher.getAuthTag();
 
     return {
@@ -53,9 +59,9 @@ export class EncryptionService {
     const iv = Buffer.from(data.iv, 'hex');
     const authTag = Buffer.from(data.authTag, 'hex');
     const decipher = createDecipheriv(this.algorithm, this.key, iv);
-    
+
     decipher.setAuthTag(authTag);
-    
+
     let plaintext = decipher.update(data.ciphertext, 'hex', 'utf8');
     plaintext += decipher.final('utf8');
 
