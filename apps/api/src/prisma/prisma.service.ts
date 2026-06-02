@@ -1,27 +1,22 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
 
-// Required for Neon serverless WebSocket support in Node.js
-neonConfig.webSocketConstructor = ws;
-
-let prismaInstance: PrismaClient | null = null;
-
+/**
+ * PrismaService wraps PrismaClient directly without the Neon adapter.
+ * The DATABASE_URL (pooler URL) supports WebSocket connections from Neon,
+ * which works fine for standard Prisma queries via the connection string.
+ * The adapter approach is only needed for edge runtimes.
+ */
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
-  private pool: Pool;
-
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
-    const connectionString = process.env.DATABASE_URL!;
-    const pool = new Pool({ connectionString });
-    const adapter = new PrismaNeon(pool as any);
-    super({ adapter } as any);
-    this.pool = pool;
+    super({
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+    });
   }
 
   async onModuleInit() {
@@ -30,6 +25,5 @@ export class PrismaService
 
   async onModuleDestroy() {
     await this.$disconnect();
-    await this.pool.end();
   }
 }
