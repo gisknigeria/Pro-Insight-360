@@ -4,10 +4,12 @@ services:
     runtime: node
     rootDir: apps/api
     buildCommand: pnpm install --no-frozen-lockfile && node node_modules/prisma/build/index.js generate --schema=prisma/schema.prisma && pnpm run build
-    startCommand: node apps/api/dist/main
+    startCommand: node dist/main
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3001
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
@@ -44,5 +46,3 @@ services:
         value: Pro-Insight 360
       - key: FRONTEND_URL
         sync: false
-      - key: PORT
-        value: 3001

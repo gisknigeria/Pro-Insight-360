@@ -1,11 +1,10 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Global validation pipe — strips unknown fields, validates DTOs
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -14,18 +13,18 @@ async function bootstrap() {
     }),
   );
 
-  // CORS — allow frontend origin
+  // Allow all origins in production (tighten with specific domain once live)
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL ?? '*',
     credentials: true,
   });
 
-  // Global prefix
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT ?? 3001;
-  await app.listen(port);
-  console.log(`Pro-Insight 360 API running on http://localhost:${port}/api`);
+  // Render requires listening on 0.0.0.0 and the PORT env var
+  const port = parseInt(process.env.PORT ?? '3001', 10);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Pro-Insight 360 API listening on port ${port}`);
 }
 
 bootstrap();
