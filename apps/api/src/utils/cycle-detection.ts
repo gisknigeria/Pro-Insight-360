@@ -26,23 +26,23 @@ export function detectCycle(rows: OrgRow[]): string[] {
       } else {
         result.push(n);
       }
-+      return true;
-+    }
-+    if (visited.has(n)) return false;
-+    visiting.add(n);
-+    stack.push(n);
-+    for (const m of adj.get(n) || []) {
-+      if (dfs(m)) return true;
-+    }
-+    stack.pop();
-+    visiting.delete(n);
-+    visited.add(n);
-+    return false;
-+  }
-+
-+  for (const node of adj.keys()) {
-+    if (dfs(node)) break;
-+  }
-+
-+  return Array.from(new Set(result));
-+}
+      return true;
+    }
+    if (visited.has(n)) return false;
+    visiting.add(n);
+    stack.push(n);
+    for (const m of adj.get(n) || []) {
+      if (dfs(m)) return true;
+    }
+    stack.pop();
+    visiting.delete(n);
+    visited.add(n);
+    return false;
+  }
+
+  for (const node of adj.keys()) {
+    if (dfs(node)) break;
+  }
+
+  return Array.from(new Set(result));
+}
