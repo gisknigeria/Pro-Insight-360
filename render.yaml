@@ -1,43 +1,48 @@
 services:
   - type: web
-    name: pro-insight-api
+    name: pro-insight-360-api
     runtime: node
     rootDir: apps/api
-    plan: starter
-    region: oregon
-    buildCommand: |
-      cd ../../
-      corepack enable
-      pnpm install --frozen-lockfile
-      pnpm --filter api prisma generate
-      pnpm --filter api build
-    startCommand: node dist/main.js
-    healthCheckPath: /api
-    autoDeploy: true
+    buildCommand: pnpm install --no-frozen-lockfile && node node_modules/prisma/build/index.js generate --schema=prisma/schema.prisma && pnpm run build
+    startCommand: node dist/main
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
         sync: false
-      - key: DIRECT_DATABASE_URL
-        sync: false
       - key: JWT_SECRET
         sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
       - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
-      - key: FRONTEND_URL
+      - key: UPSTASH_REDIS_REST_URL
         sync: false
-      - key: REDIS_URL
+      - key: UPSTASH_REDIS_REST_TOKEN
         sync: false
-      - key: REDIS_TOKEN
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APPLICATION_KEY
+        sync: false
+      - key: B2_BUCKET_NAME
+        value: pro-insight-360-files
+      - key: B2_BUCKET_ID
+        sync: false
+      - key: B2_ENDPOINT
+        value: https://s3.us-east-005.backblazeb2.com
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
         sync: false
       - key: BREVO_API_KEY
         sync: false
-      - key: AWS_ACCESS_KEY_ID
+      - key: BREVO_FROM_EMAIL
         sync: false
-      - key: AWS_SECRET_ACCESS_KEY
+      - key: BREVO_FROM_NAME
+        value: Pro-Insight 360
+      - key: FRONTEND_URL
         sync: false
-      - key: AWS_REGION
-        value: us-east-1
-      - key: AWS_S3_BUCKET
-        sync: false
+      - key: PORT
+        value: 3001
