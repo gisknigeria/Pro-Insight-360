@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter web build",
-  "outputDirectory": "apps/web/.next"
+  "rootDirectory": "apps/web",
+  "buildCommand": "pnpm build",
+  "outputDirectory": ".next"
 }
