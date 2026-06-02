@@ -1,6 +1,5 @@
 {
-  "buildCommand": "build",
-  "installCommand": "pnpm install --recursive",
-  "outputDirectory": ".next",
-  "rootDirectory": "apps/web"
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter web build",
+  "outputDirectory": "apps/web/.next"
 }
