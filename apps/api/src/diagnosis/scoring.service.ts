@@ -1,35 +1,51 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ScoreResult } from '@prisma/client';
 
-export type ScoreBand = 'Nascent' | 'Emerging' | 'Developing' | 'Advanced';
+export type DigitalReadinessCategory =
+  | 'Leadership & Strategy'
+  | 'IT Infrastructure'
+  | 'Cybersecurity'
+  | 'Data Management'
+  | 'Digital Skills'
+  | 'Process Automation'
+  | 'Customer Experience'
+  | 'Innovation Culture'
+  | 'Connectivity'
+  | 'Software Adoption'
+  | 'Change Management'
+  | 'Budget & Investment'
+  | 'Compliance & Governance'
+  | 'Collaboration Tools';
 
-export interface GISScoreResult {
-  overall: number;
-  band: ScoreBand;
-  categories: {
-    dataContent: number;
-    technology: number;
-    peopleSkills: number;
-    governance: number;
-  };
+export const DIGITAL_READINESS_BANDS = [
+  { label: 'Initial', min: 0, max: 24 },
+  { label: 'Developing', min: 25, max: 49 },
+  { label: 'Defined', min: 50, max: 74 },
+  { label: 'Optimising', min: 75, max: 100 },
+];
+
+export const GIS_READINESS_BANDS = [
+  { label: 'Nascent', min: 0, max: 24 },
+  { label: 'Emerging', min: 25, max: 49 },
+  { label: 'Developing', min: 50, max: 74 },
+  { label: 'Advanced', min: 75, max: 100 },
+];
+
+export const DIMENSION_BANDS = [
+  { label: 'Very Low', min: 0, max: 20 },
+  { label: 'Low', min: 21, max: 40 },
+  { label: 'Moderate', min: 41, max: 60 },
+  { label: 'High', min: 61, max: 80 },
+  { label: 'Advanced', min: 81, max: 100 },
+];
+
+function getBand(score: number, bands: typeof DIGITAL_READINESS_BANDS): string {
+  const band = bands.find((b) => score >= b.min && score <= b.max);
+  return band?.label ?? 'Unknown';
 }
 
-export interface InfrastructureScoreResult {
-  overall: number;
-  band: ScoreBand;
-  components: {
-    hardware: number;
-    software: number;
-    connectivity: number;
-    backup: number;
-  };
-}
-
-export interface CategoryScore {
-  category: string;
-  score: number;
-  band: ScoreBand;
+function clamp(val: number): number {
+  return Math.min(100, Math.max(0, Math.round(val * 100) / 100));
 }
 
 @Injectable()
@@ -37,509 +53,261 @@ export class ScoringService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Compute all scores for an evaluation
+   * Compute Digital Readiness Score across 14 categories.
+   * Uses configurable weights from scoring_weights table.
+   * Validates: Properties 22, 23, 24, 25
    */
-  async computeAll(evaluationId: string) {
-    const gisScore = await this.saveGISScores(evaluationId);
-    const infrastructureScore = await this.computeInfrastructureScores(evaluationId);
+  async computeDigitalReadiness(evaluationId: string) {
+    const weights = await this.prisma.scoringWeight.findMany();
+    const weightMap = new Map(weights.map((w) => [w.category, Number(w.weight)]));
+
+    // Get all answers tagged with digital readiness dimensions
+    const answers = await this.getAnswersForEvaluation(evaluationId);
+
+    // Group answers by category (mapped from question config)
+    const categoryScores: Record<string, number> = {};
+
+    for (const [category] of weightMap) {
+      const categoryAnswers = answers.filter(
+        (a) => (a.question.config as any)?.digitalReadinessCategory === category,
+      );
+
+      if (categoryAnswers.length === 0) {
+        categoryScores[category] = 0;
+        continue;
+      }
+
+      // Average numeric/rating answers for this category
+      const nums = categoryAnswers
+        .map((a) => this.normaliseToScore(a.value, a.question.type))
+        .filter((n) => n !== null) as number[];
+
+      categoryScores[category] =
+        nums.length > 0
+          ? clamp(nums.reduce((s, n) => s + n, 0) / nums.length)
+          : 0;
+    }
+
+    // Weighted average overall score
+    let overallScore = 0;
+    let totalWeight = 0;
+    const weightsSnapshot: Record<string, number> = {};
+
+    for (const [category, weight] of weightMap) {
+      const score = categoryScores[category] ?? 0;
+      overallScore += score * weight;
+      totalWeight += weight;
+      weightsSnapshot[category] = weight;
+    }
+
+    if (totalWeight > 0) overallScore = clamp(overallScore / totalWeight);
+
+    const band = getBand(overallScore, DIGITAL_READINESS_BANDS);
+
+    // Persist score results
+    await this.upsertScore(evaluationId, 'DIGITAL_READINESS', overallScore, band, weightsSnapshot);
+
+    for (const [category, score] of Object.entries(categoryScores)) {
+      await this.upsertScore(evaluationId, 'CATEGORY', score, getBand(score, DIGITAL_READINESS_BANDS), weightsSnapshot, category);
+    }
+
     return {
-      gisReadiness: gisScore,
-      infrastructure: infrastructureScore,
+      overall: overallScore,
+      band,
+      categories: categoryScores,
+      weightsSnapshot,
     };
   }
 
   /**
-   * Get all scores for an evaluation
+   * Compute GIS Readiness Score.
+   * Validates: Properties 22, 23
    */
+  async computeGISReadiness(evaluationId: string) {
+    const answers = await this.getAnswersForEvaluation(evaluationId);
+    const gisAnswers = answers.filter(
+      (a) => (a.question.dimensions as string[])?.includes('WHO') &&
+              (a.question.config as any)?.isGisQuestion === true,
+    );
+
+    if (gisAnswers.length === 0) {
+      return { overall: 0, band: 'Nascent', departmentScores: {} };
+    }
+
+    const nums = gisAnswers
+      .map((a) => this.normaliseToScore(a.value, a.question.type))
+      .filter((n) => n !== null) as number[];
+
+    const overall = nums.length > 0
+      ? clamp(nums.reduce((s, n) => s + n, 0) / nums.length)
+      : 0;
+
+    const band = getBand(overall, GIS_READINESS_BANDS);
+
+    await this.upsertScore(evaluationId, 'GIS_READINESS', overall, band);
+
+    return { overall, band, departmentScores: {} };
+  }
+
+  /**
+   * Compute dimension sub-scores (WHO, WHAT, HOW, WHEN).
+   * Validates: Property 34
+   */
+  async computeDimensionScores(evaluationId: string) {
+    const answers = await this.getAnswersForEvaluation(evaluationId);
+    const dimensions = ['WHO', 'WHAT', 'HOW', 'WHEN'] as const;
+    const results: Record<string, { score: number; band: string }> = {};
+
+    for (const dim of dimensions) {
+      const dimAnswers = answers.filter((a) =>
+        (a.question.dimensions as string[])?.includes(dim),
+      );
+
+      const nums = dimAnswers
+        .map((a) => this.normaliseToScore(a.value, a.question.type))
+        .filter((n) => n !== null) as number[];
+
+      const score = nums.length > 0
+        ? clamp(nums.reduce((s, n) => s + n, 0) / nums.length)
+        : 0;
+
+      const band = getBand(score, DIMENSION_BANDS);
+      results[dim] = { score, band };
+
+      await this.upsertScore(evaluationId, 'DIMENSION', score, band, undefined, dim);
+    }
+
+    return results;
+  }
+
+  /**
+   * Compute infrastructure readiness sub-score.
+   */
+  async computeInfrastructureScore(evaluationId: string) {
+    const answers = await this.getAnswersForEvaluation(evaluationId);
+    const infraAnswers = answers.filter(
+      (a) => (a.question.config as any)?.isInfrastructureQuestion === true,
+    );
+
+    const nums = infraAnswers
+      .map((a) => this.normaliseToScore(a.value, a.question.type))
+      .filter((n) => n !== null) as number[];
+
+    const score = nums.length > 0
+      ? clamp(nums.reduce((s, n) => s + n, 0) / nums.length)
+      : 0;
+
+    const band = getBand(score, DIMENSION_BANDS);
+    await this.upsertScore(evaluationId, 'INFRASTRUCTURE', score, band);
+
+    return { score, band };
+  }
+
+  /** Run all scoring computations for an evaluation */
+  async computeAll(evaluationId: string) {
+    const [digital, gis, dimensions, infrastructure] = await Promise.all([
+      this.computeDigitalReadiness(evaluationId),
+      this.computeGISReadiness(evaluationId),
+      this.computeDimensionScores(evaluationId),
+      this.computeInfrastructureScore(evaluationId),
+    ]);
+
+    return { digital, gis, dimensions, infrastructure };
+  }
+
+  /** Get all stored scores for an evaluation */
   async getScores(evaluationId: string) {
-    const scores = await this.prisma.scoreResult.findMany({
+    return this.prisma.scoreResult.findMany({
       where: { evaluationId },
       orderBy: { computedAt: 'desc' },
     });
-    return scores;
   }
 
-  /**
-   * Update scoring weights and recompute scores
-   */
+  /** Update scoring weights and recompute all active evaluations */
   async updateWeightsAndRecompute(
     weights: { category: string; weight: number }[],
-    userId: string,
+    updatedById: string,
   ) {
-    // Update weights in the database
     for (const w of weights) {
       await this.prisma.scoringWeight.upsert({
         where: { category: w.category },
-        update: { weight: w.weight, updatedById: userId },
-        create: {
-          category: w.category,
-          weight: w.weight,
-          updatedById: userId,
-        },
+        update: { weight: w.weight, updatedById },
+        create: { category: w.category, weight: w.weight, updatedById },
       });
     }
-    return { message: 'Weights updated successfully' };
-  }
 
-  /**
-   * Compute GIS Readiness Score from responses
-   * Maps to Task 22.2: GIS Readiness Score computation per respondent (0-100 scale)
-   */
-  computeGISScoreFromAnswers(answers: {
-    questionId: string;
-    questionLabel: string;
-    value: unknown;
-  }[]): GISScoreResult {
-    // GIS Readiness categories mapped to question labels
-    const dataContentQuestions = [
-      'spatial data availability',
-      'data quality',
-      'data accessibility',
-      'data maintenance',
-    ];
-    const technologyQuestions = [
-      'gis software capability',
-      'hardware adequacy',
-      'network infrastructure',
-    ];
-    const peopleSkillsQuestions = [
-      'staff gis competency',
-      'training availability',
-    ];
-    const governanceQuestions = [
-      'gis governance framework',
-      'strategic alignment',
-    ];
-
-    const getAverage = (questionLabels: string[]) => {
-      const matchingAnswers = answers.filter((a) =>
-        questionLabels.some((label) =>
-          a.questionLabel.toLowerCase().includes(label),
-        ),
-      );
-      if (matchingAnswers.length === 0) return 0;
-      const sum = matchingAnswers.reduce((acc, a) => {
-        const val = typeof a.value === 'number' ? a.value : parseFloat(String(a.value)) || 0;
-        return acc + val;
-      }, 0);
-      return sum / matchingAnswers.length;
-    };
-
-    const dataContent = getAverage(dataContentQuestions);
-    const technology = getAverage(technologyQuestions);
-    const peopleSkills = getAverage(peopleSkillsQuestions);
-    const governance = getAverage(governanceQuestions);
-
-    const overall = (dataContent + technology + peopleSkills + governance) / 4;
-    const band = this.classifyGISBand(overall);
-
-    return {
-      overall: Math.round(overall),
-      band,
-      categories: {
-        dataContent: Math.round(dataContent),
-        technology: Math.round(technology),
-        peopleSkills: Math.round(peopleSkills),
-        governance: Math.round(governance),
-      },
-    };
-  }
-
-  /**
-   * Classify GIS Readiness band based on score
-   * Maps to Task 22.4: GIS band classification (Nascent/Emerging/Developing/Advanced)
-   */
-  classifyGISBand(score: number): ScoreBand {
-    if (score >= 80) return 'Advanced';
-    if (score >= 60) return 'Developing';
-    if (score >= 40) return 'Emerging';
-    return 'Nascent';
-  }
-
-  /**
-   * Compute Infrastructure Readiness Score
-   * Maps to Task 24.6: Compute infrastructure readiness sub-score
-   */
-  computeInfrastructureScore(answers: {
-    questionId: string;
-    questionLabel: string;
-    value: unknown;
-  }[]): InfrastructureScoreResult {
-    const hardwareLabels = ['hardware', 'device', 'computer', 'cpu', 'ram', 'graphics'];
-    const softwareLabels = ['software', 'application', 'program', 'license'];
-    const connectivityLabels = ['connectivity', 'network', 'bandwidth', 'internet', 'connection'];
-    const backupLabels = ['backup', 'recovery', 'redundancy', 'disaster'];
-
-    const getAverage = (labels: string[]) => {
-      const matchingAnswers = answers.filter((a) =>
-        labels.some((label) =>
-          a.questionLabel.toLowerCase().includes(label),
-        ),
-      );
-      if (matchingAnswers.length === 0) return 0;
-      const sum = matchingAnswers.reduce((acc, a) => {
-        const val = typeof a.value === 'number' ? a.value : parseFloat(String(a.value)) || 0;
-        return acc + val;
-      }, 0);
-      return sum / matchingAnswers.length;
-    };
-
-    const hardware = getAverage(hardwareLabels);
-    const software = getAverage(softwareLabels);
-    const connectivity = getAverage(connectivityLabels);
-    const backup = getAverage(backupLabels);
-
-    const overall = (hardware + software + connectivity + backup) / 4;
-    const band = this.classifyGISBand(overall);
-
-    return {
-      overall: Math.round(overall),
-      band,
-      components: {
-        hardware: Math.round(hardware),
-        software: Math.round(software),
-        connectivity: Math.round(connectivity),
-        backup: Math.round(backup),
-      },
-    };
-  }
-
-  /**
-   * Compute infrastructure readiness scores for an evaluation (aggregate)
-   */
-  async computeInfrastructureScores(evaluationId: string) {
-    const responses = await this.prisma.response.findMany({
-      where: {
-        form: { evaluationId },
-        status: { in: ['SUBMITTED', 'SYNCED'] },
-      },
-      include: {
-        answers: {
-          include: {
-            question: {
-              select: {
-                id: true,
-                label: true,
-                type: true,
-              },
-            },
-          },
-        },
-      },
+    // Recompute for all active evaluations
+    const activeEvals = await this.prisma.evaluation.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true },
     });
 
-    const scores = (responses as any[]).map((r) =>
-      this.computeInfrastructureScore(
-        r.answers.map((a: any) => ({
-          questionId: a.questionId,
-          questionLabel: a.question.label,
-          value: a.value,
-        })),
-      ),
+    await Promise.all(
+      activeEvals.map((e) => this.computeDigitalReadiness(e.id)),
     );
 
-    if (scores.length === 0) {
-      return {
-        overall: 0,
-        band: 'Nascent' as ScoreBand,
-        components: { hardware: 0, software: 0, connectivity: 0, backup: 0 },
-      };
-    }
-
-    const avgOverall = scores.reduce((s: number, x: any) => s + x.overall, 0) / scores.length;
-    const avgHardware = scores.reduce((s: number, x: any) => s + x.components.hardware, 0) / scores.length;
-    const avgSoftware = scores.reduce((s: number, x: any) => s + x.components.software, 0) / scores.length;
-    const avgConnectivity = scores.reduce((s: number, x: any) => s + x.components.connectivity, 0) / scores.length;
-    const avgBackup = scores.reduce((s: number, x: any) => s + x.components.backup, 0) / scores.length;
-
-    const overall = Math.round(avgOverall);
-    return {
-      overall,
-      band: this.classifyGISBand(overall),
-      components: {
-        hardware: Math.round(avgHardware),
-        software: Math.round(avgSoftware),
-        connectivity: Math.round(avgConnectivity),
-        backup: Math.round(avgBackup),
-      },
-    };
+    return { updated: weights.length, recomputed: activeEvals.length };
   }
 
-  /**
-   * Aggregate GIS scores at department level
-   * Maps to Task 22.3: Department-level GIS score aggregation
-   */
-  async aggregateDepartmentGISScores(evaluationId: string) {
-    // Get all responses for this evaluation with department info
-    const responses = await this.prisma.response.findMany({
+  private async getAnswersForEvaluation(evaluationId: string) {
+    return this.prisma.answer.findMany({
       where: {
-        form: { evaluationId },
-        status: { in: ['SUBMITTED', 'SYNCED'] },
+        response: {
+          form: { evaluationId },
+          status: { in: ['SUBMITTED', 'SYNCED'] },
+        },
       },
       include: {
-        respondent: true,
-        answers: {
-          include: {
-            question: {
-              select: {
-                id: true,
-                label: true,
-                type: true,
-              },
-            },
-          },
+        question: {
+          select: { type: true, dimensions: true, config: true },
         },
       },
     });
-
-    // Group by department
-    const departmentScores: Record<string, GISScoreResult[]> = {};
-
-    for (const response of responses as any[]) {
-      const department = response.respondent?.department || 'Unassigned';
-      if (!departmentScores[department]) {
-        departmentScores[department] = [];
-      }
-
-      // Filter GIS-related answers
-      const gisAnswers = response.answers.filter((a: any) =>
-        this.isGISQuestion(a.question.label),
-      );
-
-      if (gisAnswers.length > 0) {
-        const score = this.computeGISScoreFromAnswers(
-          gisAnswers.map((a: any) => ({
-            questionId: a.questionId,
-            questionLabel: a.question.label,
-            value: a.value,
-          })),
-        );
-        departmentScores[department].push(score);
-      }
-    }
-
-    // Calculate averages per department
-    const departmentAverages: Record<string, GISScoreResult> = {};
-    for (const [dept, scores] of Object.entries(departmentScores)) {
-      const avgOverall = scores.reduce((sum, s) => sum + s.overall, 0) / scores.length;
-      const avgDataContent = scores.reduce((sum, s) => sum + s.categories.dataContent, 0) / scores.length;
-      const avgTechnology = scores.reduce((sum, s) => sum + s.categories.technology, 0) / scores.length;
-      const avgPeopleSkills = scores.reduce((sum, s) => sum + s.categories.peopleSkills, 0) / scores.length;
-      const avgGovernance = scores.reduce((sum, s) => sum + s.categories.governance, 0) / scores.length;
-
-      departmentAverages[dept] = {
-        overall: Math.round(avgOverall),
-        band: this.classifyGISBand(avgOverall),
-        categories: {
-          dataContent: Math.round(avgDataContent),
-          technology: Math.round(avgTechnology),
-          peopleSkills: Math.round(avgPeopleSkills),
-          governance: Math.round(avgGovernance),
-        },
-      };
-    }
-
-    return departmentAverages;
   }
 
-  /**
-   * Aggregate GIS scores at organisation level
-   * Maps to Task 22.3: Organisation-level GIS score aggregation
-   */
-  async aggregateOrganisationGISScore(evaluationId: string): Promise<GISScoreResult> {
-    const departmentScores = await this.aggregateDepartmentGISScores(evaluationId);
-    const departments = Object.values(departmentScores);
+  private normaliseToScore(value: unknown, questionType: string): number | null {
+    if (value === null || value === undefined) return null;
 
-    if (departments.length === 0) {
-      return {
-        overall: 0,
-        band: 'Nascent',
-        categories: { dataContent: 0, technology: 0, peopleSkills: 0, governance: 0 },
-      };
+    switch (questionType) {
+      case 'rating_scale':
+        // Assume 1-5 scale → 0-100
+        return clamp(((Number(value) - 1) / 4) * 100);
+      case 'likert_scale':
+        // Assume 1-5 → 0-100
+        return clamp(((Number(value) - 1) / 4) * 100);
+      case 'net_promoter_score':
+        // 0-10 → 0-100
+        return clamp((Number(value) / 10) * 100);
+      case 'slider':
+        return clamp(Number(value));
+      case 'yes_no':
+        return value === 'Yes' || value === true ? 100 : 0;
+      case 'number':
+        return clamp(Number(value));
+      default:
+        return null;
     }
-
-    const avgOverall = departments.reduce((sum, s) => sum + s.overall, 0) / departments.length;
-    const avgDataContent = departments.reduce((sum, s) => sum + s.categories.dataContent, 0) / departments.length;
-    const avgTechnology = departments.reduce((sum, s) => sum + s.categories.technology, 0) / departments.length;
-    const avgPeopleSkills = departments.reduce((sum, s) => sum + s.categories.peopleSkills, 0) / departments.length;
-    const avgGovernance = departments.reduce((sum, s) => sum + s.categories.governance, 0) / departments.length;
-
-    return {
-      overall: Math.round(avgOverall),
-      band: this.classifyGISBand(avgOverall),
-      categories: {
-        dataContent: Math.round(avgDataContent),
-        technology: Math.round(avgTechnology),
-        peopleSkills: Math.round(avgPeopleSkills),
-        governance: Math.round(avgGovernance),
-      },
-    };
   }
 
-  /**
-   * Save GIS score results to database
-   */
-  async saveGISScores(evaluationId: string) {
-    const orgScore = await this.aggregateOrganisationGISScore(evaluationId);
-    const deptScores = await this.aggregateDepartmentGISScores(evaluationId);
-
-    // Save organisation-level score
+  private async upsertScore(
+    evaluationId: string,
+    scoreType: string,
+    score: number,
+    band: string,
+    weightsSnapshot?: Record<string, number>,
+    category?: string,
+  ) {
     await this.prisma.scoreResult.create({
       data: {
         evaluationId,
         scope: 'ORGANISATION',
         scopeId: evaluationId,
-        scoreType: 'GIS_READINESS',
-        score: orgScore.overall,
-        band: orgScore.band,
-        weightsSnapshot: orgScore.categories as any,
+        scoreType: scoreType as any,
+        category: category ?? null,
+        score,
+        band,
+        weightsSnapshot: weightsSnapshot ? (weightsSnapshot as any) : undefined,
       },
     });
-
-    // Save department-level scores
-    for (const [department, score] of Object.entries(deptScores)) {
-      await this.prisma.scoreResult.create({
-        data: {
-          evaluationId,
-          scope: 'DEPARTMENT',
-          scopeId: department,
-          scoreType: 'GIS_READINESS',
-          category: department,
-          score: score.overall,
-          band: score.band,
-          weightsSnapshot: score.categories as any,
-        },
-      });
-    }
-
-    return { organisationScore: orgScore, departmentScores: deptScores };
-  }
-
-  /**
-   * Check if a question label is GIS-related
-   */
-  private isGISQuestion(label: string): boolean {
-    const gisKeywords = [
-      'gis', 'spatial', 'geo', 'map', 'mapping',
-      'data availability', 'data quality', 'data accessibility', 'data maintenance',
-      'software capability', 'hardware adequacy', 'network infrastructure',
-      'staff competency', 'training availability',
-      'governance framework', 'strategic alignment',
-    ];
-    return gisKeywords.some((keyword) =>
-      label.toLowerCase().includes(keyword),
-    );
-  }
-
-  /**
-   * Compute training needs index per department
-   * Maps to Task 25.3: Training needs index computation per department
-   */
-  async computeTrainingNeedsIndex(evaluationId: string) {
-    const responses = await this.prisma.response.findMany({
-      where: {
-        form: { evaluationId },
-        status: { in: ['SUBMITTED', 'SYNCED'] },
-      },
-      include: {
-        respondent: true,
-        answers: {
-          include: {
-            question: { select: { label: true, type: true } },
-          },
-        },
-      },
-    });
-
-    const departmentSkills: Record<string, { total: number; lowSkill: number }> = {};
-
-    for (const response of responses as any[]) {
-      const department = response.respondent?.department || 'Unassigned';
-      if (!departmentSkills[department]) {
-        departmentSkills[department] = { total: 0, lowSkill: 0 };
-      }
-
-      // Filter skill-related answers
-      const skillAnswers = response.answers.filter((a: any) =>
-        a.question.label.toLowerCase().includes('skill') ||
-        a.question.label.toLowerCase().includes('competency') ||
-        a.question.label.toLowerCase().includes('training') ||
-        a.question.type === 'rating_scale' ||
-        a.question.type === 'likert_scale',
-      );
-
-      for (const answer of skillAnswers) {
-        departmentSkills[department].total++;
-        const val = String(answer.value).toLowerCase();
-        if (val === 'none' || val === 'basic' || val === '1' || val === '2') {
-          departmentSkills[department].lowSkill++;
-        }
-      }
-    }
-
-    // Calculate training needs index (percentage of low-skill responses)
-    const trainingNeedsIndex: Record<string, number> = {};
-    for (const [dept, data] of Object.entries(departmentSkills)) {
-      trainingNeedsIndex[dept] = data.total > 0
-        ? Math.round((data.lowSkill / data.total) * 100)
-        : 0;
-    }
-
-    return trainingNeedsIndex;
-  }
-
-  /**
-   * Identify GIS champions (staff with Advanced/Expert GIS skills)
-   * Maps to Task 25.2: GIS champion identification
-   */
-  async identifyGISChampions(evaluationId: string) {
-    const responses = await this.prisma.response.findMany({
-      where: {
-        form: { evaluationId },
-        status: { in: ['SUBMITTED', 'SYNCED'] },
-      },
-      include: {
-        respondent: true,
-        answers: {
-          include: {
-            question: { select: { label: true } },
-          },
-        },
-      },
-    });
-
-    const champions: Array<{
-      respondentId: string;
-      email: string;
-      name?: string;
-      department?: string;
-      gisSkillLevel: string;
-      evidence: string[];
-    }> = [];
-
-    for (const response of responses as any[]) {
-      const gisSkillAnswers = response.answers.filter((a: any) =>
-        a.question.label.toLowerCase().includes('gis') &&
-        (a.question.label.toLowerCase().includes('skill') ||
-         a.question.label.toLowerCase().includes('competency') ||
-         a.question.label.toLowerCase().includes('experience')),
-      );
-
-      for (const answer of gisSkillAnswers) {
-        const val = String(answer.value).toLowerCase();
-        if (val === 'advanced' || val === 'expert' || val === '4' || val === '5') {
-          champions.push({
-            respondentId: response.respondent.id,
-            email: response.respondent.email,
-            name: response.respondent.name,
-            department: response.respondent.department,
-            gisSkillLevel: val === 'expert' || val === '5' ? 'Expert' : 'Advanced',
-            evidence: [`${answer.question.label}: ${answer.value}`],
-          });
-        }
-      }
-    }
-
-    return champions;
   }
 }
