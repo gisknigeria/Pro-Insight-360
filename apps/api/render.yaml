@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: apps/api
     buildCommand: npm install && npm run prebuild && npm run build
-    startCommand: node dist/main
+    startCommand: node apps/api/dist/main
     envVars:
       - key: NODE_ENV
         value: production

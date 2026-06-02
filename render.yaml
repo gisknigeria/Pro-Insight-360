@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: apps/api
     buildCommand: pnpm install --no-frozen-lockfile && node node_modules/prisma/build/index.js generate --schema=prisma/schema.prisma && pnpm run build
-    startCommand: node dist/main
+    startCommand: node apps/api/dist/main
     envVars:
       - key: NODE_ENV
         value: production
