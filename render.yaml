@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: pro-insight-api
+    runtime: node
+    rootDir: apps/api
+    plan: starter
+    region: oregon
+    buildCommand: |
+      cd ../../
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter api prisma generate
+      pnpm --filter api build
+    startCommand: node dist/main.js
+    healthCheckPath: /api
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_TOKEN
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1
+      - key: AWS_S3_BUCKET
+        sync: false
