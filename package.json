@@ -15,15 +15,5 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ],
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@nestjs/core",
-      "@prisma/engines",
-      "bcrypt",
-      "prisma",
-      "sharp",
-      "unrs-resolver"
-    ]
-  }
+  ]
 }
