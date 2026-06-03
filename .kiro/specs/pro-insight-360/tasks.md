@@ -183,10 +183,10 @@ Tasks are organised across 7 development phases. Each phase builds on the previo
   - [x] 17.12 Write property-based tests for score recomputation on weight change (Property 25)
   - [x] 17.13 Write property-based tests for dimension sub-score computed from tagged questions (Property 34)
 
-- [x] 18. Gap analysis engine
+- [ ] 18. Gap analysis engine
   - [x] 18.1 Implement gap identification from hardware/software/infrastructure assessment responses
   - [x] 18.2 Implement gap severity classification (critical, high, medium, low)
-  - [ ] 18.3 Display gap analysis results grouped by department and category
+  - [x] 18.3 Display gap analysis results grouped by department and category
 
 
 ---
@@ -224,7 +224,7 @@ Tasks are organised across 7 development phases. Each phase builds on the previo
   - [x] 21.8 Implement dashboard filters (by department, evaluation dimension, date range) — filter UI in `ConsultantDashboard`
   - [x] 21.9 Ensure all chart colour schemes meet WCAG 2.1 AA contrast requirements — using slate-800 text, blue-600/green-600 primary colors
   - [x] 21.10 Implement empty-state messages for all dashboard sections (Requirement 25.15) — `EmptyState` component used throughout
-
+` 
 ---
 
 ## Phase 5: GIS Readiness

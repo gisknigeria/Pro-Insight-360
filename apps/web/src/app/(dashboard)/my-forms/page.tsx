@@ -1,117 +1,124 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
 import { EmptyState } from '@/components/ui/empty-state';
+import { OfflineStatusBanner } from '@/components/form-renderer/offline-status-banner';
 
-interface AssignedForm {
+interface FormAssignment {
+  type: 'completed' | 'pending';
   formId: string;
-  title: string;
+  formTitle: string;
   evaluationTitle: string;
-  responseDeadline: string | null;
+  deadline: string | null;
+  hoursLeft: number | null;
+  urgent: boolean;
   assignedAt: string;
-  completionStatus: 'not_started' | 'in_progress' | 'submitted';
-  submittedAt: string | null;
 }
 
-const STATUS_LABELS = {
-  not_started: { label: 'Not started', className: 'bg-slate-100 text-slate-600' },
-  in_progress: { label: 'In progress', className: 'bg-amber-100 text-amber-800' },
-  submitted: { label: 'Submitted', className: 'bg-green-100 text-green-800' },
-};
-
 export default function MyFormsPage() {
-  const [forms, setForms] = useState<AssignedForm[]>([]);
+  const [notifications, setNotifications] = useState<FormAssignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    apiFetch<AssignedForm[]>('/responses/assigned')
-      .then(setForms)
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : 'Could not load your forms.'),
-      )
+    const token = localStorage.getItem('accessToken');
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then(setNotifications)
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return <p className="text-slate-500 text-sm">Loading your assigned forms…</p>;
-  }
-
-  if (error) {
-    return (
-      <div role="alert" className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-        {error}
-      </div>
-    );
-  }
+  const pending = notifications.filter((n) => n.type === 'pending');
+  const completed = notifications.filter((n) => n.type === 'completed');
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">My Forms</h1>
-        <p className="text-slate-500 mt-1 text-sm">
-          Forms assigned to you. You can save your progress and return anytime before the deadline.
-        </p>
+        <p className="text-slate-500 mt-1 text-sm">Forms you have been assigned to complete.</p>
       </div>
 
-      {forms.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200">
-          <EmptyState
-            icon="📝"
-            title="No forms assigned yet"
-            description="When your administrator assigns you a form, it will appear here."
-          />
-        </div>
+      <div className="mb-4">
+        <OfflineStatusBanner />
+      </div>
+
+      {loading ? (
+        <div className="text-slate-400 text-sm py-8 text-center">Loading your forms…</div>
+      ) : pending.length === 0 && completed.length === 0 ? (
+        <EmptyState
+          icon="📝"
+          title="No forms assigned yet"
+          description="When a consultant assigns forms to you, they will appear here. Check back later."
+        />
       ) : (
-        <ul className="space-y-3" role="list">
-          {forms.map((form) => {
-            const status = STATUS_LABELS[form.completionStatus];
-            const isDone = form.completionStatus === 'submitted';
-            return (
-              <li
-                key={form.formId}
-                className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-center gap-4"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-400 mb-0.5">{form.evaluationTitle}</p>
-                  <h2 className="text-base font-semibold text-slate-900">{form.title}</h2>
-                  {form.responseDeadline && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      Deadline:{' '}
-                      {new Date(form.responseDeadline).toLocaleDateString(undefined, {
-                        dateStyle: 'medium',
-                      })}
-                    </p>
-                  )}
-                </div>
-                <span
-                  className={`self-start text-xs font-medium px-2.5 py-1 rounded-full ${status.className}`}
-                >
-                  {status.label}
+        <div className="space-y-6">
+          {/* Pending forms */}
+          {pending.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 mb-3">
+                Forms to complete
+                <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                  {pending.length}
                 </span>
-                {!isDone ? (
-                  <Link
-                    href={`/my-forms/${form.formId}`}
-                    className="shrink-0 inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+              </h2>
+              <div className="space-y-3">
+                {pending.map((form) => (
+                  <div
+                    key={form.formId}
+                    className={`bg-white rounded-xl border p-5 ${
+                      form.urgent ? 'border-red-300 bg-red-50' : 'border-slate-200'
+                    }`}
                   >
-                    {form.completionStatus === 'in_progress'
-                      ? 'Continue form'
-                      : 'Start form'}
-                  </Link>
-                ) : (
-                  <span className="text-sm text-slate-500 shrink-0">
-                    Submitted{' '}
-                    {form.submittedAt
-                      ? new Date(form.submittedAt).toLocaleDateString()
-                      : ''}
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 mb-0.5">{form.formTitle}</p>
+                        <p className="text-xs text-slate-500">{form.evaluationTitle}</p>
+                        {form.deadline && (
+                          <p className={`text-xs mt-1.5 font-medium ${form.urgent ? 'text-red-600' : 'text-slate-500'}`}>
+                            {form.urgent ? '⚠️ ' : ''}
+                            Deadline: {new Date(form.deadline).toLocaleDateString()}
+                            {form.hoursLeft !== null && form.hoursLeft > 0 && (
+                              <span className="ml-1">({form.hoursLeft}h left)</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                      <Link
+                        href={`/my-forms/${form.formId}`}
+                        className="shrink-0 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                      >
+                        Complete Form
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Completed forms */}
+          {completed.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-slate-500 mb-3">
+                Completed ({completed.length})
+              </h2>
+              <div className="space-y-2">
+                {completed.map((form) => (
+                  <div key={form.formId} className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-5 py-3">
+                    <span className="text-green-500" aria-hidden="true">✓</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-700 font-medium">{form.formTitle}</p>
+                      <p className="text-xs text-slate-400">{form.evaluationTitle}</p>
+                    </div>
+                    <span className="text-xs text-slate-400">Submitted</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
