@@ -3,7 +3,7 @@ services:
     name: pro-insight-360-api
     runtime: node
     buildCommand: pnpm install --no-frozen-lockfile && pnpm run build:api
-    startCommand: node apps/api/dist/main.js
+    startCommand: node apps/api/dist/src/main.js
     envVars:
       - key: NODE_ENV
         value: production
