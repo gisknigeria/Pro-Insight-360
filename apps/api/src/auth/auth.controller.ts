@@ -11,18 +11,31 @@ import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { IsString, IsNotEmpty } from 'class-validator';
 
 class LoginDto {
+  @IsString()
+  @IsNotEmpty()
   email: string;
+
+  @IsString()
+  @IsNotEmpty()
   password: string;
 }
 
 class SetupAccountDto {
+  @IsString()
+  @IsNotEmpty()
   token: string;
+
+  @IsString()
+  @IsNotEmpty()
   password: string;
 }
 
 class MfaVerifyDto {
+  @IsString()
+  @IsNotEmpty()
   code: string;
 }
 

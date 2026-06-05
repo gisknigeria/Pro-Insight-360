@@ -169,6 +169,10 @@ export class AuthService {
   }
 
   validatePasswordComplexity(password: string): void {
+    if (!password || typeof password !== 'string') {
+      throw new BadRequestException('Password is required to set up your account.');
+    }
+
     const ok =
       password.length >= 12 &&
       /[A-Z]/.test(password) &&
