@@ -4,9 +4,6 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -14,11 +11,7 @@ import * as bcrypt from 'bcrypt';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-neonConfig.webSocketConstructor = ws;
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
-const adapter = new PrismaNeon(pool as any);
-const prisma = new PrismaClient({ adapter } as any);
+const prisma = new PrismaClient();
 
 async function createTestUser() {
   try {
@@ -81,7 +74,6 @@ async function createTestUser() {
     process.exit(1);
   } finally {
     await prisma.$disconnect();
-    await pool.end();
   }
 }
 
