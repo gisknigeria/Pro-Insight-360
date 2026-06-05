@@ -8,7 +8,13 @@ async function createPrismaClient(): Promise<PrismaClient> {
   if (!url) throw new Error('DATABASE_URL environment variable is not set');
 
   // Always use the standard Prisma client for Supabase/Postgres.
-  return new PrismaClient();
+  return new PrismaClient({
+    datasources: {
+      db: {
+        url,
+      },
+    },
+  });
 }
 
 @Injectable()
