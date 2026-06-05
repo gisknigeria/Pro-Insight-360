@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import * as speakeasy from 'speakeasy';
 import * as qrcode from 'qrcode';
 import { PrismaService } from '../prisma/prisma.service';
@@ -137,6 +138,40 @@ export class AuthService {
     });
 
     return { message: 'Account set up successfully. You can now log in.' };
+  }
+
+  async createSetupToken(email: string): Promise<{ email: string; token: string; expiresAt: Date }> {
+    const tokenSecret = process.env.SETUP_TOKEN_SECRET;
+    if (!tokenSecret) {
+      throw new ForbiddenException('Setup token generation is not enabled.');
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const passwordHash = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 12);
+
+    const user = await this.prisma.user.upsert({
+      where: { email },
+      update: {
+        setupToken: token,
+        setupTokenExpiresAt: expiresAt,
+        isActive: true,
+      },
+      create: {
+        email,
+        role: 'SUPER_ADMIN',
+        passwordHash,
+        setupToken: token,
+        setupTokenExpiresAt: expiresAt,
+        isActive: true,
+      },
+    });
+
+    return {
+      email: user.email,
+      token,
+      expiresAt: user.setupTokenExpiresAt!,
+    };
   }
 
   async enableMfa(userId: string): Promise<{ secret: string; qrCodeUrl: string }> {
