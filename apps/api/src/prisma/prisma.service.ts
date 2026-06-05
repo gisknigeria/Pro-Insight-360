@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 let prismaInstance: PrismaClient | null = null;
 
@@ -8,7 +9,9 @@ async function createPrismaClient(): Promise<PrismaClient> {
   if (!url) throw new Error('DATABASE_URL environment variable is not set');
 
   // Always use the standard Prisma client for Supabase/Postgres.
-  return new PrismaClient({});
+  return new PrismaClient({
+    adapter: new PrismaPg(url),
+  });
 }
 
 @Injectable()
