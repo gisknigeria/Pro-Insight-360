@@ -1,8 +1,5 @@
 {
   "installCommand": "corepack enable && pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter web build",
-  "outputDirectory": "apps/web/.next",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
-  }
+  "outputDirectory": "apps/web/.next"
 }
