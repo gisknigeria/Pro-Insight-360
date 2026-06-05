@@ -6,20 +6,29 @@ let prismaInstance: PrismaClient | null = null;
 async function createPrismaClient(): Promise<PrismaClient> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL environment variable is not set');
+  // If the URL looks like Neon (or the env explicitly requests it), use the Neon adapter.
+  const useNeon = process.env.USE_NEON === 'true' || /neon(?:database|\.tech|)/i.test(url);
 
-  try {
-    // Try Neon serverless adapter first (works in edge/serverless)
-    const { Pool, neonConfig } = await import('@neondatabase/serverless');
-    const ws = await import('ws');
-    neonConfig.webSocketConstructor = ws.default;
-    const { PrismaNeon } = await import('@prisma/adapter-neon');
-    const pool = new Pool({ connectionString: url });
-    const adapter = new PrismaNeon(pool as any);
-    return new PrismaClient({ adapter } as any);
-  } catch {
-    // Fallback: use accelerateUrl with the connection string directly
-    return new PrismaClient({ accelerateUrl: url } as any);
+  if (useNeon) {
+    try {
+      const { Pool, neonConfig } = await import('@neondatabase/serverless');
+      const ws = await import('ws');
+      neonConfig.webSocketConstructor = ws.default;
+      const { PrismaNeon } = await import('@prisma/adapter-neon');
+      const pool = new Pool({ connectionString: url });
+      const adapter = new PrismaNeon(pool as any);
+      return new PrismaClient({ adapter } as any);
+    } catch (e) {
+      // If Neon adapter initialization fails, fall back to standard Prisma client.
+      // Use console here because this file runs before Nest's Logger is available.
+      // The application will continue with the regular Postgres client.
+      // eslint-disable-next-line no-console
+      console.warn('Neon adapter initialization failed, falling back to standard PrismaClient:', e?.message ?? e);
+    }
   }
+
+  // Default: use the standard PrismaClient (works with Supabase / Postgres)
+  return new PrismaClient();
 }
 
 @Injectable()
