@@ -2,11 +2,12 @@ services:
   - type: web
     name: pro-insight-360-api
     runtime: node
+    rootDir: apps/api
     plan: standard
     branch: main
-    installCommand: cd apps/api && npm install
-    buildCommand: cd apps/api && npm run postinstall
-    startCommand: cd apps/api && npm run build && npm start
+    installCommand: npm install
+    buildCommand: npm run postinstall
+    startCommand: npm run build && npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
