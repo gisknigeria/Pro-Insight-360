@@ -5,7 +5,7 @@ services:
     plan: standard
     branch: main
     installCommand: pnpm install --frozen-lockfile --prod=false
-    buildCommand: pnpm --filter api exec prisma generate --schema=apps/api/prisma/schema.prisma && pnpm --filter api exec prisma migrate deploy --schema=apps/api/prisma/schema.prisma && pnpm --filter api build
+    buildCommand: pnpm --filter api exec prisma generate && pnpm --filter api exec prisma migrate deploy && pnpm --filter api build
     startCommand: node apps/api/dist/src/main.js
     healthCheckPath: /api/health
     envVars:
