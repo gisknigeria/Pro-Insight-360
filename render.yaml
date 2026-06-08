@@ -4,9 +4,9 @@ services:
     runtime: node
     plan: standard
     branch: main
-    installCommand: npm --prefix "apps/api" install
-    buildCommand: npm --prefix "apps/api" run postinstall
-    startCommand: npm --prefix "apps/api" run build && npm --prefix "apps/api" start
+    installCommand: cd apps/api && npm install
+    buildCommand: cd apps/api && npm run postinstall
+    startCommand: cd apps/api && npm run build && npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV

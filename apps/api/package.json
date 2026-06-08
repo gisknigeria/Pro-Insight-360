@@ -7,9 +7,9 @@
   "scripts": {
     "start": "node server.js",
     "start:prod": "node server.js",
-    "build": "npm exec prisma migrate deploy --schema=prisma/schema.prisma",
-    "postinstall": "npm exec prisma generate --schema=prisma/schema.prisma",
-    "migrate:deploy": "npm exec prisma migrate deploy --schema=prisma/schema.prisma"
+    "build": "prisma migrate deploy --schema=prisma/schema.prisma",
+    "postinstall": "prisma generate --schema=prisma/schema.prisma",
+    "migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.15.0",
