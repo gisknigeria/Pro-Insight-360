@@ -4,7 +4,6 @@
   "private": true,
   "packageManager": "npm@10",
   "scripts": {
-    "postinstall": "npm -w api run postinstall",
     "dev:web": "npm -w web run dev",
     "dev:api": "npm -w api run dev",
     "build:api": "npm -w api run build",
