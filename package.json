@@ -7,7 +7,7 @@
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
     "build:web": "pnpm --filter web build",
-    "build:api": "pnpm --filter api exec -- prisma generate --schema=prisma/schema.prisma && pnpm --filter api build",
+    "build:api": "cd apps/api && npx prisma generate --schema=prisma/schema.prisma && pnpm run build",
     "test:web": "pnpm --filter web test",
     "test:api": "pnpm --filter api test",
     "lint": "pnpm -r lint"
