@@ -17,6 +17,13 @@ const frontendUrls = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '
   .filter(Boolean);
 
 app.use(express.json());
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    const normalizedPath = req.url.replace(/^\/api/, '') || '/';
+    req.url = normalizedPath;
+  }
+  next();
+});
 app.use(
   cors({
     origin: (origin, callback) => {
