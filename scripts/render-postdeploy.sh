@@ -5,11 +5,10 @@ set -euo pipefail
 # Use this to run migrations and build the API on the Render instance
 
 echo "Running post-deploy steps..."
-corepack enable
-pnpm install --frozen-lockfile
+npm ci
 cd "apps/api"
 echo "Running Prisma migrations..."
-pnpm prisma migrate deploy
+npx prisma migrate deploy --schema=prisma/schema.prisma
 echo "Building API..."
-pnpm run build:api
+npm -w api run build
 echo "Post-deploy complete."
