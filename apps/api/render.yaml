@@ -3,9 +3,9 @@ services:
     name: pro-insight-360-api
     runtime: node
     rootDir: apps/api
-    installCommand: corepack enable && pnpm install --frozen-lockfile --prod=false
-    buildCommand: pnpm exec prisma migrate deploy --schema=prisma/schema.prisma && pnpm build
-    startCommand: node dist/main.js
+    installCommand: npm install
+    buildCommand: npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production

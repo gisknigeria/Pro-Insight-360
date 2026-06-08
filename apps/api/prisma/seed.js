@@ -1,23 +1,11 @@
-/**
- * Database seed script — run after migration to populate default data.
- * Usage: node prisma/seed.js (after compiling) or via ts-node
- *
- * IMPORTANT: This seed requires a Super Admin user to exist first.
- * Create the Super Admin via the API, then run this seed with their ID.
- *
- * Set SEED_SUPER_ADMIN_ID env var before running:
- *   SEED_SUPER_ADMIN_ID=<uuid> npx ts-node prisma/seed.ts
- */
-
-import { PrismaClient } from '@prisma/client';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+const { PrismaClient } = require('@prisma/client');
+const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const prisma = new PrismaClient();
 
-// 14 Digital Readiness categories — equal weights summing to 1.0
 const DIGITAL_READINESS_CATEGORIES = [
   'Leadership & Strategy',
   'IT Infrastructure',
@@ -41,11 +29,10 @@ async function main() {
     throw new Error(
       'SEED_SUPER_ADMIN_ID environment variable is required.\n' +
         'Create a Super Admin user first, then run:\n' +
-        '  SEED_SUPER_ADMIN_ID=<uuid> npx ts-node prisma/seed.ts',
+        '  SEED_SUPER_ADMIN_ID=<uuid> node prisma/seed.js',
     );
   }
 
-  // Verify the super admin exists
   const admin = await prisma.user.findUnique({ where: { id: superAdminId } });
   if (!admin) {
     throw new Error(`No user found with ID: ${superAdminId}`);
@@ -61,7 +48,7 @@ async function main() {
       update: { weight: equalWeight, updatedById: superAdminId },
       create: { category, weight: equalWeight, updatedById: superAdminId },
     });
-    console.log(`  ✓ ${category}: ${equalWeight}`);
+    console.log(`  ? ${category}: ${equalWeight}`);
   }
 
   console.log('\nSeed complete. 14 scoring weights created with equal weights.');
