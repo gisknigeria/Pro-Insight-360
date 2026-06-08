@@ -4,9 +4,9 @@ services:
     runtime: node
     plan: standard
     branch: main
-    installCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm run postinstall
-    buildCommand: pnpm run build:api
-    startCommand: pnpm run migrate:deploy && node apps/api/dist/src/main.js
+    installCommand: npm ci && npm run postinstall
+    buildCommand: npm -w api run build
+    startCommand: npm run migrate:deploy && node apps/api/dist/src/main.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV

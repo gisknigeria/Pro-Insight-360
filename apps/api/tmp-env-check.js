@@ -1,1 +1,0 @@
-const dotenv = require('dotenv'); const path = require('path'); console.log('cwd', process.cwd()); console.log('env path', path.resolve(__dirname, '.env')); const res = dotenv.config({ path: path.resolve(__dirname, '.env') }); console.log('loaded', !!res.parsed); console.log('DATABASE_URL', res.parsed?.DATABASE_URL);
