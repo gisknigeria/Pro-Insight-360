@@ -5,7 +5,7 @@ services:
     plan: standard
     branch: main
     installCommand: corepack enable && pnpm install --frozen-lockfile --prod=false
-    buildCommand: corepack enable && pnpm --filter api build
+    buildCommand: corepack enable && pnpm --dir apps/api exec prisma generate && pnpm --dir apps/api exec prisma migrate deploy --schema=apps/api/prisma/schema.prisma && pnpm --dir apps/api exec nest build
     startCommand: node apps/api/dist/src/main.js
     healthCheckPath: /api/health
     envVars:
