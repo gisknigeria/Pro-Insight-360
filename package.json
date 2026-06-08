@@ -8,7 +8,8 @@
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
     "build:web": "pnpm --filter web build",
-    "build:api": "npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma && pnpm --filter api build",
+    "build:api": "pnpm --filter api build",
+    "migrate:deploy": "npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma",
     "test:web": "pnpm --filter web test",
     "test:api": "pnpm --filter api test",
     "lint": "pnpm -r lint"
