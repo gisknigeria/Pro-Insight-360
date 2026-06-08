@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: standard
     branch: main
-    installCommand: npm ci && npm run postinstall
-    buildCommand: npm -w api run build
+    installCommand: npm install
+    buildCommand: npm --prefix "apps/api" run postinstall
     startCommand: npm --prefix "apps/api" run migrate:deploy && npm --prefix "apps/api" start
     healthCheckPath: /health
     envVars:
