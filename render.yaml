@@ -6,8 +6,8 @@ services:
     branch: main
     installCommand: npm ci && npm run postinstall
     buildCommand: npm -w api run build
-    startCommand: npm run migrate:deploy && node apps/api/dist/src/main.js
-    healthCheckPath: /api/health
+    startCommand: npm --prefix "apps/api" run migrate:deploy && npm --prefix "apps/api" start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
