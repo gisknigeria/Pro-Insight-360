@@ -1,0 +1,58 @@
+name: CI / Migrate & Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  migrate-and-build:
+    runs-on: ubuntu-latest
+    env:
+      PRISMA_SCHEMA: apps/api/prisma/schema.prisma
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install API deps
+        run: npm --prefix "apps/api" install --no-audit --no-fund
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=$PRISMA_SCHEMA
+
+      - name: Run Prisma migrations (deploy)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy --schema=$PRISMA_SCHEMA
+
+      - name: Install Web deps and build
+        run: |
+          npm --prefix "apps/web" install --no-audit --no-fund
+          npm --prefix "apps/web" run build
+
+      - name: Trigger Render deploy (optional)
+        if: ${{ secrets.RENDER_API_KEY && secrets.RENDER_SERVICE_ID }}
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          curl -X POST https://api.render.com/deploy/srv-${SERVICE_ID} \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":true}'
+
+      - name: Trigger Vercel Deploy (optional)
+        if: ${{ secrets.VERCEL_TOKEN && secrets.VERCEL_PROJECT_ID }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          curl -X POST "https://api.vercel.com/v13/now/deployments?projectId=${VERCEL_PROJECT_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"gitSource": {"type":"github"}}'
