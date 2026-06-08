@@ -6,21 +6,32 @@ import { useSearchParams, useRouter } from 'next/navigation';
 function SetupForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
+  const tokenFromUrl = searchParams.get('token');
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [tokenInput, setTokenInput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
+  const activeToken = tokenFromUrl ?? tokenInput;
+
   useEffect(() => {
-    if (!token) {
-      setError(
-        'This setup link is missing a token. Please use the link from your invitation email.',
-      );
+    if (tokenFromUrl) {
+      setTokenInput(tokenFromUrl);
     }
-  }, [token]);
+  }, [tokenFromUrl]);
+
+  useEffect(() => {
+    if (!activeToken) {
+      setError(
+        'Please enter your setup token to continue.',
+      );
+    } else {
+      setError('');
+    }
+  }, [activeToken]);
 
   const passwordRules = [
     { label: 'At least 12 characters', met: password.length >= 12 },
@@ -33,6 +44,11 @@ function SetupForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (!activeToken) {
+      setError('Please enter your setup token.');
+      return;
+    }
 
     if (password !== confirm) {
       setError('Passwords do not match. Please check and try again.');
@@ -52,7 +68,7 @@ function SetupForm() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, password }),
+          body: JSON.stringify({ token: activeToken, password }),
         },
       );
 
@@ -101,6 +117,25 @@ function SetupForm() {
             className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm"
           >
             {error}
+          </div>
+        )}
+
+        {!tokenFromUrl && (
+          <div className="mb-4">
+            <label
+              htmlFor="token"
+              className="block text-sm font-medium text-slate-700 mb-1"
+            >
+              Setup token
+            </label>
+            <input
+              id="token"
+              type="text"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              placeholder="Paste the setup token here"
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            />
           </div>
         )}
 
@@ -161,7 +196,7 @@ function SetupForm() {
 
         <button
           type="submit"
-          disabled={loading || !token}
+          disabled={loading || !activeToken}
           className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           {loading ? 'Setting up…' : 'Set up my account'}
