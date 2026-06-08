@@ -13,9 +13,23 @@ async function bootstrap() {
     }),
   );
 
-  // Allow all origins in production (tighten with specific domain once live)
+  // Parse allowed frontend URLs from environment
+  const frontendUrls = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '')
+    .split(',')
+    .map(url => url.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? '*',
+    origin: (origin, callback) => {
+      // Allow non-browser requests (no origin header)
+      if (!origin) return callback(null, true);
+      // Allow if origin is in the whitelist
+      if (frontendUrls.includes(origin)) return callback(null, true);
+      // Allow any Vercel preview domain
+      if (origin.endsWith('.vercel.app')) return callback(null, true);
+      // Deny other origins
+      callback(new Error('CORS policy: origin not allowed'));
+    },
     credentials: true,
   });
 
