@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: standard
     branch: main
-    installCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm run postinstall
-    buildCommand: pnpm run build:api
+    installCommand: corepack enable && pnpm install --recursive --frozen-lockfile --prod=false && pnpm run postinstall
+    buildCommand: cd apps/api && pnpm exec nest build
     startCommand: pnpm run migrate:deploy && node apps/api/dist/src/main.js
     healthCheckPath: /api/health
     envVars:
