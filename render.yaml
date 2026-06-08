@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: standard
     branch: main
-    installCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --dir apps/api install --frozen-lockfile --prod=false && pnpm run postinstall
-    buildCommand: pnpm --dir apps/api exec tsc -p tsconfig.build.json
+    installCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm run postinstall
+    buildCommand: pnpm run build:api
     startCommand: pnpm run migrate:deploy && node apps/api/dist/src/main.js
     healthCheckPath: /api/health
     envVars:

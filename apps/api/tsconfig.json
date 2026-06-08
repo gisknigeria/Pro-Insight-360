@@ -15,6 +15,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./",
+    "ignoreDeprecations": "6.0",
     "types": ["node"],
     "incremental": true,
     "skipLibCheck": true,
