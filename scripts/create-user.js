@@ -1,27 +1,48 @@
-const { PrismaClient } = require('@prisma/client');
+const path = require('path');
 const crypto = require('crypto');
-const bcrypt = require('bcrypt');
+const apiRoot = path.join(__dirname, '..', 'apps', 'api');
+const bcrypt = require(require.resolve('bcrypt', { paths: [apiRoot] }));
+const dotenv = require(require.resolve('dotenv', { paths: [apiRoot] }));
+const { PrismaClient } = require(require.resolve('@prisma/client', { paths: [apiRoot] }));
+
+dotenv.config({ path: path.join(apiRoot, '.env') });
+dotenv.config({ path: path.join(apiRoot, '.env.local') });
 
 const prisma = new PrismaClient();
 
 async function createTestUser() {
   const email = 'test@pro-insight.local';
-  const setupToken = crypto.randomBytes(32).toString('hex');
-  
+
   try {
-    // Check if exists
     let user = await prisma.user.findUnique({ where: { email } });
     if (user) {
-      console.log(`\n✓ User already exists: ${email}`);
+      const hasValidToken = user.setupToken && user.setupTokenExpiresAt && new Date(user.setupTokenExpiresAt) > new Date();
+      if (hasValidToken) {
+        console.log(`\n✓ User already exists: ${email}`);
+        console.log(`  Setup Token: ${user.setupToken}`);
+        console.log(`  Expires: ${user.setupTokenExpiresAt}\n`);
+        return;
+      }
+
+      const setupToken = crypto.randomBytes(32).toString('hex');
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          setupToken,
+          setupTokenExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+          isActive: true,
+        },
+      });
+
+      console.log(`\n✓ Refreshed setup token for: ${email}`);
       console.log(`  Setup Token: ${user.setupToken}`);
       console.log(`  Expires: ${user.setupTokenExpiresAt}\n`);
-      process.exit(0);
+      return;
     }
 
-    // Hash temp password
+    const setupToken = crypto.randomBytes(32).toString('hex');
     const tempHash = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 12);
 
-    // Create user
     user = await prisma.user.create({
       data: {
         email,
@@ -47,55 +68,12 @@ async function createTestUser() {
     console.log(`3. Create your password`);
     console.log(`4. Login with ${email} + your password`);
     console.log('\n' + '='.repeat(70) + '\n');
-
-
-import { PrismaClient } from '@prisma/client';
-import * as crypto from 'crypto';
-import * as bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
-
-async function createUser() {
-  const email = 'test@pro-insight.local';
-  
-  // Check if exists
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    console.log(`✓ User exists: ${email}`);
-    console.log(`  Setup Token: ${existing.setupToken}`);
-    console.log(`  Token Expires: ${existing.setupTokenExpiresAt}`);
-    process.exit(0);
+  } catch (error) {
+    console.error('Error creating test user:', error);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
   }
-
-  // Create user
-  const setupToken = crypto.randomBytes(32).toString('hex');
-  const tempHash = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 12);
-
-  const user = await prisma.user.create({
-    data: {
-      email,
-      role: 'SUPER_ADMIN',
-      passwordHash: tempHash,
-      setupToken,
-      setupTokenExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-      isActive: true,
-    },
-  });
-
-  console.log('\n✅ Test User Created!\n');
-  console.log(`Email: ${user.email}`);
-  console.log(`Role: ${user.role}`);
-  console.log(`Setup Token: ${user.setupToken}`);
-  console.log(`\n📝 Next Steps:`);
-  console.log(`1. Open: https://pro-insight-360-web.vercel.app/auth/setup`);
-  console.log(`2. Paste token: ${user.setupToken}`);
-  console.log(`3. Create a password`);
-  console.log(`4. Login with ${email} and your password\n`);
-
-  process.exit(0);
 }
 
-createUser().catch(err => {
-  console.error('Error:', err);
-  process.exit(1);
-});
+createTestUser();
