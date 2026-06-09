@@ -69,6 +69,43 @@ function getGapSeverity(score) {
   return 'LOW';
 }
 
+async function syncFormQuestions(formId, definition) {
+  const parsed = getJsonValue(definition);
+  const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
+  const questions = pages.flatMap((page) =>
+    Array.isArray(page.questions) ? page.questions : [],
+  );
+
+  for (const question of questions) {
+    if (!question?.questionId) continue;
+
+    await prisma.question.upsert({
+      where: { id: question.questionId },
+      create: {
+        id: question.questionId,
+        formId,
+        externalId: question.questionId,
+        type: question.type || 'text',
+        label: question.label || '',
+        config: question.config || {},
+        isRequired: !!question.isRequired,
+        position: Number(question.position) || 0,
+        dimensions: Array.isArray(question.dimensions) ? question.dimensions : [],
+      },
+      update: {
+        formId,
+        externalId: question.questionId,
+        type: question.type || 'text',
+        label: question.label || '',
+        config: question.config || {},
+        isRequired: !!question.isRequired,
+        position: Number(question.position) || 0,
+        dimensions: Array.isArray(question.dimensions) ? question.dimensions : [],
+      },
+    });
+  }
+}
+
 async function callGemini(prompt) {
   if (!geminiApiKey) {
     throw new Error('GEMINI_API_KEY is not configured.');
@@ -712,22 +749,26 @@ app.post('/forms', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (re
       return res.status(404).json({ message: 'Evaluation not found.' });
     }
 
+    const formDefinition = definition || {
+      formId: `form-${Date.now()}`,
+      title: title.trim(),
+      description: '',
+      pages: [{ pageId: 'page-1', title: 'Page 1', questions: [] }],
+      conditionalLogic: [],
+      version: 1,
+    };
+
     const form = await prisma.form.create({
       data: {
         evaluationId,
         title: title.trim(),
-        definition: definition || {
-          formId: `form-${Date.now()}`,
-          title: title.trim(),
-          description: '',
-          pages: [{ pageId: 'page-1', title: 'Page 1', questions: [] }],
-          conditionalLogic: [],
-          version: 1,
-        },
+        definition: formDefinition,
         status: 'DRAFT',
         createdById: req.user.sub,
       },
     });
+
+    await syncFormQuestions(form.id, formDefinition);
 
     res.status(201).json({
       id: form.id,
@@ -752,15 +793,19 @@ app.put('/forms/:formId', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), as
       return res.status(404).json({ message: 'Form not found.' });
     }
 
+    const newDefinition = definition || form.definition;
+
     const updated = await prisma.form.update({
       where: { id: formId },
       data: {
         title: title?.trim() || form.title,
-        definition: definition || form.definition,
+        definition: newDefinition,
         status: status || form.status,
         updatedAt: new Date(),
       },
     });
+
+    await syncFormQuestions(formId, newDefinition);
 
     res.json({
       id: updated.id,
