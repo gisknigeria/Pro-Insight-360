@@ -1,54 +1,44 @@
 'use client';
 
-import { useDraggable } from '@dnd-kit/core';
 import {
   QUESTION_TYPES,
   CATEGORY_LABELS,
   QuestionTypeConfig,
+  QuestionType,
 } from './question-types';
 
-interface DraggableQuestionTypeProps {
-  config: QuestionTypeConfig;
+interface QuestionPaletteProps {
+  onAddQuestion: (questionType: QuestionType) => void;
 }
 
-function DraggableQuestionType({ config }: DraggableQuestionTypeProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `palette-${config.type}`,
-    data: { type: 'palette-item', questionType: config.type },
-  });
-
+function ClickableQuestionType({ config, onAddQuestion }: { config: QuestionTypeConfig; onAddQuestion: (questionType: QuestionType) => void }) {
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-grab text-sm transition-colors ${
-        isDragging
-          ? 'opacity-50 border-blue-400 bg-blue-50'
-          : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50'
-      }`}
+    <button
+      type="button"
+      onClick={() => onAddQuestion(config.type)}
+      className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm transition-colors hover:border-blue-300 hover:bg-blue-50"
       title={config.description}
     >
       <span className="text-base w-5 text-center" aria-hidden="true">
         {config.icon}
       </span>
       <span className="font-medium text-slate-700">{config.label}</span>
-    </div>
+    </button>
   );
 }
 
-export function QuestionPalette() {
+export function QuestionPalette({ onAddQuestion }: QuestionPaletteProps) {
   const categories = Object.keys(CATEGORY_LABELS) as QuestionTypeConfig['category'][];
 
   return (
     <aside
       className="w-64 shrink-0 bg-slate-50 border-r border-slate-200 overflow-y-auto"
-      aria-label="Question types — drag onto the form canvas"
+      aria-label="Question types — click to add to the form canvas"
     >
       <div className="p-4 border-b border-slate-200">
         <h2 className="text-sm font-semibold text-slate-900">Question Types</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Drag a type onto the form to add it
+          Click a type to add it to the form
         </p>
       </div>
 
@@ -62,7 +52,11 @@ export function QuestionPalette() {
               </p>
               <div className="space-y-1">
                 {items.map((config) => (
-                  <DraggableQuestionType key={config.type} config={config} />
+                  <ClickableQuestionType
+                    key={config.type}
+                    config={config}
+                    onAddQuestion={onAddQuestion}
+                  />
                 ))}
               </div>
             </div>

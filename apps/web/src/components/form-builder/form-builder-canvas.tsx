@@ -72,27 +72,6 @@ export function FormBuilderCanvas({
     const { active, over } = event;
     if (!over) return;
 
-    // Dropped from palette — add new question
-    if (String(active.id).startsWith('palette-')) {
-      const questionType = active.data.current?.questionType as QuestionType;
-      const typeConfig = QUESTION_TYPES.find((t) => t.type === questionType);
-      if (!questionType) return;
-
-      const newQuestion: QuestionDefinition = {
-        questionId: generateId(),
-        type: questionType,
-        label: '',
-        helperText: typeConfig?.description,
-        isRequired: false,
-        config: {},
-        dimensions: [],
-        position: questions.length,
-      };
-
-      updateQuestions([...questions, newQuestion]);
-      return;
-    }
-
     // Reorder existing questions
     if (active.id !== over.id) {
       const oldIndex = questions.findIndex((q) => q.questionId === active.id);
@@ -104,6 +83,22 @@ export function FormBuilderCanvas({
         updateQuestions(reordered);
       }
     }
+  }
+
+  function handleAddQuestion(questionType: QuestionType) {
+    const typeConfig = QUESTION_TYPES.find((t) => t.type === questionType);
+    const newQuestion: QuestionDefinition = {
+      questionId: generateId(),
+      type: questionType,
+      label: '',
+      helperText: typeConfig?.description,
+      isRequired: false,
+      config: {},
+      dimensions: [],
+      position: questions.length,
+    };
+
+    updateQuestions([...questions, newQuestion]);
   }
 
   function handleUpdateQuestion(updated: QuestionDefinition) {
@@ -171,7 +166,7 @@ export function FormBuilderCanvas({
         onDragEnd={handleDragEnd}
       >
         {/* Question palette */}
-        <QuestionPalette />
+        <QuestionPalette onAddQuestion={handleAddQuestion} />
 
         {/* Canvas */}
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -244,7 +239,7 @@ export function FormBuilderCanvas({
                 <EmptyState
                   icon="📝"
                   title="No questions yet"
-                  description="Drag a question type from the left panel onto this canvas to get started."
+                  description="Click a question type from the left panel to get started."
                 />
               ) : (
                 <div className="space-y-3 max-w-3xl mx-auto">
