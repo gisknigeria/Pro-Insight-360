@@ -14,6 +14,7 @@ interface Diagnosis {
     weaknesses: string[];
     opportunities: string[];
     recommendations: string[];
+    actionPlan?: { who: string; what: string; how: string; when: string }[];
   };
   approvedBy?: { name: string };
   createdAt: string;
@@ -154,6 +155,21 @@ export default function AIDiagnosisPage() {
                       ))}
                     </ul>
                   </div>
+
+                  {diagnosis.sections.actionPlan?.length ? (
+                    <div>
+                      <h4 className="font-semibold text-slate-900 mb-2">🧭 Action Plan</h4>
+                      <div className="space-y-3">
+                        {diagnosis.sections.actionPlan.map((item, idx) => (
+                          <div key={idx} className="border border-slate-200 rounded-lg p-3 bg-white">
+                            <p className="text-sm font-semibold text-slate-900">{item.what}</p>
+                            <p className="text-xs text-slate-500 mt-1">Who: {item.who} • When: {item.when}</p>
+                            <p className="text-sm text-slate-700 mt-2">How: {item.how}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="pt-4 border-t border-slate-200">
                     <div className="flex justify-between items-center">

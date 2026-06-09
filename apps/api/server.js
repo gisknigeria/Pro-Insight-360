@@ -86,6 +86,47 @@ function getGapSeverity(score) {
   return 'LOW';
 }
 
+function getGapOwner(category) {
+  const key = String(category || '').toLowerCase();
+  if (key.includes('infrastructure') || key.includes('hardware') || key.includes('network')) {
+    return 'IT / Infrastructure team';
+  }
+  if (key.includes('governance') || key.includes('policy') || key.includes('security') || key.includes('risk')) {
+    return 'Leadership & Governance team';
+  }
+  if (key.includes('data')) {
+    return 'Data Management team';
+  }
+  if (key.includes('gis') || key.includes('geospatial')) {
+    return 'GIS / Geospatial team';
+  }
+  return 'Cross-functional leadership team';
+}
+
+function getGapImplementationAdvice(category) {
+  const key = String(category || '').toLowerCase();
+  if (key.includes('infrastructure')) {
+    return 'Use the response data to prioritise systems upgrades, standardise architecture, and assign a technology owner for implementation.';
+  }
+  if (key.includes('governance')) {
+    return 'Clarify accountability, update policies, and align governance with stakeholder roles and responsibilities.';
+  }
+  if (key.includes('data')) {
+    return 'Strengthen data stewardship, improve data quality controls, and ensure measurable information management practices.';
+  }
+  if (key.includes('gis') || key.includes('geospatial')) {
+    return 'Embed GIS capability into business workflows, train staff on spatial tools, and align technical delivery with strategic needs.';
+  }
+  return 'Define clear ownership, break the work into practical steps, and review progress against response-based evidence.';
+}
+
+function getGapTimeline(score) {
+  if (score < 40) return 'Immediate (0-1 month)';
+  if (score < 55) return 'Short term (1-3 months)';
+  if (score < 70) return 'Medium term (3-6 months)';
+  return 'Next quarter';
+}
+
 async function syncFormQuestions(formId, definition) {
   const parsed = getJsonValue(definition);
   const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
@@ -287,7 +328,9 @@ ${categoryScores || '- None'}
 Dimension scores:
 ${dimensionScores || '- None'}
 
-Return only valid JSON with the properties: executiveSummary, strengths, weaknesses, opportunities, recommendations.
+Return only valid JSON with the properties: executiveSummary, strengths, weaknesses, opportunities, recommendations, actionPlan.
+
+Each item in actionPlan should include: who, what, how, when.
 
 Example:
 {
@@ -295,10 +338,18 @@ Example:
   "strengths": ["..."],
   "weaknesses": ["..."],
   "opportunities": ["..."],
-  "recommendations": ["..."]
+  "recommendations": ["..."],
+  "actionPlan": [
+    {
+      "who": "Leadership team",
+      "what": "Improve data governance",
+      "how": "Review current processes and assign accountability",
+      "when": "Within 3 months"
+    }
+  ]
 }
 
-Keep the diagnosis concise, grounded in the submitted form answers, and focused on practical organisational recommendations.`;
+Keep the diagnosis concise, grounded in the submitted form answers, and focused on practical organisational recommendations. Link each action to who owns it, how it should be delivered, and when it should be completed.`;
 }
 
 async function generateAiDiagnosis({ evaluation, scores, conflictCount, responseSummary, sampleAnswers }) {
@@ -322,12 +373,22 @@ async function generateAiDiagnosis({ evaluation, scores, conflictCount, response
     throw new Error('AI provider did not return valid JSON.');
   }
 
+  const actionPlan = Array.isArray(content.actionPlan)
+    ? content.actionPlan.slice(0, 6).map((item) => ({
+        who: String(item.who || item.owner || 'Unassigned'),
+        what: String(item.what || item.task || ''),
+        how: String(item.how || ''),
+        when: String(item.when || ''),
+      }))
+    : [];
+
   return {
     executiveSummary: String(content.executiveSummary || content.summary || 'AI diagnosis generated.'),
     strengths: Array.isArray(content.strengths) ? content.strengths.slice(0, 5).map(String) : [],
     weaknesses: Array.isArray(content.weaknesses) ? content.weaknesses.slice(0, 5).map(String) : [],
     opportunities: Array.isArray(content.opportunities) ? content.opportunities.slice(0, 5).map(String) : [],
     recommendations: Array.isArray(content.recommendations) ? content.recommendations.slice(0, 8).map(String) : [],
+    actionPlan,
   };
 }
 
@@ -1655,6 +1716,7 @@ app.get('/diagnoses', async (req, res) => {
           weaknesses: content.weaknesses || [],
           opportunities: content.opportunities || [],
           recommendations: content.recommendations || [],
+          actionPlan: Array.isArray(content.actionPlan) ? content.actionPlan : [],
         },
         approvedBy: diagnosis.reviewedBy ? { name: diagnosis.reviewedBy.name || diagnosis.reviewedBy.email } : undefined,
         createdAt: diagnosis.generatedAt,
@@ -1696,16 +1758,26 @@ app.get('/gap-analysis', async (req, res) => {
       take: 8,
     });
 
-    const mapped = lowScores.map((score) => ({
-      id: score.id,
-      category: score.category || score.scoreType,
-      description: `The ${score.category || score.scoreType.toLowerCase()} score is below target. Review responses and improve the assessment in this area.`,
-      severity: getGapSeverity(Number(score.score)),
-      affectedDepartments: [],
-      recommendedAction: `Improve the ${score.category || score.scoreType.toLowerCase()} dimension through training and process improvement.`,
-      evaluation: { id: score.evaluation.id, title: score.evaluation.title },
-      createdAt: score.computedAt,
-    }));
+    const mapped = lowScores.map((score) => {
+      const categoryName = score.category || score.scoreType;
+      return {
+        id: score.id,
+        category: categoryName,
+        description: `The ${categoryName.toLowerCase()} score is below target. Review responses and improve the assessment in this area.`,
+        severity: getGapSeverity(Number(score.score)),
+        affectedDepartments: [],
+        evidence: [
+          `Recorded score ${score.score} for ${categoryName}.`,
+          `This evaluation score is below the desired threshold and may reflect response gaps in the relevant area.`,
+        ],
+        recommendedAction: `Improve the ${categoryName.toLowerCase()} dimension through training, process updates, and clearer accountability.`,
+        who: getGapOwner(categoryName),
+        how: getGapImplementationAdvice(categoryName),
+        when: getGapTimeline(Number(score.score)),
+        evaluation: { id: score.evaluation.id, title: score.evaluation.title },
+        createdAt: score.computedAt,
+      };
+    });
 
     res.json(mapped);
   } catch (error) {
@@ -2078,6 +2150,14 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
         weaknesses: ['Infrastructure gaps remain', 'Process maturity needs improvement'],
         opportunities: ['Improve training', 'Automate key workflows'],
         recommendations: ['Create a targeted improvement plan', 'Enhance data governance'],
+        actionPlan: [
+          {
+            who: 'Evaluation leadership team',
+            what: 'Review submitted responses and prioritise the most critical gaps',
+            how: 'Use the score and response summaries to create a short action plan, clarify ownership, and set a timeline',
+            when: 'Within the next 2 weeks',
+          },
+        ],
       };
     }
 
@@ -2262,6 +2342,97 @@ app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
   }
 });
 
+app.get('/diagnosis/evaluations/:id/responses/full', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const hasAccess = await isAssignedToEvaluation(req.user, id);
+    if (!hasAccess) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
+    const evaluation = await prisma.evaluation.findUnique({
+      where: { id },
+      include: { forms: true },
+    });
+
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
+    const formIds = evaluation.forms.map((form) => form.id);
+    if (formIds.length === 0) {
+      return res.json({
+        totalResponses: 0,
+        totalAnswers: 0,
+        averageCompletion: 0,
+        sampleAnswers: [],
+        responses: [],
+      });
+    }
+
+    const responses = await prisma.response.findMany({
+      where: { formId: { in: formIds }, status: 'SUBMITTED' },
+      include: {
+        answers: { include: { question: true } },
+        respondent: true,
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const questionCount = evaluation.forms.reduce((currentCount, form) => {
+      const definition = getJsonValue(form.definition);
+      if (!definition || !Array.isArray(definition.pages)) return currentCount;
+      return currentCount + definition.pages.reduce(
+        (pageCount, page) => pageCount + (Array.isArray(page.questions) ? page.questions.length : 0),
+        0,
+      );
+    }, 0);
+
+    const totalAnswers = responses.reduce((sum, response) => sum + response.answers.length, 0);
+    const averageCompletion = questionCount > 0 && responses.length > 0
+      ? Math.round((totalAnswers / (responses.length * questionCount)) * 100)
+      : 0;
+
+    const sampleAnswers = [];
+    for (const response of responses) {
+      for (const answer of response.answers) {
+        if (sampleAnswers.length >= 8) break;
+        const rawValue = getJsonValue(answer.value);
+        const formattedAnswer = formatAnswerValue(rawValue);
+        if (!formattedAnswer.trim()) continue;
+        sampleAnswers.push({
+          question: answer.question?.label || answer.questionId,
+          answer: formattedAnswer,
+          respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
+        });
+      }
+      if (sampleAnswers.length >= 8) break;
+    }
+
+    const formattedResponses = responses.map((response) => ({
+      id: response.id,
+      respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
+      submittedAt: response.submittedAt ? response.submittedAt.toISOString() : null,
+      answers: response.answers.map((answer) => ({
+        question: answer.question?.label || answer.questionId,
+        answer: formatAnswerValue(getJsonValue(answer.value)),
+      })),
+    }));
+
+    res.json({
+      totalResponses: responses.length,
+      totalAnswers,
+      questionCount,
+      averageCompletion,
+      sampleAnswers,
+      responses: formattedResponses,
+    });
+  } catch (error) {
+    console.error('Fetch full diagnosis responses failed:', error);
+    res.status(500).json({ message: 'Unable to fetch diagnosis responses.' });
+  }
+});
+
 app.get('/diagnosis/evaluations/:id/scores', async (req, res) => {
   try {
     const { id } = req.params;
@@ -2346,10 +2517,13 @@ app.get('/diagnosis/evaluations/:id/gaps', async (req, res) => {
         severity: getGapSeverity(Number(score.score)).toLowerCase(),
         affectedDepartments: ['Organisation-wide'],
         evidence: [
-          `Recorded score ${score.score} for ${categoryName}.`, 
+          `Recorded score ${score.score} for ${categoryName}.`,
           `Responses indicate this area is weaker than the overall evaluation average.`,
         ],
         recommendedAction: `Focus on improving ${categoryName} through targeted actions and stronger organisational alignment.`,
+        who: getGapOwner(categoryName),
+        how: getGapImplementationAdvice(categoryName),
+        when: getGapTimeline(Number(score.score)),
         evaluation: { id: score.evaluation.id, title: score.evaluation.title },
         createdAt: score.computedAt,
       };

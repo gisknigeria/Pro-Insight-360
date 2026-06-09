@@ -10,6 +10,9 @@ interface Gap {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   affectedDepartments: string[];
   recommendedAction: string;
+  who?: string;
+  how?: string;
+  when?: string;
   evaluation: { id: string; title: string };
   createdAt: string;
 }
@@ -114,6 +117,19 @@ export default function GapAnalysisPage() {
               <div className="bg-slate-50 rounded-lg p-4 mb-4">
                 <p className="text-sm font-medium text-slate-900 mb-2">Recommended Action</p>
                 <p className="text-sm text-slate-700">{gap.recommendedAction}</p>
+                {(gap.who || gap.how || gap.when) && (
+                  <div className="mt-3 space-y-2 text-sm text-slate-700">
+                    {gap.who && (
+                      <p><span className="font-medium">Owner:</span> {gap.who}</p>
+                    )}
+                    {gap.how && (
+                      <p><span className="font-medium">How:</span> {gap.how}</p>
+                    )}
+                    {gap.when && (
+                      <p><span className="font-medium">When:</span> {gap.when}</p>
+                    )}
+                  </div>
+                )}
               </div>
               {gap.affectedDepartments.length > 0 && (
                 <div>

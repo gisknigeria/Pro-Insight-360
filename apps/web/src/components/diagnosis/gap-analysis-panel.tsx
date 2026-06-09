@@ -9,6 +9,9 @@ interface Gap {
   affectedDepartments: string[];
   evidence?: string[];
   recommendedAction: string;
+  who?: string;
+  how?: string;
+  when?: string;
 }
 
 interface GapSummary {
@@ -113,6 +116,13 @@ export function GapAnalysisPanel({ summary }: GapAnalysisPanelProps) {
                   <div className="mt-2 p-2 bg-white/60 rounded-lg border border-white">
                     <p className="text-xs font-medium text-slate-600 mb-0.5">Recommended action:</p>
                     <p className="text-xs text-slate-700">{gap.recommendedAction}</p>
+                    {(gap.who || gap.how || gap.when) && (
+                      <div className="mt-3 space-y-1 text-xs text-slate-700">
+                        {gap.who && <p><span className="font-medium">Owner:</span> {gap.who}</p>}
+                        {gap.how && <p><span className="font-medium">How:</span> {gap.how}</p>}
+                        {gap.when && <p><span className="font-medium">When:</span> {gap.when}</p>}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
