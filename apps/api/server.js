@@ -478,6 +478,60 @@ app.post('/auth/setup', async (req, res) => {
   }
 });
 
+async function getAnonymousRespondentId() {
+  const email = process.env.PUBLIC_RESPONDENT_EMAIL || 'anonymous@public.local';
+  let user = await prisma.user.findUnique({ where: { email } });
+  if (user) {
+    return user.id;
+  }
+
+  const passwordHash = await bcrypt.hash('anonymous-public-response', 10);
+  user = await prisma.user.create({
+    data: {
+      email,
+      name: 'Public respondent',
+      passwordHash,
+      role: 'RESPONDENT',
+      isActive: true,
+    },
+  });
+
+  return user.id;
+}
+
+function getOptionalAuthenticatedUserId(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const payload = jwt.verify(token, jwtSecret);
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
+
+app.post('/responses/public/submit', async (req, res) => {
+  try {
+    const { formId, answers } = req.body;
+    if (!formId || !Array.isArray(answers)) {
+      return res.status(400).json({ message: 'Form ID and answers are required.' });
+    }
+
+    const respondentId =
+      getOptionalAuthenticatedUserId(req) || (await getAnonymousRespondentId());
+
+    await createOrUpdateResponse(formId, respondentId, 'SUBMITTED', answers);
+    res.json({ message: 'Response submitted.' });
+  } catch (error) {
+    console.error('Submit public response failed:', error);
+    res.status(500).json({ message: 'Unable to submit response.' });
+  }
+});
+
 app.use(authenticate);
 
 app.get('/users/:id', async (req, res) => {
