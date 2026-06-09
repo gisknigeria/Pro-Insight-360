@@ -18,12 +18,26 @@ function useApi<T>(url: string) {
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     setLoading(true);
+    setError('');
     fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setError('Failed to load data.'))
+      .then(async (res) => {
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) {
+          const message = typeof payload?.message === 'string'
+            ? payload.message
+            : 'Failed to load data.';
+          setError(message);
+          setData(null);
+          return;
+        }
+        setData(payload as T);
+      })
+      .catch(() => {
+        setError('Failed to load data.');
+        setData(null);
+      })
       .finally(() => setLoading(false));
   }, [url, refreshKey]);
 
@@ -55,6 +69,7 @@ export default function EvaluationDiagnosisPage() {
   const conflictsLoading = conflictsApi.loading;
   const gapsLoading = gapsApi.loading;
   const responsesLoading = responsesApi.loading;
+  const pageError = scoresApi.error || conflictsApi.error || gapsApi.error || responsesApi.error;
 
   function buildGapSummary(gapsData: any[] | null) {
     if (!gapsData) return null;
@@ -167,6 +182,13 @@ export default function EvaluationDiagnosisPage() {
       {runMsg && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded-lg">
           {runMsg}
+        </div>
+      )}
+
+      {pageError && (
+        <div className="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          <p className="font-semibold">Unable to load diagnosis data</p>
+          <p>{pageError}</p>
         </div>
       )}
 
