@@ -245,6 +245,7 @@ export function FormBuilderCanvas({
             </div>
             <div className="mt-3 text-sm text-slate-500">
               Showing section <span className="font-semibold">{currentPage.title}</span> — use the tabs above to switch checklist sections.
+              <span className="block mt-1 text-slate-500">Click “Preview all questions” to view every checklist item in one place.</span>
             </div>
           </div>
 

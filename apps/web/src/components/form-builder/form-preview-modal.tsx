@@ -142,7 +142,7 @@ export function FormPreviewModal({
 
   if (!open) return null;
 
-  const questions = definition.pages.flatMap((p) => p.questions);
+  const questionsByPage = definition.pages;
 
   return (
     <div
@@ -178,13 +178,25 @@ export function FormPreviewModal({
 
         {/* Form content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {questions.length === 0 ? (
+          {questionsByPage.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">
               No questions added yet. Add questions to see the preview.
             </p>
           ) : (
-            questions.map((q) => (
-              <QuestionPreview key={q.questionId} question={q} />
+            questionsByPage.map((page) => (
+              <div key={page.pageId} className="space-y-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500 mb-1">
+                    Page {definition.pages.indexOf(page) + 1} of {definition.pages.length}
+                  </p>
+                  <h3 className="text-base font-semibold text-slate-900">{page.title}</h3>
+                </div>
+                <div className="space-y-4">
+                  {page.questions.map((q) => (
+                    <QuestionPreview key={q.questionId} question={q} />
+                  ))}
+                </div>
+              </div>
             ))
           )}
         </div>

@@ -96,7 +96,7 @@ export default function EditFormPage() {
             onClick={() => setPreviewOpen(true)}
             className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
           >
-            Preview form
+            Preview all questions
           </button>
         </div>
       </div>
