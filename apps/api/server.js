@@ -573,6 +573,11 @@ app.delete('/users/:id', roleGuard(['SUPER_ADMIN']), async (req, res) => {
       prisma.diagnosis.updateMany({ where: { reviewedById: id }, data: { reviewedById: null } }),
       prisma.formAssignment.deleteMany({ where: { respondentId: id } }),
       prisma.response.deleteMany({ where: { respondentId: id } }),
+      prisma.evaluationConsultant.deleteMany({ where: { consultantId: id } }),
+      prisma.sharedLink.deleteMany({ where: { createdById: id } }),
+      prisma.document.deleteMany({ where: { uploadedById: id } }),
+      prisma.report.deleteMany({ where: { generatedById: id } }),
+      prisma.auditLog.deleteMany({ where: { userId: id } }),
       prisma.user.delete({ where: { id } }),
     ]);
 
