@@ -568,6 +568,8 @@ app.delete('/users/:id', roleGuard(['SUPER_ADMIN']), async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
 
+    const templateIds = (await prisma.template.findMany({ where: { createdById: id }, select: { id: true } })).map((template) => template.id);
+
     await prisma.$transaction([
       prisma.conflict.updateMany({ where: { resolvedById: id }, data: { resolvedById: null } }),
       prisma.diagnosis.updateMany({ where: { reviewedById: id }, data: { reviewedById: null } }),
@@ -578,6 +580,11 @@ app.delete('/users/:id', roleGuard(['SUPER_ADMIN']), async (req, res) => {
       prisma.document.deleteMany({ where: { uploadedById: id } }),
       prisma.report.deleteMany({ where: { generatedById: id } }),
       prisma.auditLog.deleteMany({ where: { userId: id } }),
+      prisma.form.deleteMany({ where: { createdById: id } }),
+      prisma.evaluation.deleteMany({ where: { createdById: id } }),
+      prisma.scoringWeight.deleteMany({ where: { updatedById: id } }),
+      prisma.form.updateMany({ where: { templateId: { in: templateIds } }, data: { templateId: null, templateVersion: null } }),
+      prisma.template.deleteMany({ where: { createdById: id } }),
       prisma.user.delete({ where: { id } }),
     ]);
 
