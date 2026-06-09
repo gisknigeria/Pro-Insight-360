@@ -24,8 +24,9 @@ export default function FormsPage() {
   const [error, setError] = useState('');
   const [actionFormId, setActionFormId] = useState<string | null>(null);
 
-  function handleCopyLink(formId: string) {
-    const shareUrl = `${window.location.origin}/my-forms/${formId}`;
+  function handleCopyLink(formId: string, accessMode: Form['accessMode']) {
+    const route = accessMode === 'PUBLIC' ? 'public/forms' : 'my-forms';
+    const shareUrl = `${window.location.origin}/${route}/${formId}`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareUrl).catch(() => {});
@@ -245,7 +246,7 @@ export default function FormsPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCopyLink(form.id)}
+                      onClick={() => handleCopyLink(form.id, form.accessMode)}
                       className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
                     >
                       Copy share link
