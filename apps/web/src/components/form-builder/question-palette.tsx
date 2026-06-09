@@ -4,7 +4,6 @@ import { useDraggable } from '@dnd-kit/core';
 import {
   QUESTION_TYPES,
   CATEGORY_LABELS,
-  QuestionType,
   QuestionTypeConfig,
 } from './question-types';
 

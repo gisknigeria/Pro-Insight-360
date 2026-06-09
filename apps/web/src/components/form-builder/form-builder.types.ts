@@ -33,6 +33,7 @@ export interface FormPage {
 export interface FormDefinition {
   formId: string;
   title: string;
+  description?: string;
   pages: FormPage[];
   conditionalLogic: ConditionalRule[];
   version: number;

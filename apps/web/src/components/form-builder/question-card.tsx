@@ -4,6 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
 import type { QuestionDefinition } from './form-builder.types';
+import type { QuestionType } from './question-types';
 import { QUESTION_TYPES } from './question-types';
 
 interface QuestionCardProps {
@@ -15,6 +16,65 @@ interface QuestionCardProps {
 export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const typeConfig = QUESTION_TYPES.find((t) => t.type === question.type);
+  const optionQuestionTypes: QuestionType[] = [
+    'dropdown',
+    'single_choice',
+    'multiple_choice',
+    'checkbox',
+    'likert_scale',
+    'ranking',
+  ];
+
+  const options = Array.isArray(question.config?.options)
+    ? (question.config.options as string[])
+    : ['Option 1', 'Option 2'];
+
+  const rows = Array.isArray(question.config?.rows)
+    ? (question.config.rows as string[])
+    : ['Row 1', 'Row 2'];
+
+  const getConfig = (updates: Record<string, unknown>) =>
+    onUpdate({
+      ...question,
+      config: {
+        ...question.config,
+        ...updates,
+      },
+    });
+
+  const updateOption = (index: number, value: string) => {
+    const next = [...options];
+    next[index] = value;
+    getConfig({ options: next });
+  };
+
+  const addOption = () => {
+    getConfig({ options: [...options, `Option ${options.length + 1}`] });
+  };
+
+  const removeOption = (index: number) => {
+    const next = options.filter((_, i) => i !== index);
+    getConfig({ options: next });
+  };
+
+  const updateRow = (index: number, value: string) => {
+    const next = [...rows];
+    next[index] = value;
+    getConfig({ rows: next });
+  };
+
+  const addRow = () => {
+    getConfig({ rows: [...rows, `Row ${rows.length + 1}`] });
+  };
+
+  const removeRow = (index: number) => {
+    const next = rows.filter((_, i) => i !== index);
+    getConfig({ rows: next });
+  };
+
+  const updateNumericConfig = (key: 'min' | 'max', value: number) => {
+    getConfig({ [key]: value });
+  };
 
   const {
     attributes,
@@ -136,6 +196,105 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {/* Choice and scale settings */}
+          {(optionQuestionTypes.includes(question.type) || question.type === 'matrix' || question.type === 'rating_scale' || question.type === 'slider' || question.type === 'net_promoter_score') && (
+            <div className="space-y-4">
+              {optionQuestionTypes.includes(question.type) && (
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm font-medium text-slate-700">Answer options</p>
+                    <button
+                      type="button"
+                      onClick={addOption}
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      Add option
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {options.map((option, index) => (
+                      <div key={`${option}-${index}`} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => updateOption(index, e.target.value)}
+                          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeOption(index)}
+                          className="rounded-full border border-slate-300 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {question.type === 'matrix' && (
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm font-medium text-slate-700">Matrix rows</p>
+                    <button
+                      type="button"
+                      onClick={addRow}
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      Add row
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {rows.map((row, index) => (
+                      <div key={`${row}-${index}`} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={row}
+                          onChange={(e) => updateRow(index, e.target.value)}
+                          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeRow(index)}
+                          className="rounded-full border border-slate-300 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(question.type === 'rating_scale' || question.type === 'slider' || question.type === 'net_promoter_score') && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-700">Scale settings</p>
+                  <div className="grid gap-4 sm:grid-cols-2 mt-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500">Minimum value</label>
+                      <input
+                        type="number"
+                        value={typeof question.config?.min === 'number' ? question.config.min : 0}
+                        onChange={(e) => updateNumericConfig('min', Number(e.target.value))}
+                        className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500">Maximum value</label>
+                      <input
+                        type="number"
+                        value={typeof question.config?.max === 'number' ? question.config.max : question.type === 'net_promoter_score' ? 10 : 5}
+                        onChange={(e) => updateNumericConfig('max', Number(e.target.value))}
+                        className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Evaluation dimensions */}
           <div>

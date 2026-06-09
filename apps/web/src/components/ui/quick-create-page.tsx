@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
+interface FieldOption {
+  value: string;
+  label: string;
+}
+
 interface FieldDefinition {
   name: string;
   label: string;
@@ -11,6 +16,7 @@ interface FieldDefinition {
   placeholder?: string;
   required?: boolean;
   textarea?: boolean;
+  options?: FieldOption[];
 }
 
 interface QuickCreatePageProps {
@@ -109,6 +115,24 @@ export default function QuickCreatePage({
                     rows={4}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                ) : field.type === 'select' ? (
+                  <select
+                    id={field.name}
+                    value={values[field.name] ?? ''}
+                    onChange={(event) =>
+                      setValues((current) => ({ ...current, [field.name]: event.target.value }))
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="" disabled>
+                      {field.placeholder || `Select ${field.label}`}
+                    </option>
+                    {field.options?.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <input
                     id={field.name}

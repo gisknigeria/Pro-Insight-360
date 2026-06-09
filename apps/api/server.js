@@ -413,6 +413,80 @@ app.get('/forms', async (req, res) => {
   }
 });
 
+app.post('/forms', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { evaluationId, title, definition } = req.body;
+    if (!evaluationId || !title) {
+      return res.status(400).json({ message: 'Evaluation and title are required.' });
+    }
+
+    const evaluation = await prisma.evaluation.findUnique({ where: { id: evaluationId } });
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
+    const form = await prisma.form.create({
+      data: {
+        evaluationId,
+        title: title.trim(),
+        definition: definition || {
+          formId: `form-${Date.now()}`,
+          title: title.trim(),
+          description: '',
+          pages: [{ pageId: 'page-1', title: 'Page 1', questions: [] }],
+          conditionalLogic: [],
+          version: 1,
+        },
+        status: 'DRAFT',
+        createdById: req.user.sub,
+      },
+    });
+
+    res.status(201).json({
+      id: form.id,
+      title: form.title,
+      status: form.status,
+      createdAt: form.createdAt,
+      updatedAt: form.updatedAt,
+    });
+  } catch (error) {
+    console.error('Create form failed:', error);
+    res.status(500).json({ message: 'Unable to create form.' });
+  }
+});
+
+app.put('/forms/:formId', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { formId } = req.params;
+    const { title, definition, status } = req.body;
+
+    const form = await prisma.form.findUnique({ where: { id: formId } });
+    if (!form) {
+      return res.status(404).json({ message: 'Form not found.' });
+    }
+
+    const updated = await prisma.form.update({
+      where: { id: formId },
+      data: {
+        title: title?.trim() || form.title,
+        definition: definition || form.definition,
+        status: status || form.status,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({
+      id: updated.id,
+      title: updated.title,
+      status: updated.status,
+      updatedAt: updated.updatedAt,
+    });
+  } catch (error) {
+    console.error('Update form failed:', error);
+    res.status(500).json({ message: 'Unable to update form.' });
+  }
+});
+
 app.get('/settings', async (req, res) => {
   try {
     const settings = {

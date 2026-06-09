@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
-  DragOverEvent,
-  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
@@ -152,8 +150,9 @@ export function FormBuilderCanvas({
     setSaveError('');
     try {
       await onSave(definition);
-    } catch (e: any) {
-      setSaveError(e.message ?? 'Failed to save. Please try again.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save. Please try again.';
+      setSaveError(message);
     } finally {
       setSaving(false);
     }
@@ -177,23 +176,48 @@ export function FormBuilderCanvas({
         {/* Canvas */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Toolbar */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white">
-            <div>
-              <h1 className="text-base font-semibold text-slate-900">
-                {formTitle}
-              </h1>
-              <p className="text-xs text-slate-500">
-                {questions.length} question{questions.length !== 1 ? 's' : ''}
-              </p>
+          <div className="flex flex-col gap-4 px-6 py-3 border-b border-slate-200 bg-white sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-3 w-full">
+              <div>
+                <label htmlFor="form-title" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Form title
+                </label>
+                <input
+                  id="form-title"
+                  value={definition.title}
+                  onChange={(event) =>
+                    setDefinition((prev) => prev && ({ ...prev, title: event.target.value }))
+                  }
+                  className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  placeholder="Untitled form"
+                />
+              </div>
+              <div>
+                <label htmlFor="form-description" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Description
+                </label>
+                <textarea
+                  id="form-description"
+                  value={definition.description ?? ''}
+                  onChange={(event) =>
+                    setDefinition((prev) => prev && ({ ...prev, description: event.target.value }))
+                  }
+                  rows={2}
+                  className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  placeholder="Describe what this form is for"
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => onPreview(definition)}
                 className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
               >
                 👁️ Preview
               </button>
               <button
+                type="button"
                 onClick={handleSave}
                 disabled={saving}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
