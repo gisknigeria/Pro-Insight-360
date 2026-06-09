@@ -53,18 +53,21 @@ export function FormBuilderCanvas({
   const [saveError, setSaveError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [dependentRules, setDependentRules] = useState<ConditionalRule[]>([]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  const currentPage = definition.pages[0]; // single-page for now
+  const currentPage = definition.pages[currentPageIndex] ?? definition.pages[0];
   const questions = currentPage.questions;
 
   function updateQuestions(updated: QuestionDefinition[]) {
     setDefinition((prev) => ({
       ...prev,
-      pages: [{ ...currentPage, questions: updated }],
+      pages: prev.pages.map((page, index) =>
+        index === currentPageIndex ? { ...currentPage, questions: updated } : page,
+      ),
     }));
   }
 
@@ -220,6 +223,28 @@ export function FormBuilderCanvas({
               >
                 {saving ? 'Saving…' : '💾 Save Form'}
               </button>
+            </div>
+          </div>
+
+          <div className="border-b border-slate-200 bg-slate-50 px-6 py-3">
+            <div className="flex flex-wrap gap-2">
+              {definition.pages.map((page, index) => (
+                <button
+                  key={page.pageId}
+                  type="button"
+                  onClick={() => setCurrentPageIndex(index)}
+                  className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
+                    index === currentPageIndex
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  {page.title}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 text-sm text-slate-500">
+              Showing section <span className="font-semibold">{currentPage.title}</span> — use the tabs above to switch checklist sections.
             </div>
           </div>
 
