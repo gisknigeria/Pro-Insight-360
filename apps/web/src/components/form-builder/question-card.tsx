@@ -214,7 +214,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                   </div>
                   <div className="space-y-2">
                     {options.map((option, index) => (
-                      <div key={`${option}-${index}`} className="flex items-center gap-2">
+                      <div key={index} className="flex items-center gap-2">
                         <input
                           type="text"
                           value={option}
@@ -248,7 +248,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                   </div>
                   <div className="space-y-2">
                     {rows.map((row, index) => (
-                      <div key={`${row}-${index}`} className="flex items-center gap-2">
+                      <div key={index} className="flex items-center gap-2">
                         <input
                           type="text"
                           value={row}
