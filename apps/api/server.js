@@ -3,6 +3,8 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
 
@@ -11,6 +13,9 @@ dotenv.config();
 const prisma = new PrismaClient();
 const app = express();
 const jwtSecret = process.env.JWT_SECRET || 'change_me_in_production';
+
+const uploadsDir = path.join(__dirname, 'uploads');
+fs.mkdirSync(uploadsDir, { recursive: true });
 
 const frontendUrls = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '')
   .split(',')
@@ -853,6 +858,66 @@ app.post('/form-assignments', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN'])
   } catch (error) {
     console.error('Create form assignment failed:', error);
     res.status(500).json({ message: 'Unable to assign form.' });
+  }
+});
+
+app.post('/storage/upload-url', authenticate, async (req, res) => {
+  try {
+    const { formId, questionId, filename, contentType, uploadType, fileSize } = req.body;
+    if (!formId || !questionId || !filename || !contentType) {
+      return res.status(400).json({ message: 'Form ID, question ID, filename, and content type are required.' });
+    }
+
+    const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const key = `${crypto.randomUUID()}-${Date.now()}-${sanitizedFilename}`;
+    const uploadUrl = `${req.protocol}://${req.get('host')}/storage/upload/${encodeURIComponent(key)}`;
+    const publicUrl = `${req.protocol}://${req.get('host')}/storage/files/${encodeURIComponent(key)}`;
+
+    res.json({ uploadUrl, key, publicUrl });
+  } catch (error) {
+    console.error('Create upload URL failed:', error);
+    res.status(500).json({ message: 'Unable to create upload URL.' });
+  }
+});
+
+app.put('/storage/upload/:key(*)', express.raw({ type: '*/*', limit: '50mb' }), async (req, res) => {
+  try {
+    const { key } = req.params;
+    if (!key) {
+      return res.status(400).json({ message: 'Storage key is required.' });
+    }
+
+    const buffer = req.body;
+    if (!Buffer.isBuffer(buffer)) {
+      return res.status(400).json({ message: 'File upload body must be binary.' });
+    }
+
+    const filePath = path.join(uploadsDir, key);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, buffer);
+    res.json({ message: 'Upload successful.' });
+  } catch (error) {
+    console.error('Upload file failed:', error);
+    res.status(500).json({ message: 'Unable to upload file.' });
+  }
+});
+
+app.get('/storage/files/:key(*)', async (req, res) => {
+  try {
+    const { key } = req.params;
+    if (!key) {
+      return res.status(400).json({ message: 'Storage key is required.' });
+    }
+
+    const filePath = path.join(uploadsDir, key);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found.' });
+    }
+
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Serve file failed:', error);
+    res.status(500).json({ message: 'Unable to serve file.' });
   }
 });
 
