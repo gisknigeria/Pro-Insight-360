@@ -79,7 +79,7 @@ function roleGuard(allowedRoles) {
   return (req, res, next) => {
     try {
       const role = req.user?.role;
-      if (!role || !allowedRoles.includes(role)) {
+      if (!role || (role !== 'SUPER_ADMIN' && !allowedRoles.includes(role))) {
         return res.status(403).json({ message: 'Forbidden: insufficient role.' });
       }
       next();
