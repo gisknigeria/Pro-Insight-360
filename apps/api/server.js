@@ -50,6 +50,18 @@ function getJsonValue(value) {
   }
 }
 
+function formatAnswerValue(rawValue) {
+  if (rawValue === null || rawValue === undefined) return '';
+  if (typeof rawValue === 'object') {
+    try {
+      return JSON.stringify(rawValue);
+    } catch {
+      return String(rawValue);
+    }
+  }
+  return String(rawValue);
+}
+
 const geminiApiKey = process.env.GEMINI_API_KEY;
 const groqApiKey = process.env.GROQ_API_KEY;
 const geminiModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
@@ -180,7 +192,63 @@ function extractJsonObject(text) {
   }
 }
 
-function buildDiagnosisPrompt({ evaluation, scores, conflictCount }) {
+function normalizeAnswerScore(rawValue) {
+  if (rawValue === null || rawValue === undefined) return 0;
+
+  if (typeof rawValue === 'number') {
+    if (rawValue >= 0 && rawValue <= 1) return Math.round(rawValue * 100);
+    return Math.max(0, Math.min(100, rawValue));
+  }
+
+  if (typeof rawValue === 'boolean') {
+    return rawValue ? 100 : 0;
+  }
+
+  if (typeof rawValue === 'string') {
+    const trimmed = rawValue.trim();
+    if (trimmed === '') return 0;
+    const percentMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*%$/);
+    if (percentMatch) return Math.max(0, Math.min(100, Number(percentMatch[1])));
+    const numeric = Number(trimmed.replace(/[^0-9.-]+/g, ''));
+    if (!Number.isNaN(numeric)) {
+      if (numeric >= 0 && numeric <= 1) return Math.round(numeric * 100);
+      return Math.max(0, Math.min(100, numeric));
+    }
+    const yesValues = ['yes', 'y', 'true', 'available', 'present', 'complete', 'good', 'excellent'];
+    const noValues = ['no', 'n', 'false', 'missing', 'not available', 'not present', 'incomplete', 'poor'];
+    if (yesValues.includes(trimmed.toLowerCase())) return 90;
+    if (noValues.includes(trimmed.toLowerCase())) return 10;
+    return 75;
+  }
+
+  if (Array.isArray(rawValue)) {
+    return rawValue.length > 0 ? 80 : 0;
+  }
+
+  if (typeof rawValue === 'object') {
+    return Object.keys(rawValue || {}).length > 0 ? 80 : 0;
+  }
+
+  return 0;
+}
+
+function getQuestionCategory(question) {
+  if (Array.isArray(question.dimensions) && question.dimensions.length > 0) {
+    const dimension = String(question.dimensions[0]).trim();
+    if (dimension) return dimension;
+  }
+
+  const label = String(question.label || '').toLowerCase();
+  if (label.includes('strategy')) return 'Strategy';
+  if (label.includes('governance')) return 'Governance';
+  if (label.includes('infrastructure')) return 'Infrastructure';
+  if (label.includes('security')) return 'Security';
+  if (label.includes('data')) return 'Data Management';
+  if (label.includes('gis') || label.includes('geospatial')) return 'GIS Readiness';
+  return 'General';
+}
+
+function buildDiagnosisPrompt({ evaluation, scores, conflictCount, responseSummary, sampleAnswers }) {
   const categoryScores = scores
     .filter((score) => score.scoreType === 'CATEGORY')
     .map((score) => `- ${score.category}: ${score.score}`)
@@ -191,16 +259,33 @@ function buildDiagnosisPrompt({ evaluation, scores, conflictCount }) {
     .map((score) => `- ${score.category}: ${score.score}`)
     .join('\n');
 
-  return `Generate a structured diagnosis for an organisational evaluation. Return only valid JSON with the properties: executiveSummary, strengths, weaknesses, opportunities, recommendations.
+  const answerSamples = sampleAnswers.length > 0
+    ? sampleAnswers.map((item) => `Question: ${item.question}\nAnswer: ${item.answer}`).join('\n\n')
+    : 'No sample answers are available.';
+
+  return `Generate a structured diagnosis for an organisational evaluation using the evaluation scores and actual form responses.
 
 Evaluation title: ${evaluation.title}
 Total forms: ${evaluation.formCount}
-Total responses: ${evaluation.responseCount}
-Conflict count: ${conflictCount}
-Category scores:\n${categoryScores}
-Dimension scores:\n${dimensionScores}
+Total submitted responses: ${evaluation.responseCount}
+Total answers captured: ${responseSummary.totalAnswers}
+Average completion rate: ${responseSummary.averageCompletion}%
 
-The JSON output must look like this:\n{
+Sample answers:
+${answerSamples}
+
+Conflict count: ${conflictCount}
+
+Category scores:
+${categoryScores || '- None'}
+
+Dimension scores:
+${dimensionScores || '- None'}
+
+Return only valid JSON with the properties: executiveSummary, strengths, weaknesses, opportunities, recommendations.
+
+Example:
+{
   "executiveSummary": "...",
   "strengths": ["..."],
   "weaknesses": ["..."],
@@ -208,11 +293,11 @@ The JSON output must look like this:\n{
   "recommendations": ["..."]
 }
 
-Keep responses concise and aligned to the evaluation data above.`;
+Keep the diagnosis concise, grounded in the submitted form answers, and focused on practical organisational recommendations.`;
 }
 
-async function generateAiDiagnosis({ evaluation, scores, conflictCount }) {
-  const prompt = buildDiagnosisPrompt({ evaluation, scores, conflictCount });
+async function generateAiDiagnosis({ evaluation, scores, conflictCount, responseSummary, sampleAnswers }) {
+  const prompt = buildDiagnosisPrompt({ evaluation, scores, conflictCount, responseSummary, sampleAnswers });
   let aiText = null;
 
   try {
@@ -1621,32 +1706,106 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
       return res.status(404).json({ message: 'Evaluation not found.' });
     }
 
+    const forms = await prisma.form.findMany({
+      where: { evaluationId: id },
+      include: { questions: true },
+    });
+    const formIds = forms.map((form) => form.id);
+    const questionCount = forms.reduce((total, form) => total + form.questions.length, 0);
+
+    const responses = await prisma.response.findMany({
+      where: {
+        formId: { in: formIds },
+        status: 'SUBMITTED',
+      },
+      include: {
+        answers: { include: { question: true } },
+      },
+    });
+
     await prisma.scoreResult.deleteMany({ where: { evaluationId: id } });
 
-    const baseScore = 60;
-    const scoreValues = {
-      DIGITAL_READINESS: baseScore + 10,
-      GIS_READINESS: baseScore,
-      INFRASTRUCTURE: baseScore - 5,
-    };
+    const scoreByCategory = new Map();
+    const countByCategory = new Map();
+    const scoreByDimension = new Map();
+    const countByDimension = new Map();
+    let scoreSum = 0;
+    let scoreCount = 0;
+    let totalAnswerCount = 0;
+    const sampleAnswers = [];
 
-    const categoryNames = ['Strategy', 'Governance', 'Infrastructure', 'Security', 'Data Management'];
-    const dimensionNames = ['who', 'what', 'how', 'when'];
+    for (const response of responses) {
+      for (const answer of response.answers) {
+        const question = answer.question;
+        if (!question) continue;
 
-    const results = [];
+        const rawValue = getJsonValue(answer.value);
+        const answerScore = normalizeAnswerScore(rawValue);
+        const category = getQuestionCategory(question);
+        const dimensions = Array.isArray(question.dimensions) && question.dimensions.length > 0
+          ? question.dimensions
+          : ['General'];
 
-    for (const [scoreType, scoreAmount] of Object.entries(scoreValues)) {
-      results.push({
-        scoreType,
-        score: scoreAmount,
-        band: getScoreBand(scoreAmount),
-        category: null,
-      });
+        scoreByCategory.set(category, (scoreByCategory.get(category) || 0) + answerScore);
+        countByCategory.set(category, (countByCategory.get(category) || 0) + 1);
+
+        for (const dimension of dimensions) {
+          const dimensionKey = String(dimension).trim() || 'General';
+          scoreByDimension.set(dimensionKey, (scoreByDimension.get(dimensionKey) || 0) + answerScore);
+          countByDimension.set(dimensionKey, (countByDimension.get(dimensionKey) || 0) + 1);
+        }
+
+        scoreSum += answerScore;
+        scoreCount += 1;
+        totalAnswerCount += 1;
+
+        const formattedAnswer = formatAnswerValue(rawValue);
+        if (sampleAnswers.length < 8 && formattedAnswer.trim() !== '') {
+          sampleAnswers.push({
+            question: question.label || question.externalId || question.id,
+            answer: formattedAnswer,
+          });
+        }
+      }
     }
 
-    for (const category of categoryNames) {
-      const delta = Math.floor(Math.random() * 20) - 10;
-      const score = Math.min(100, Math.max(30, baseScore + delta));
+    const overallAverage = scoreCount > 0 ? Math.round(scoreSum / scoreCount) : 50;
+
+    const getDimensionAverage = (matchFn) => {
+      const entries = Array.from(scoreByDimension.entries()).filter(([dimension]) => matchFn(dimension));
+      const totalScore = entries.reduce((sum, [dimension, score]) => sum + score, 0);
+      const totalCount = entries.reduce((sum, [dimension]) => sum + (countByDimension.get(dimension) || 0), 0);
+      return totalCount > 0 ? Math.round(totalScore / totalCount) : overallAverage;
+    };
+
+    const digitalReadinessScore = overallAverage;
+    const gisReadinessScore = getDimensionAverage((dimension) => dimension.toLowerCase().includes('gis') || dimension.toLowerCase().includes('geospatial'));
+    const infrastructureScore = getDimensionAverage((dimension) => dimension.toLowerCase().includes('infrastructure') || dimension.toLowerCase().includes('infra'));
+
+    const results = [
+      {
+        scoreType: 'DIGITAL_READINESS',
+        category: null,
+        score: digitalReadinessScore,
+        band: getScoreBand(digitalReadinessScore),
+      },
+      {
+        scoreType: 'GIS_READINESS',
+        category: null,
+        score: gisReadinessScore,
+        band: getScoreBand(gisReadinessScore),
+      },
+      {
+        scoreType: 'INFRASTRUCTURE',
+        category: null,
+        score: infrastructureScore,
+        band: getScoreBand(infrastructureScore),
+      },
+    ];
+
+    for (const [category, totalScore] of scoreByCategory.entries()) {
+      const count = countByCategory.get(category) || 1;
+      const score = Math.round(totalScore / count);
       results.push({
         scoreType: 'CATEGORY',
         category,
@@ -1655,9 +1814,9 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
       });
     }
 
-    for (const dimension of dimensionNames) {
-      const delta = Math.floor(Math.random() * 20) - 5;
-      const score = Math.min(100, Math.max(20, baseScore + delta));
+    for (const [dimension, totalScore] of scoreByDimension.entries()) {
+      const count = countByDimension.get(dimension) || 1;
+      const score = Math.round(totalScore / count);
       results.push({
         scoreType: 'DIMENSION',
         category: dimension,
@@ -1680,20 +1839,28 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
       });
     }
 
-    const [responseCount, conflictCount] = await Promise.all([
-      prisma.response.count({ where: { form: { evaluationId: id } } }),
-      prisma.conflict.count({ where: { evaluationId: id } }),
-    ]);
+    const responseCount = await prisma.response.count({
+      where: { formId: { in: formIds }, status: 'SUBMITTED' },
+    });
+    const conflictCount = await prisma.conflict.count({ where: { evaluationId: id } });
 
     const aiInput = {
       evaluation: {
         id: evaluation.id,
         title: evaluation.title,
-        formCount: await prisma.form.count({ where: { evaluationId: id } }),
+        formCount: forms.length,
         responseCount,
       },
       scores: results,
       conflictCount,
+      responseSummary: {
+        totalAnswers: totalAnswerCount,
+        questionCount,
+        averageCompletion: questionCount > 0 && responseCount > 0
+          ? Math.round((totalAnswerCount / (responseCount * questionCount)) * 100)
+          : 0,
+      },
+      sampleAnswers,
     };
 
     let diagnosisContent;
@@ -1705,7 +1872,9 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
     } catch (providerError) {
       console.error('AI provider error:', providerError?.message || providerError);
       diagnosisContent = {
-        executiveSummary: 'Evaluation scores have been computed and are ready for review.',
+        executiveSummary: responseCount > 0
+          ? 'Evaluation scores have been computed and are ready for review.'
+          : 'No submitted responses are available yet. Submit at least one response to generate a more accurate diagnosis.',
         strengths: ['Strong organisational alignment', 'Data-driven approach'],
         weaknesses: ['Infrastructure gaps remain', 'Process maturity needs improvement'],
         opportunities: ['Improve training', 'Automate key workflows'],
@@ -1760,11 +1929,12 @@ app.post('/diagnosis/evaluations/:id/detect-conflicts', async (req, res) => {
     }
 
     const answers = await prisma.answer.findMany({
-      where: { question: { formId: { in: formIds } } },
-      include: { response: true },
+      where: {
+        response: { status: 'SUBMITTED', form: { evaluationId: id } },
+      },
+      include: { response: true, question: true },
     });
 
-    const questionsById = new Map();
     const grouped = new Map();
     for (const answer of answers) {
       const key = answer.questionId;
@@ -1772,7 +1942,6 @@ app.post('/diagnosis/evaluations/:id/detect-conflicts', async (req, res) => {
       const group = grouped.get(key) || new Set();
       group.add(JSON.stringify(rawValue));
       grouped.set(key, group);
-      questionsById.set(key, answer.questionId);
     }
 
     const conflictsCreated = [];
@@ -1810,6 +1979,80 @@ app.post('/diagnosis/evaluations/:id/detect-conflicts', async (req, res) => {
   }
 });
 
+app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const evaluation = await prisma.evaluation.findUnique({
+      where: { id },
+      include: { forms: true },
+    });
+
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
+    const formIds = evaluation.forms.map((form) => form.id);
+    if (formIds.length === 0) {
+      return res.json({
+        totalResponses: 0,
+        totalAnswers: 0,
+        averageCompletion: 0,
+        sampleAnswers: [],
+      });
+    }
+
+    const responses = await prisma.response.findMany({
+      where: { formId: { in: formIds }, status: 'SUBMITTED' },
+      include: {
+        answers: { include: { question: true } },
+        respondent: true,
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const questionCount = await evaluation.forms.reduce((currentCount, form) => {
+      const definition = getJsonValue(form.definition);
+      if (!definition || !Array.isArray(definition.pages)) return currentCount;
+      return currentCount + definition.pages.reduce(
+        (pageCount, page) => pageCount + (Array.isArray(page.questions) ? page.questions.length : 0),
+        0,
+      );
+    }, 0);
+
+    const totalAnswers = responses.reduce((sum, response) => sum + response.answers.length, 0);
+    const averageCompletion = questionCount > 0 && responses.length > 0
+      ? Math.round((totalAnswers / (responses.length * questionCount)) * 100)
+      : 0;
+
+    const sampleAnswers = [];
+    for (const response of responses) {
+      for (const answer of response.answers) {
+        if (sampleAnswers.length >= 8) break;
+        const rawValue = getJsonValue(answer.value);
+        const formattedAnswer = formatAnswerValue(rawValue);
+        if (!formattedAnswer.trim()) continue;
+        sampleAnswers.push({
+          question: answer.question?.label || answer.questionId,
+          answer: formattedAnswer,
+          respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
+        });
+      }
+      if (sampleAnswers.length >= 8) break;
+    }
+
+    res.json({
+      totalResponses: responses.length,
+      totalAnswers,
+      questionCount,
+      averageCompletion,
+      sampleAnswers,
+    });
+  } catch (error) {
+    console.error('Fetch diagnosis responses failed:', error);
+    res.status(500).json({ message: 'Unable to fetch diagnosis responses.' });
+  }
+});
+
 app.get('/diagnosis/evaluations/:id/scores', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1836,12 +2079,17 @@ app.get('/diagnosis/evaluations/:id/conflicts', async (req, res) => {
     const { id } = req.params;
     const conflicts = await prisma.conflict.findMany({
       where: { evaluationId: id },
+      include: { question: true },
       orderBy: { id: 'desc' },
     });
     res.json(conflicts.map((conflict) => ({
       id: conflict.id,
       evaluationId: conflict.evaluationId,
       questionId: conflict.questionId,
+      question: {
+        label: conflict.question?.label || `Question ${conflict.questionId}`,
+        type: conflict.question?.type || 'unknown',
+      },
       conflictType: conflict.conflictType,
       conflictingValues: getJsonValue(conflict.conflictingValues),
       isResolved: conflict.isResolved,
@@ -1865,16 +2113,23 @@ app.get('/diagnosis/evaluations/:id/gaps', async (req, res) => {
       include: { evaluation: true },
     });
 
-    const mapped = lowScores.map((score) => ({
-      id: score.id,
-      category: score.category || score.scoreType,
-      description: `Low ${score.category || score.scoreType.toLowerCase()} performance is exposing a gap.`,
-      severity: getGapSeverity(Number(score.score)),
-      affectedDepartments: [],
-      recommendedAction: `Review ${score.category || score.scoreType.toLowerCase()} and update the evaluation plan.`,
-      evaluation: { id: score.evaluation.id, title: score.evaluation.title },
-      createdAt: score.computedAt,
-    }));
+    const mapped = lowScores.map((score) => {
+      const categoryName = score.category || score.scoreType;
+      return {
+        id: score.id,
+        category: categoryName,
+        description: `Low ${categoryName.toLowerCase()} performance is exposing a gap.`,
+        severity: getGapSeverity(Number(score.score)),
+        affectedDepartments: ['Organisation-wide'],
+        evidence: [
+          `Recorded score ${score.score} for ${categoryName}.`, 
+          `Responses indicate this area is weaker than the overall evaluation average.`,
+        ],
+        recommendedAction: `Focus on improving ${categoryName} through targeted actions and stronger organisational alignment.`,
+        evaluation: { id: score.evaluation.id, title: score.evaluation.title },
+        createdAt: score.computedAt,
+      };
+    });
 
     res.json(mapped);
   } catch (error) {

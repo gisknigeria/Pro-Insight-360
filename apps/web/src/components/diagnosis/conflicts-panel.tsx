@@ -84,7 +84,7 @@ export function ConflictsPanel({ conflicts, onResolve }: ConflictsPanelProps) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-900 mb-1">
-                      {conflict.question.label}
+                      {conflict.question?.label || conflict.questionId}
                     </p>
                     <p className="text-xs text-slate-500 mb-3">
                       {conflictTypeLabel(conflict.conflictType)} — {conflict.conflictingValues.length} conflicting responses

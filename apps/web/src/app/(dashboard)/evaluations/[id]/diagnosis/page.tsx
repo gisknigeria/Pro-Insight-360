@@ -45,13 +45,16 @@ export default function EvaluationDiagnosisPage() {
   const scoresApi = useApi<any[]>(`/diagnosis/evaluations/${id}/scores`);
   const conflictsApi = useApi<any[]>(`/diagnosis/evaluations/${id}/conflicts`);
   const gapsApi = useApi<any>(`/diagnosis/evaluations/${id}/gaps`);
+  const responsesApi = useApi<any>(`/diagnosis/evaluations/${id}/responses`);
 
   const scores = scoresApi.data;
   const conflicts = conflictsApi.data;
   const gaps = gapsApi.data as any[] | null;
+  const responses = responsesApi.data;
   const scoresLoading = scoresApi.loading;
   const conflictsLoading = conflictsApi.loading;
   const gapsLoading = gapsApi.loading;
+  const responsesLoading = responsesApi.loading;
 
   function buildGapSummary(gapsData: any[] | null) {
     if (!gapsData) return null;
@@ -104,6 +107,7 @@ export default function EvaluationDiagnosisPage() {
       scoresApi.refresh();
       conflictsApi.refresh();
       gapsApi.refresh();
+      responsesApi.refresh();
       setRunMsg('Diagnosis complete. Results refreshed.');
     } catch {
       setRunMsg('Diagnosis failed. Please try again.');
@@ -303,11 +307,53 @@ export default function EvaluationDiagnosisPage() {
         {activeTab === 'responses' && (
           <div>
             <h2 className="text-base font-semibold text-slate-900 mb-4">Response Aggregation</h2>
-            <EmptyState
-              icon="💬"
-              title="Response aggregation"
-              description="Detailed response charts are not yet available here. They will be added in a future dashboard release."
-            />
+            {responsesLoading ? (
+              <p className="text-slate-400 text-sm">Loading response summary…</p>
+            ) : responses ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">Submitted responses</p>
+                    <p className="mt-2 text-3xl font-semibold text-slate-900">{responses.totalResponses}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">Total answers</p>
+                    <p className="mt-2 text-3xl font-semibold text-slate-900">{responses.totalAnswers}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">Avg completion</p>
+                    <p className="mt-2 text-3xl font-semibold text-slate-900">{responses.averageCompletion}%</p>
+                  </div>
+                </div>
+
+                {responses.sampleAnswers && responses.sampleAnswers.length > 0 ? (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-900">Sample answers used for diagnosis</h3>
+                    <div className="space-y-3">
+                      {responses.sampleAnswers.map((item: any, index: number) => (
+                        <div key={index} className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <p className="text-xs text-slate-500">{item.respondent}</p>
+                          <p className="text-sm font-semibold text-slate-900 mt-1">{item.question}</p>
+                          <p className="text-sm text-slate-700 mt-2 whitespace-pre-wrap">{item.answer}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon="💬"
+                    title="No submitted responses yet"
+                    description="Once responses are submitted, this tab will show actual answers that drive the diagnosis."
+                  />
+                )}
+              </div>
+            ) : (
+              <EmptyState
+                icon="💬"
+                title="No submitted responses yet"
+                description="Once responses are submitted, this tab will show actual answers that drive the diagnosis."
+              />
+            )}
           </div>
         )}
       </div>

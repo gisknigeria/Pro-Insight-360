@@ -7,7 +7,7 @@ interface Gap {
   description: string;
   severity: GapSeverity;
   affectedDepartments: string[];
-  evidence: string[];
+  evidence?: string[];
   recommendedAction: string;
 }
 
@@ -92,7 +92,7 @@ export function GapAnalysisPanel({ summary }: GapAnalysisPanelProps) {
                     </span>
                   </div>
 
-                  {gap.evidence.length > 0 && (
+                  {Array.isArray(gap.evidence) && gap.evidence.length > 0 && (
                     <div className="mb-2">
                       <p className="text-xs font-medium text-slate-500 mb-1">Evidence:</p>
                       <ul className="space-y-0.5">
