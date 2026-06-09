@@ -25,24 +25,32 @@ export default function OrgChartUploader({ onData }: { onData?: (rows: OrgRow[])
     return rows;
   }
 
+  type ParsedOrgItem = {
+    name?: string;
+    title?: string;
+    jobTitle?: string;
+    department?: string;
+    reportsTo?: string;
+    reports_to?: string;
+  };
+
+  function parseItem(item: ParsedOrgItem): OrgRow {
+    return {
+      name: String(item.name || item.title || ''),
+      jobTitle: item.jobTitle || item.title || undefined,
+      department: item.department || undefined,
+      reportsTo: item.reportsTo || item.reports_to || undefined,
+    };
+  }
+
   function parseJSON(text: string): OrgRow[] {
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(text) as unknown;
     if (Array.isArray(parsed)) {
-      return parsed.map((item) => ({
-        name: String(item.name || item.title || ''),
-        jobTitle: item.jobTitle || item.title || undefined,
-        department: item.department || undefined,
-        reportsTo: item.reportsTo || item.reports_to || undefined,
-      }));
+      return (parsed as ParsedOrgItem[]).map(parseItem);
     }
 
-    if (parsed?.nodes && Array.isArray(parsed.nodes)) {
-      return parsed.nodes.map((item) => ({
-        name: String(item.name || item.title || ''),
-        jobTitle: item.jobTitle || item.title || undefined,
-        department: item.department || undefined,
-        reportsTo: item.reportsTo || item.reports_to || undefined,
-      }));
+    if (typeof parsed === 'object' && parsed !== null && Array.isArray((parsed as { nodes?: unknown }).nodes)) {
+      return ((parsed as { nodes: ParsedOrgItem[] }).nodes).map(parseItem);
     }
 
     throw new Error('JSON file must contain an array of rows or a { nodes: [...] } object.');

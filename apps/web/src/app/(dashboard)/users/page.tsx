@@ -126,67 +126,69 @@ export default function UsersPage() {
             </div>
           ) : null}
           {users.length === 0 ? (
-        <EmptyState
-          icon="👥"
-          title="No users yet"
-          description="Add users to your organization to start collaborating."
-          actionLabel="Add First User"
-          onAction={() => router.push('/users/new')}
-        />
-      ) : (
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Role</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Last Login</th>
-                <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b border-slate-200 hover:bg-slate-50">
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900">{user.name}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{user.email}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`px-3 py-1 rounded font-medium ${ROLE_CONFIG[user.role].color}`}>
-                      {ROLE_CONFIG[user.role].label}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`px-3 py-1 rounded ${
-                        user.status === 'ACTIVE'
-                          ? 'bg-green-100 text-green-700'
-                          : user.status === 'LOCKED'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
-                    <button
-                      type="button"
-                      onClick={() => handleResetPassword(user)}
-                      className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
-                    >
-                      Reset password
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            <EmptyState
+              icon="👥"
+              title="No users yet"
+              description="Add users to your organization to start collaborating."
+              actionLabel="Add First User"
+              onAction={() => router.push('/users/new')}
+            />
+          ) : (
+            <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Name</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Email</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Role</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Last Login</th>
+                    <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-b border-slate-200 hover:bg-slate-50">
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{user.name}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{user.email}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={`px-3 py-1 rounded font-medium ${ROLE_CONFIG[user.role].color}`}>
+                          {ROLE_CONFIG[user.role].label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`px-3 py-1 rounded ${
+                            user.status === 'ACTIVE'
+                              ? 'bg-green-100 text-green-700'
+                              : user.status === 'LOCKED'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {user.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                        <button
+                          type="button"
+                          onClick={() => handleResetPassword(user)}
+                          className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+                        >
+                          Reset password
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
