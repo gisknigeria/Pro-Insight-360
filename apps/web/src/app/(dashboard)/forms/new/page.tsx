@@ -15,7 +15,7 @@ interface EvaluationOption {
 const defaultDiagnosticChecklist: FormDefinition = {
   formId: `form-${Date.now()}`,
   title: 'DIAGNOSTIC CHECKLIST',
-  description: 'Project: Supervising Technical Consultant for GIS and Digital Transformation. Organisation: Oyo State Housing Corporation.',
+  description: 'Project: Supervising Technical Consultant for GIS and Digital Transformation. Organisation: Oyo State Housing Corporation. GIS KONSULT LTD | STAKEHOLDER INTERVIEW GUIDE: Critical insights from each department.',
   pages: [
     {
       pageId: 'page-project-info',
@@ -263,7 +263,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
     },
     {
       pageId: 'page-workflow',
-      title: 'Workflow',
+      title: 'Workflow (Internal Processes)',
       questions: [
         {
           questionId: 'file-movement',
@@ -390,8 +390,8 @@ const defaultDiagnosticChecklist: FormDefinition = {
       ],
     },
     {
-      pageId: 'page-stakeholder-interview',
-      title: 'Stakeholder interview guide',
+      pageId: 'page-stakeholder-general',
+      title: 'Stakeholder interview guide — General Questions (All Departments)',
       questions: [
         {
           questionId: 'core-responsibilities',
@@ -438,6 +438,12 @@ const defaultDiagnosticChecklist: FormDefinition = {
           dimensions: ['HOW'],
           position: 4,
         },
+      ],
+    },
+    {
+      pageId: 'page-stakeholder-data-systems',
+      title: 'Stakeholder interview guide — Data & Systems',
+      questions: [
         {
           questionId: 'records-maintained',
           type: 'long_text',
@@ -445,7 +451,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 5,
+          position: 0,
         },
         {
           questionId: 'record-format',
@@ -454,7 +460,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 6,
+          position: 1,
         },
         {
           questionId: 'information-retrieval',
@@ -463,7 +469,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['HOW'],
-          position: 7,
+          position: 2,
         },
         {
           questionId: 'data-challenges',
@@ -472,8 +478,14 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 8,
+          position: 3,
         },
+      ],
+    },
+    {
+      pageId: 'page-stakeholder-workflow',
+      title: 'Stakeholder interview guide — Workflow',
+      questions: [
         {
           questionId: 'approval-process',
           type: 'long_text',
@@ -481,7 +493,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['HOW'],
-          position: 9,
+          position: 0,
         },
         {
           questionId: 'workflow-bottlenecks',
@@ -490,7 +502,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['HOW'],
-          position: 10,
+          position: 1,
         },
         {
           questionId: 'time-consuming-steps',
@@ -499,8 +511,14 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['HOW'],
-          position: 11,
+          position: 2,
         },
+      ],
+    },
+    {
+      pageId: 'page-stakeholder-technology',
+      title: 'Stakeholder interview guide — Technology readiness',
+      questions: [
         {
           questionId: 'technology-used',
           type: 'long_text',
@@ -508,7 +526,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 12,
+          position: 0,
         },
         {
           questionId: 'technology-success-failure',
@@ -517,7 +535,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT', 'HOW'],
-          position: 13,
+          position: 1,
         },
         {
           questionId: 'technology-support-needed',
@@ -526,8 +544,14 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['HOW'],
-          position: 14,
+          position: 2,
         },
+      ],
+    },
+    {
+      pageId: 'page-stakeholder-gis',
+      title: 'Stakeholder interview guide — GIS-specific',
+      questions: [
         {
           questionId: 'gis-use',
           type: 'yes_no',
@@ -535,7 +559,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 15,
+          position: 0,
         },
         {
           questionId: 'location-based-decisions',
@@ -544,7 +568,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 16,
+          position: 1,
         },
         {
           questionId: 'gis-dashboard-wish',
@@ -553,8 +577,14 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 17,
+          position: 2,
         },
+      ],
+    },
+    {
+      pageId: 'page-stakeholder-future',
+      title: 'Stakeholder interview guide — Future expectations',
+      questions: [
         {
           questionId: 'success-definition',
           type: 'long_text',
@@ -562,7 +592,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 18,
+          position: 0,
         },
         {
           questionId: 'important-features',
@@ -571,7 +601,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 19,
+          position: 1,
         },
         {
           questionId: 'concerns',
@@ -580,7 +610,7 @@ const defaultDiagnosticChecklist: FormDefinition = {
           isRequired: false,
           config: {},
           dimensions: ['WHAT'],
-          position: 20,
+          position: 2,
         },
       ],
     },
