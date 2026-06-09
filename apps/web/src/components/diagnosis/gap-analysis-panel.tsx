@@ -82,7 +82,8 @@ export function GapAnalysisPanel({ summary }: GapAnalysisPanelProps) {
           </h3>
           <div className="space-y-3">
             {gaps.map((gap, i) => {
-              const cfg = SEVERITY_CONFIG[gap.severity];
+              const severityKey = String(gap.severity || 'low').toLowerCase() as keyof typeof SEVERITY_CONFIG;
+              const cfg = SEVERITY_CONFIG[severityKey] || SEVERITY_CONFIG.low;
               return (
                 <div key={i} className={`rounded-xl border p-4 ${cfg.bg}`}>
                   <div className="flex items-start justify-between gap-3 mb-2">

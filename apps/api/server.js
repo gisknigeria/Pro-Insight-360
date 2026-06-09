@@ -2119,7 +2119,7 @@ app.get('/diagnosis/evaluations/:id/gaps', async (req, res) => {
         id: score.id,
         category: categoryName,
         description: `Low ${categoryName.toLowerCase()} performance is exposing a gap.`,
-        severity: getGapSeverity(Number(score.score)),
+        severity: getGapSeverity(Number(score.score)).toLowerCase(),
         affectedDepartments: ['Organisation-wide'],
         evidence: [
           `Recorded score ${score.score} for ${categoryName}.`, 
