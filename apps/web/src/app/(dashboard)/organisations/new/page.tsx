@@ -10,10 +10,28 @@ export default function NewOrganisationPage() {
       resourceLabel="Organisation"
       backHref="/organisations"
       submitLabel="Create organisation"
+      onCreate={async (values) => {
+        const token = localStorage.getItem('accessToken');
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/organisations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            name: values.name,
+            sector: values.sector || null,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message ?? 'Unable to create organisation.');
+        }
+      }}
       fields={[
         { name: 'name', label: 'Organisation name', placeholder: 'e.g. Ministry of Health', required: true },
-        { name: 'type', label: 'Organisation type', placeholder: 'Public sector, NGO, etc.' },
-        { name: 'contactEmail', label: 'Primary contact email', type: 'email', placeholder: 'contact@example.org' },
+        { name: 'sector', label: 'Organisation sector', placeholder: 'Public sector, NGO, etc.' },
       ]}
     />
   );

@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface User {
@@ -23,6 +25,7 @@ const ROLE_CONFIG = {
 };
 
 export default function UsersPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,9 +49,12 @@ export default function UsersPage() {
               Manage system users, roles, and access permissions.
             </p>
           </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          <Link
+            href="/users/new"
+            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
             + Add User
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -80,7 +86,7 @@ export default function UsersPage() {
           title="No users yet"
           description="Add users to your organization to start collaborating."
           actionLabel="Add First User"
-          onAction={() => (window.location.href = '/users/new')}
+          onAction={() => router.push('/users/new')}
         />
       ) : (
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">

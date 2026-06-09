@@ -10,6 +10,18 @@ export default function NewFormPage() {
       resourceLabel="Form"
       backHref="/forms"
       submitLabel="Create form"
+      onCreate={async (values) => {
+        const storageKey = 'proinsight.forms';
+        const existing = JSON.parse(typeof window !== 'undefined' ? localStorage.getItem(storageKey) ?? '[]' : '[]');
+        existing.push({
+          id: `form-${Date.now()}`,
+          title: values.name,
+          description: values.description,
+          owner: values.owner,
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem(storageKey, JSON.stringify(existing));
+      }}
       fields={[
         { name: 'name', label: 'Form name', placeholder: 'e.g. GIS Readiness Assessment', required: true },
         { name: 'description', label: 'Description', placeholder: 'What is this form for?', textarea: true },

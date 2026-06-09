@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface Contact {
@@ -18,6 +20,7 @@ interface Contact {
 }
 
 export default function ContactsPage() {
+  const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,9 +51,12 @@ export default function ContactsPage() {
               Manage survey respondents and organizational contacts.
             </p>
           </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          <Link
+            href="/contacts/new"
+            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
             + Add Contact
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -93,7 +99,7 @@ export default function ContactsPage() {
           title={searchTerm ? 'No contacts found' : 'No contacts yet'}
           description={searchTerm ? 'Try a different search term.' : 'Add contacts to manage survey respondents.'}
           actionLabel="Add Contact"
-          onAction={() => (window.location.href = '/contacts/new')}
+          onAction={() => router.push('/contacts/new')}
         />
       ) : (
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">

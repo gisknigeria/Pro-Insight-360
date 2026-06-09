@@ -10,6 +10,18 @@ export default function NewWorkflowPage() {
       resourceLabel="Workflow"
       backHref="/workflow"
       submitLabel="Create workflow"
+      onCreate={async (values) => {
+        const storageKey = 'proinsight.workflows';
+        const existing = JSON.parse(typeof window !== 'undefined' ? localStorage.getItem(storageKey) ?? '[]' : '[]');
+        existing.push({
+          id: `workflow-${Date.now()}`,
+          name: values.name,
+          owner: values.owner,
+          description: values.description,
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem(storageKey, JSON.stringify(existing));
+      }}
       fields={[
         { name: 'name', label: 'Workflow name', placeholder: 'e.g. GIS Assessment Workflow', required: true },
         { name: 'owner', label: 'Workflow owner', placeholder: 'Department or team' },

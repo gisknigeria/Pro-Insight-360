@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface Organisation {
@@ -15,6 +17,7 @@ interface Organisation {
 }
 
 export default function OrganisationsPage() {
+  const router = useRouter();
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,9 +41,12 @@ export default function OrganisationsPage() {
               Manage client organizations and their evaluations.
             </p>
           </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          <Link
+            href="/organisations/new"
+            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
             + Create Organisation
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -71,7 +77,7 @@ export default function OrganisationsPage() {
           title="No organisations yet"
           description="Create your first client organization to start evaluations."
           actionLabel="Create Organisation"
-          onAction={() => (window.location.href = '/organisations/new')}
+          onAction={() => router.push('/organisations/new')}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

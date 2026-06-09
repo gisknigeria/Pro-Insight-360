@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface Department {
@@ -17,6 +19,7 @@ interface Department {
 }
 
 export default function DepartmentsPage() {
+  const router = useRouter();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,9 +43,12 @@ export default function DepartmentsPage() {
               Track departmental readiness and assessment progress.
             </p>
           </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          <Link
+            href="/departments/new"
+            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
             + Add Department
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -74,7 +80,7 @@ export default function DepartmentsPage() {
           title="No departments yet"
           description="Add departments to track organizational units and their readiness assessments."
           actionLabel="Add Department"
-          onAction={() => (window.location.href = '/departments/new')}
+          onAction={() => router.push('/departments/new')}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

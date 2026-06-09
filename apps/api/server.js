@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
 
@@ -189,6 +190,166 @@ app.post('/auth/setup', async (req, res) => {
 });
 
 app.use(authenticate);
+
+app.post('/organisations', async (req, res) => {
+  try {
+    const { name, sector, description } = req.body;
+    if (!name?.trim()) {
+      return res.status(400).json({ message: 'Organisation name is required.' });
+    }
+
+    const organisation = await prisma.organisation.create({
+      data: {
+        name: name.trim(),
+        sector: sector?.trim() || null,
+      },
+    });
+
+    res.status(201).json({
+      id: organisation.id,
+      name: organisation.name,
+      sector: organisation.sector,
+      description: description?.trim() || undefined,
+    });
+  } catch (error) {
+    console.error('Create organisation failed:', error);
+    res.status(500).json({ message: 'Unable to create organisation.' });
+  }
+});
+
+app.post('/users', async (req, res) => {
+  try {
+    const { name, email, role, organisationId, department } = req.body;
+    if (!email?.trim()) {
+      return res.status(400).json({ message: 'Email is required.' });
+    }
+
+    const normalizedRole = ['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'HOD', 'RESPONDENT'].includes(role)
+      ? role
+      : 'RESPONDENT';
+
+    const existingUser = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (existingUser) {
+      return res.status(409).json({ message: 'A user with this email already exists.' });
+    }
+
+    const tempPassword = crypto.randomBytes(16).toString('hex');
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const setupToken = crypto.randomBytes(32).toString('hex');
+
+    const user = await prisma.user.create({
+      data: {
+        email: email.trim().toLowerCase(),
+        name: name?.trim() || email.trim(),
+        role: normalizedRole,
+        organisationId: organisationId || null,
+        department: department?.trim() || null,
+        passwordHash,
+        setupToken,
+        setupTokenExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        isActive: true,
+      },
+    });
+
+    res.status(201).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      setupToken: user.setupToken,
+      temporaryPassword: tempPassword,
+    });
+  } catch (error) {
+    console.error('Create user failed:', error);
+    res.status(500).json({ message: 'Unable to create user.' });
+  }
+});
+
+app.post('/contacts', async (req, res) => {
+  try {
+    const { name, email, role, department, organisationId } = req.body;
+    if (!email?.trim()) {
+      return res.status(400).json({ message: 'Email is required.' });
+    }
+
+    const normalizedRole = ['CONSULTANT', 'CLIENT_ADMIN', 'HOD', 'RESPONDENT'].includes(role)
+      ? role
+      : 'RESPONDENT';
+
+    const existingUser = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (existingUser) {
+      return res.status(409).json({ message: 'A contact with this email already exists.' });
+    }
+
+    const tempPassword = crypto.randomBytes(16).toString('hex');
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const setupToken = crypto.randomBytes(32).toString('hex');
+
+    const user = await prisma.user.create({
+      data: {
+        email: email.trim().toLowerCase(),
+        name: name?.trim() || email.trim(),
+        role: normalizedRole,
+        organisationId: organisationId || null,
+        department: department?.trim() || null,
+        passwordHash,
+        setupToken,
+        setupTokenExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        isActive: true,
+      },
+    });
+
+    res.status(201).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      setupToken: user.setupToken,
+    });
+  } catch (error) {
+    console.error('Create contact failed:', error);
+    res.status(500).json({ message: 'Unable to create contact.' });
+  }
+});
+
+app.post('/departments', async (req, res) => {
+  try {
+    const { name, lead, description, organisationId } = req.body;
+    if (!name?.trim()) {
+      return res.status(400).json({ message: 'Department name is required.' });
+    }
+
+    const email = `${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.')}@pro-insight.local`;
+    const tempPassword = crypto.randomBytes(16).toString('hex');
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const setupToken = crypto.randomBytes(32).toString('hex');
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        name: lead?.trim() || name.trim(),
+        role: 'HOD',
+        organisationId: organisationId || null,
+        department: name.trim(),
+        passwordHash,
+        setupToken,
+        setupTokenExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        isActive: true,
+      },
+    });
+
+    res.status(201).json({
+      id: user.id,
+      name: name.trim(),
+      lead: user.name,
+      description: description?.trim() || undefined,
+      setupToken: user.setupToken,
+    });
+  } catch (error) {
+    console.error('Create department failed:', error);
+    res.status(500).json({ message: 'Unable to create department.' });
+  }
+});
 
 app.get('/users', async (req, res) => {
   try {
