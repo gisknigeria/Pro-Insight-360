@@ -11,7 +11,8 @@ interface User {
   name: string;
   role: 'SUPER_ADMIN' | 'CONSULTANT' | 'CLIENT_ADMIN' | 'HOD' | 'RESPONDENT';
   status: 'ACTIVE' | 'INACTIVE' | 'LOCKED';
-  organisation: { id: string; name: string };
+  organisation?: { id: string; name: string } | null;
+  department?: string | null;
   createdAt: string;
   lastLogin?: string;
 }
@@ -141,6 +142,8 @@ export default function UsersPage() {
                     <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Name</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Email</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Role</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Organisation</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Department</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Last Login</th>
                     <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Action</th>
@@ -156,6 +159,8 @@ export default function UsersPage() {
                           {ROLE_CONFIG[user.role].label}
                         </span>
                       </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{user.organisation?.name || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{user.department || '—'}</td>
                       <td className="px-6 py-4 text-sm">
                         <span
                           className={`px-3 py-1 rounded ${

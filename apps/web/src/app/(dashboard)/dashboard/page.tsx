@@ -39,13 +39,13 @@ export default function DashboardPage() {
       <div className="bg-white rounded-xl border border-slate-200">
         <div className="px-6 py-4 border-b border-slate-200">
           <h2 className="text-base font-semibold text-slate-900">
-            Recent Evaluations
+            Start here
           </h2>
         </div>
         <EmptyState
-          icon="📋"
-          title="No evaluations yet"
-          description="Create your first evaluation project to start collecting organisational data."
+          icon="🚀"
+          title="Simplified evaluation workflow"
+          description="Create organisations, invite users, build forms, and share them with respondents for immediate evaluation and recommendations."
           actionLabel="Create Evaluation"
           onAction={() => (window.location.href = '/evaluations/new')}
         />

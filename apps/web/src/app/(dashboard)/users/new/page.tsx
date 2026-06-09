@@ -1,21 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 const roles = [
-  { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN' },
-  { value: 'CONSULTANT', label: 'CONSULTANT' },
-  { value: 'CLIENT_ADMIN', label: 'CLIENT_ADMIN' },
-  { value: 'HOD', label: 'HOD' },
-  { value: 'RESPONDENT', label: 'RESPONDENT' },
+  { value: 'SUPER_ADMIN', label: 'Super Admin' },
+  { value: 'CONSULTANT', label: 'Consultant' },
+  { value: 'CLIENT_ADMIN', label: 'CEO / Client Admin' },
+  { value: 'HOD', label: 'Department Manager / MD' },
+  { value: 'RESPONDENT', label: 'Staff Respondent' },
 ];
 
 export default function NewUserPage() {
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [values, setValues] = useState({
     name: '',
     email: '',
     role: 'CONSULTANT',
+    organisationId: '',
+    department: '',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -25,6 +28,16 @@ export default function NewUserPage() {
     email: string;
     role: string;
   } | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/organisations`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then(setOrgs)
+      .catch(() => setOrgs([]));
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -48,6 +61,8 @@ export default function NewUserPage() {
           name: values.name.trim(),
           email: values.email.trim(),
           role: values.role,
+          organisationId: values.organisationId || undefined,
+          department: values.department.trim() || undefined,
         }),
       });
 
@@ -191,6 +206,41 @@ export default function NewUserPage() {
               className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               placeholder="jane@example.org"
               required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="organisation" className="block text-sm font-medium text-slate-700">
+              Organisation
+            </label>
+            <select
+              id="organisation"
+              value={values.organisationId}
+              onChange={(event) => setValues((current) => ({ ...current, organisationId: event.target.value }))}
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            >
+              <option value="">Select organisation (optional)</option>
+              {orgs.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-slate-500">
+              Assign this user to an organisation so they can access the right evaluation projects.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="department" className="block text-sm font-medium text-slate-700">
+              Department / job title
+            </label>
+            <input
+              id="department"
+              value={values.department}
+              onChange={(event) => setValues((current) => ({ ...current, department: event.target.value }))}
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              placeholder="e.g. Marketing, Operations, CEO"
             />
           </div>
 

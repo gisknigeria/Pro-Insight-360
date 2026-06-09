@@ -14,6 +14,7 @@ type User = {
   role: Role;
   status: 'ACTIVE' | 'INACTIVE' | 'LOCKED';
   organisation: { id: string; name: string };
+  organisationId?: string | null;
   department?: string | null;
 };
 
@@ -30,6 +31,7 @@ export default function EditUserPage() {
   const router = useRouter();
   const userId = params.id as string;
 
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,10 +42,25 @@ export default function EditUserPage() {
     if (!userId) return;
     setLoading(true);
     apiFetch<User>(`/users/${userId}`)
-      .then(setUser)
+      .then((loadedUser) => {
+        setUser({
+          ...loadedUser,
+          organisationId: loadedUser.organisation?.id || '',
+        });
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load user.'))
       .finally(() => setLoading(false));
   }, [userId]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/organisations`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then(setOrgs)
+      .catch(() => setOrgs([]));
+  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,6 +76,7 @@ export default function EditUserPage() {
           role: user.role,
           isActive: user.status !== 'INACTIVE',
           department: user.department,
+          organisationId: user.organisationId || null,
         }),
       });
       setMessage('User updated successfully.');
@@ -95,7 +113,7 @@ export default function EditUserPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Edit user</h1>
-        <p className="text-slate-500 mt-1 text-sm">Update user details, role, and active status.</p>
+        <p className="text-slate-500 mt-1 text-sm">Update user details, organisation, and active status.</p>
       </div>
 
       {error ? (
@@ -136,6 +154,25 @@ export default function EditUserPage() {
         </div>
 
         <div>
+          <label htmlFor="organisation" className="block text-sm font-medium text-slate-700">
+            Organisation
+          </label>
+          <select
+            id="organisation"
+            value={user.organisationId || ''}
+            onChange={(event) => setUser({ ...user, organisationId: event.target.value })}
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          >
+            <option value="">Select organisation</option>
+            {orgs.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="role" className="block text-sm font-medium text-slate-700">
             Role
           </label>
@@ -155,13 +192,14 @@ export default function EditUserPage() {
 
         <div>
           <label htmlFor="department" className="block text-sm font-medium text-slate-700">
-            Department
+            Department / job title
           </label>
           <input
             id="department"
             value={user.department || ''}
             onChange={(event) => setUser({ ...user, department: event.target.value })}
             className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            placeholder="e.g. Finance, Operations, CEO"
           />
         </div>
 

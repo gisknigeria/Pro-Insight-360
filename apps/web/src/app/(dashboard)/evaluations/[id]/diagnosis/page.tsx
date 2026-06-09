@@ -55,6 +55,16 @@ export default function EvaluationDiagnosisPage() {
   const [activeTab, setActiveTab] = useState<Tab>('scores');
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState('');
+  const [aiProvider, setAiProvider] = useState<string>('Unknown');
+  const [aiStatus, setAiStatus] = useState<{
+    configuredProviders: string[];
+    defaultProvider: string;
+    geminiEnabled: boolean;
+    groqEnabled: boolean;
+    available: boolean;
+  }>({ configuredProviders: [], defaultProvider: 'None', geminiEnabled: false, groqEnabled: false, available: false });
+  const [aiStatusLoading, setAiStatusLoading] = useState(true);
+  const [aiStatusError, setAiStatusError] = useState('');
 
   const scoresApi = useApi<any[]>(`/diagnosis/evaluations/${id}/scores`);
   const conflictsApi = useApi<any[]>(`/diagnosis/evaluations/${id}/conflicts`);
@@ -111,10 +121,14 @@ export default function EvaluationDiagnosisPage() {
     setRunMsg('');
     const token = localStorage.getItem('accessToken');
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnosis/evaluations/${id}/score`, {
+      const scoreResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnosis/evaluations/${id}/score`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
+      const scorePayload = await scoreResponse.json().catch(() => ({}));
+      const provider = typeof scorePayload.provider === 'string' ? scorePayload.provider : 'unknown';
+      setAiProvider(provider);
+
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnosis/evaluations/${id}/detect-conflicts`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -123,9 +137,10 @@ export default function EvaluationDiagnosisPage() {
       conflictsApi.refresh();
       gapsApi.refresh();
       responsesApi.refresh();
-      setRunMsg('Diagnosis complete. Results refreshed.');
+      setRunMsg(`Diagnosis complete. Results refreshed. Provider: ${provider}.`);
     } catch {
       setRunMsg('Diagnosis failed. Please try again.');
+      setAiProvider('unavailable');
     } finally {
       setRunning(false);
     }
@@ -159,6 +174,25 @@ export default function EvaluationDiagnosisPage() {
 
   const unresolvedConflicts = conflicts?.filter((c: any) => !c.isResolved).length ?? 0;
 
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/ai-status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(payload?.message || 'Unable to load AI status.');
+        }
+        setAiStatus(payload);
+      })
+      .catch((err) => {
+        setAiStatusError(err instanceof Error ? err.message : 'Unable to load AI status.');
+        setAiStatus({ configuredProviders: [], defaultProvider: 'None', geminiEnabled: false, groqEnabled: false, available: false });
+      })
+      .finally(() => setAiStatusLoading(false));
+  }, [id]);
+
   return (
     <div>
       {/* Header */}
@@ -191,6 +225,33 @@ export default function EvaluationDiagnosisPage() {
           <p>{pageError}</p>
         </div>
       )}
+
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <p className="font-medium text-slate-900">AI diagnostic status</p>
+          <p className="mt-1">
+            {responses?.totalResponses > 0
+              ? 'AI ready — responses are available for analysis.'
+              : 'AI not ready — submit responses first.'}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          <p className="font-medium text-slate-900">AI provider configuration</p>
+          {aiStatusLoading ? (
+            <p className="mt-1 text-slate-600">Loading provider status…</p>
+          ) : aiStatus.available ? (
+            <>
+              <p className="mt-1 text-slate-600">Configured: {aiStatus.configuredProviders.join(', ')}</p>
+              <p className="mt-1 text-slate-500">Default: {aiStatus.defaultProvider}</p>
+            </>
+          ) : (
+            <p className="mt-1 text-red-700">No AI provider configured — fallback only.</p>
+          )}
+          {aiStatusError ? (
+            <p className="mt-2 text-xs text-red-700">{aiStatusError}</p>
+          ) : null}
+        </div>
+      </div>
 
       {/* Quick stats */}
       {digitalScore && (

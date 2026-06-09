@@ -10,6 +10,11 @@ const { PrismaClient } = require('@prisma/client');
 
 dotenv.config();
 
+if (process.env.DIRECT_DATABASE_URL && process.env.NODE_ENV !== 'production') {
+  console.log('Using direct database URL for local development.');
+  process.env.DATABASE_URL = process.env.DIRECT_DATABASE_URL;
+}
+
 const prisma = new PrismaClient();
 const app = express();
 const jwtSecret = process.env.JWT_SECRET || 'change_me_in_production';
@@ -495,7 +500,7 @@ app.get('/users/:id', async (req, res) => {
 app.put('/users/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, isActive, department } = req.body;
+    const { name, role, isActive, department, organisationId } = req.body;
 
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
@@ -509,8 +514,11 @@ app.put('/users/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'A
         role: role || user.role,
         isActive: isActive !== undefined ? Boolean(isActive) : user.isActive,
         department: department !== undefined ? String(department || '').trim() : user.department,
+        organisationId: organisationId !== undefined ? (organisationId || null) : user.organisationId,
       },
     });
+
+    const organisation = await prisma.organisation.findUnique({ where: { id: updated.organisationId || '' } });
 
     res.json({
       id: updated.id,
@@ -522,7 +530,9 @@ app.put('/users/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'A
         : updated.lockedUntil && updated.lockedUntil > new Date()
           ? 'LOCKED'
           : 'ACTIVE',
-      organisation: user.organisationId ? { id: user.organisationId, name: '' } : { id: '', name: '' },
+      organisation: organisation
+        ? { id: organisation.id, name: organisation.name }
+        : { id: '', name: '' },
       department: updated.department || null,
       createdAt: updated.createdAt,
       lastLogin: null,
@@ -591,7 +601,7 @@ app.post('/organograms', async (req, res) => {
   }
 });
 
-app.post('/users', async (req, res) => {
+app.post('/users', roleGuard(['SUPER_ADMIN']), async (req, res) => {
   try {
     const { name, email, role, organisationId, department } = req.body;
     if (!email?.trim()) {
@@ -823,7 +833,7 @@ app.get('/forms', async (req, res) => {
   }
 });
 
-app.post('/forms', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+app.post('/forms', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { evaluationId, title, definition, accessMode } = req.body;
     if (!evaluationId || !title) {
@@ -874,7 +884,7 @@ app.post('/forms', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (re
   }
 });
 
-app.put('/forms/:formId', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+app.put('/forms/:formId', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { formId } = req.params;
     const { title, definition, status, accessMode } = req.body;
@@ -916,7 +926,7 @@ app.put('/forms/:formId', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), as
   }
 });
 
-app.delete('/forms/:formId', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+app.delete('/forms/:formId', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { formId } = req.params;
     const form = await prisma.form.findUnique({ where: { id: formId } });
@@ -987,7 +997,7 @@ app.get('/form-assignments/me', async (req, res) => {
   }
 });
 
-app.post('/form-assignments', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+app.post('/form-assignments', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { formId, respondentId } = req.body;
     if (!formId || !respondentId) {
@@ -1525,6 +1535,25 @@ app.get('/diagnoses', async (req, res) => {
   }
 });
 
+app.get('/ai-status', authenticate, async (req, res) => {
+  try {
+    const providers = [];
+    if (geminiApiKey) providers.push('Gemini');
+    if (groqApiKey) providers.push('Groq');
+
+    res.json({
+      configuredProviders: providers,
+      defaultProvider: providers[0] || 'None',
+      geminiEnabled: Boolean(geminiApiKey),
+      groqEnabled: Boolean(groqApiKey),
+      available: providers.length > 0,
+    });
+  } catch (error) {
+    console.error('Fetch AI status failed:', error);
+    res.status(500).json({ message: 'Unable to fetch AI status.' });
+  }
+});
+
 app.get('/gap-analysis', async (req, res) => {
   try {
     const lowScores = await prisma.scoreResult.findMany({
@@ -1661,7 +1690,7 @@ app.get('/evaluations', async (req, res) => {
   }
 });
 
-app.post('/evaluations', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+app.post('/evaluations', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { organisationId, title, startDate } = req.body;
     if (!organisationId || !title) {
@@ -1684,7 +1713,7 @@ app.post('/evaluations', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), asy
   }
 });
 
-app.patch('/evaluations/:id/archive', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+app.patch('/evaluations/:id/archive', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { id } = req.params;
     const evaluation = await prisma.evaluation.update({
