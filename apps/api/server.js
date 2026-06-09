@@ -532,6 +532,20 @@ app.post('/responses/public/submit', async (req, res) => {
   }
 });
 
+app.get('/forms/:formId/definition', async (req, res) => {
+  try {
+    const { formId } = req.params;
+    const form = await prisma.form.findUnique({ where: { id: formId } });
+    if (!form) {
+      return res.status(404).json({ message: 'Form not found.' });
+    }
+    res.json(getJsonValue(form.definition));
+  } catch (error) {
+    console.error('Fetch form definition failed:', error);
+    res.status(500).json({ message: 'Unable to load form definition.' });
+  }
+});
+
 app.use(authenticate);
 
 app.get('/users/:id', async (req, res) => {
@@ -1082,20 +1096,6 @@ app.get('/settings', async (req, res) => {
   } catch (error) {
     console.error('Fetch settings failed:', error);
     res.status(500).json({ message: 'Unable to fetch settings.' });
-  }
-});
-
-app.get('/forms/:formId/definition', async (req, res) => {
-  try {
-    const { formId } = req.params;
-    const form = await prisma.form.findUnique({ where: { id: formId } });
-    if (!form) {
-      return res.status(404).json({ message: 'Form not found.' });
-    }
-    res.json(getJsonValue(form.definition));
-  } catch (error) {
-    console.error('Fetch form definition failed:', error);
-    res.status(500).json({ message: 'Unable to load form definition.' });
   }
 });
 
