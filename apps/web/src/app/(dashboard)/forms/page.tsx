@@ -18,6 +18,18 @@ export default function FormsPage() {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'forms' | 'templates'>('forms');
+  const [copyMessage, setCopyMessage] = useState('');
+
+  function handleCopyLink(formId: string) {
+    const shareUrl = `${window.location.origin}/my-forms/${formId}`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl).catch(() => {});
+    }
+
+    setCopyMessage('Share link copied to clipboard.');
+    window.setTimeout(() => setCopyMessage(''), 3000);
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -88,10 +100,15 @@ export default function FormsPage() {
           onAction={() => (window.location.href = '/forms/new')}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {forms.map((form) => (
-            <Link key={form.id} href={`/forms/${form.id}`}>
-              <div className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition cursor-pointer">
+        <div className="space-y-3">
+          {copyMessage ? (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+              {copyMessage}
+            </div>
+          ) : null}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {forms.map((form) => (
+              <div key={form.id} className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition">
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="font-semibold text-slate-900">{form.title}</h3>
                   <span
@@ -105,13 +122,28 @@ export default function FormsPage() {
                   </span>
                 </div>
                 <p className="text-sm text-slate-600 mb-4">{form.description}</p>
-                <div className="flex justify-between text-xs text-slate-500">
+                <div className="flex justify-between gap-2 text-xs text-slate-500 mb-4">
                   <span>{form.questionCount} questions</span>
                   <span>{new Date(form.updatedAt).toLocaleDateString()}</span>
                 </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/forms/${form.id}`}
+                    className="rounded-2xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    Edit form
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyLink(form.id)}
+                    className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    Copy share link
+                  </button>
+                </div>
               </div>
-            </Link>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

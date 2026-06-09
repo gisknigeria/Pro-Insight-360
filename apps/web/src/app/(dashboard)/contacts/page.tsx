@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { apiFetch } from '@/lib/api';
 
 interface Contact {
   id: string;
@@ -24,16 +25,44 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [busyContactId, setBusyContactId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState('');
+
+  async function loadContacts() {
+    setLoading(true);
+    try {
+      const data = await apiFetch<Contact[]>('/contacts');
+      setContacts(data);
+    } catch {
+      setContacts([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then(setContacts)
-      .finally(() => setLoading(false));
+    loadContacts();
   }, []);
+
+  async function handleAssign(contact: Contact) {
+    const formId = window.prompt('Enter the form ID to assign to this contact:');
+    if (!formId?.trim()) return;
+
+    setBusyContactId(contact.id);
+    setFeedback('');
+    try {
+      await apiFetch('/form-assignments', {
+        method: 'POST',
+        body: JSON.stringify({ formId: formId.trim(), respondentId: contact.id }),
+      });
+      setFeedback(`Assigned form ${formId.trim()} to ${contact.name}.`);
+      await loadContacts();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Unable to assign form.');
+    } finally {
+      setBusyContactId(null);
+    }
+  }
 
   const filtered = contacts.filter(
     (c) =>
@@ -58,6 +87,11 @@ export default function ContactsPage() {
             + Add Contact
           </Link>
         </div>
+        {feedback ? (
+          <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+            {feedback}
+          </div>
+        ) : null}
       </div>
 
       {/* Stats */}
@@ -138,7 +172,14 @@ export default function ContactsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                    <button
+                      type="button"
+                      onClick={() => handleAssign(contact)}
+                      disabled={busyContactId === contact.id}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:text-slate-400"
+                    >
+                      {busyContactId === contact.id ? 'Assigning…' : 'Assign'}
+                    </button>
                   </td>
                 </tr>
               ))}

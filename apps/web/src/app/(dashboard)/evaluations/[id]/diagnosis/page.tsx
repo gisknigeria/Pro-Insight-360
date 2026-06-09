@@ -13,9 +13,11 @@ function useApi<T>(url: string) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
+    setLoading(true);
     fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -23,9 +25,14 @@ function useApi<T>(url: string) {
       .then(setData)
       .catch(() => setError('Failed to load data.'))
       .finally(() => setLoading(false));
-  }, [url]);
+  }, [url, refreshKey]);
 
-  return { data, loading, error };
+  return {
+    data,
+    loading,
+    error,
+    refresh: () => setRefreshKey((current) => current + 1),
+  };
 }
 
 export default function EvaluationDiagnosisPage() {
@@ -35,9 +42,16 @@ export default function EvaluationDiagnosisPage() {
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState('');
 
-  const { data: scores, loading: scoresLoading } = useApi<any[]>(`/diagnosis/evaluations/${id}/scores`);
-  const { data: conflicts, loading: conflictsLoading } = useApi<any[]>(`/diagnosis/evaluations/${id}/conflicts`);
-  const { data: gaps, loading: gapsLoading } = useApi<any>(`/diagnosis/evaluations/${id}/gaps`);
+  const scoresApi = useApi<any[]>(`/diagnosis/evaluations/${id}/scores`);
+  const conflictsApi = useApi<any[]>(`/diagnosis/evaluations/${id}/conflicts`);
+  const gapsApi = useApi<any>(`/diagnosis/evaluations/${id}/gaps`);
+
+  const scores = scoresApi.data;
+  const conflicts = conflictsApi.data;
+  const gaps = gapsApi.data;
+  const scoresLoading = scoresApi.loading;
+  const conflictsLoading = conflictsApi.loading;
+  const gapsLoading = gapsApi.loading;
 
   async function runDiagnosis() {
     setRunning(true);
@@ -52,7 +66,10 @@ export default function EvaluationDiagnosisPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRunMsg('Diagnosis complete. Refresh to see updated results.');
+      scoresApi.refresh();
+      conflictsApi.refresh();
+      gapsApi.refresh();
+      setRunMsg('Diagnosis complete. Results refreshed.');
     } catch {
       setRunMsg('Diagnosis failed. Please try again.');
     } finally {

@@ -173,7 +173,12 @@ export default function UsersPage() {
                         {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '—'}
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
-                        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                        <Link
+                          href={`/users/${user.id}/edit`}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Edit
+                        </Link>
                         <button
                           type="button"
                           onClick={() => handleResetPassword(user)}

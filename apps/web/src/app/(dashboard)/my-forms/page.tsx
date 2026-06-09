@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/empty-state';
 import { OfflineStatusBanner } from '@/components/form-renderer/offline-status-banner';
+import { apiFetch } from '@/lib/api';
 
 interface FormAssignment {
-  type: 'completed' | 'pending';
   formId: string;
   formTitle: string;
   evaluationTitle: string;
@@ -17,21 +17,18 @@ interface FormAssignment {
 }
 
 export default function MyFormsPage() {
-  const [notifications, setNotifications] = useState<FormAssignment[]>([]);
+  const [assignments, setAssignments] = useState<FormAssignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then(setNotifications)
+    apiFetch<FormAssignment[]>('/form-assignments/me')
+      .then(setAssignments)
+      .catch(() => setAssignments([]))
       .finally(() => setLoading(false));
   }, []);
 
-  const pending = notifications.filter((n) => n.type === 'pending');
-  const completed = notifications.filter((n) => n.type === 'completed');
+  const pending = assignments;
+  const completed: FormAssignment[] = [];
 
   return (
     <div>

@@ -331,6 +331,81 @@ app.post('/auth/setup', async (req, res) => {
 
 app.use(authenticate);
 
+app.get('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { organisation: true },
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name || user.email,
+      role: user.role,
+      status: !user.isActive
+        ? 'INACTIVE'
+        : user.lockedUntil && user.lockedUntil > new Date()
+          ? 'LOCKED'
+          : 'ACTIVE',
+      organisation: user.organisation
+        ? { id: user.organisation.id, name: user.organisation.name }
+        : { id: '', name: '' },
+      department: user.department || null,
+      createdAt: user.createdAt,
+      lastLogin: null,
+    });
+  } catch (error) {
+    console.error('Fetch user failed:', error);
+    res.status(500).json({ message: 'Unable to fetch user.' });
+  }
+});
+
+app.put('/users/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, role, isActive, department } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        name: name !== undefined ? String(name).trim() : user.name,
+        role: role || user.role,
+        isActive: isActive !== undefined ? Boolean(isActive) : user.isActive,
+        department: department !== undefined ? String(department || '').trim() : user.department,
+      },
+    });
+
+    res.json({
+      id: updated.id,
+      email: updated.email,
+      name: updated.name || updated.email,
+      role: updated.role,
+      status: !updated.isActive
+        ? 'INACTIVE'
+        : updated.lockedUntil && updated.lockedUntil > new Date()
+          ? 'LOCKED'
+          : 'ACTIVE',
+      organisation: user.organisationId ? { id: user.organisationId, name: '' } : { id: '', name: '' },
+      department: updated.department || null,
+      createdAt: updated.createdAt,
+      lastLogin: null,
+    });
+  } catch (error) {
+    console.error('Update user failed:', error);
+    res.status(500).json({ message: 'Unable to update user.' });
+  }
+});
+
 app.post('/organisations', async (req, res) => {
   try {
     const { name, sector, description } = req.body;
@@ -719,6 +794,65 @@ app.get('/forms/:formId/definition', async (req, res) => {
   } catch (error) {
     console.error('Fetch form definition failed:', error);
     res.status(500).json({ message: 'Unable to load form definition.' });
+  }
+});
+
+app.get('/form-assignments/me', async (req, res) => {
+  try {
+    const assignments = await prisma.formAssignment.findMany({
+      where: { respondentId: req.user.sub },
+      include: {
+        form: {
+          include: { evaluation: true },
+        },
+      },
+      orderBy: { assignedAt: 'desc' },
+    });
+
+    res.json(assignments.map((assignment) => ({
+      id: assignment.id,
+      formId: assignment.formId,
+      formTitle: assignment.form.title,
+      evaluationTitle: assignment.form.evaluation?.title || 'Unknown evaluation',
+      deadline: assignment.form.evaluation?.startDate ? assignment.form.evaluation.startDate.toISOString() : null,
+      urgent: false,
+      assignedAt: assignment.assignedAt,
+    })));
+  } catch (error) {
+    console.error('Fetch assigned forms failed:', error);
+    res.status(500).json({ message: 'Unable to fetch assigned forms.' });
+  }
+});
+
+app.post('/form-assignments', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { formId, respondentId } = req.body;
+    if (!formId || !respondentId) {
+      return res.status(400).json({ message: 'Form id and respondent id are required.' });
+    }
+
+    const form = await prisma.form.findUnique({ where: { id: formId } });
+    const respondent = await prisma.user.findUnique({ where: { id: respondentId } });
+    if (!form || !respondent) {
+      return res.status(404).json({ message: 'Form or respondent not found.' });
+    }
+
+    const assignment = await prisma.formAssignment.upsert({
+      where: { formId_respondentId: { formId, respondentId } },
+      create: { formId, respondentId, notifiedAt: new Date() },
+      update: { notifiedAt: new Date() },
+    });
+
+    res.status(201).json({
+      id: assignment.id,
+      formId: assignment.formId,
+      respondentId: assignment.respondentId,
+      assignedAt: assignment.assignedAt,
+      notifiedAt: assignment.notifiedAt,
+    });
+  } catch (error) {
+    console.error('Create form assignment failed:', error);
+    res.status(500).json({ message: 'Unable to assign form.' });
   }
 });
 
