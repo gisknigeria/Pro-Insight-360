@@ -18,6 +18,7 @@ export default function NewFormPage() {
     name: '',
     description: '',
     evaluationId: '',
+    accessMode: 'REGISTERED',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,6 +68,7 @@ export default function NewFormPage() {
           evaluationId: values.evaluationId,
           title: values.name.trim(),
           definition,
+          accessMode: values.accessMode,
         }),
       });
 
@@ -174,6 +176,21 @@ export default function NewFormPage() {
                 {evaluation.title} ({evaluation.organisation.name})
               </option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="accessMode" className="block text-sm font-medium text-slate-700">
+            Form access
+          </label>
+          <select
+            id="accessMode"
+            value={values.accessMode}
+            onChange={(event) => setValues((current) => ({ ...current, accessMode: event.target.value }))}
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          >
+            <option value="REGISTERED">Registered only</option>
+            <option value="PUBLIC">Public access</option>
           </select>
         </div>
 

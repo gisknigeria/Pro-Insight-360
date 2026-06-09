@@ -724,6 +724,7 @@ app.get('/forms', async (req, res) => {
         title: form.title,
         description,
         status: form.status,
+        accessMode: definition?.accessMode || 'REGISTERED',
         questionCount,
         createdAt: form.createdAt,
         updatedAt: form.updatedAt,
@@ -739,7 +740,7 @@ app.get('/forms', async (req, res) => {
 
 app.post('/forms', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
-    const { evaluationId, title, definition } = req.body;
+    const { evaluationId, title, definition, accessMode } = req.body;
     if (!evaluationId || !title) {
       return res.status(400).json({ message: 'Evaluation and title are required.' });
     }
@@ -756,7 +757,12 @@ app.post('/forms', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (re
       pages: [{ pageId: 'page-1', title: 'Page 1', questions: [] }],
       conditionalLogic: [],
       version: 1,
+      accessMode: accessMode || 'REGISTERED',
     };
+
+    if (!formDefinition.accessMode) {
+      formDefinition.accessMode = accessMode || 'REGISTERED';
+    }
 
     const form = await prisma.form.create({
       data: {
@@ -786,26 +792,32 @@ app.post('/forms', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (re
 app.put('/forms/:formId', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { formId } = req.params;
-    const { title, definition, status } = req.body;
+    const { title, definition, status, accessMode } = req.body;
 
     const form = await prisma.form.findUnique({ where: { id: formId } });
     if (!form) {
       return res.status(404).json({ message: 'Form not found.' });
     }
 
-    const newDefinition = definition || form.definition;
+    const existingDefinition = getJsonValue(form.definition) || {};
+    const mergedDefinition = typeof definition === 'object' && definition !== null
+      ? { ...existingDefinition, ...definition }
+      : existingDefinition;
+    const finalDefinition = accessMode
+      ? { ...mergedDefinition, accessMode }
+      : mergedDefinition;
 
     const updated = await prisma.form.update({
       where: { id: formId },
       data: {
         title: title?.trim() || form.title,
-        definition: newDefinition,
+        definition: finalDefinition,
         status: status || form.status,
         updatedAt: new Date(),
       },
     });
 
-    await syncFormQuestions(formId, newDefinition);
+    await syncFormQuestions(formId, finalDefinition);
 
     res.json({
       id: updated.id,
@@ -816,6 +828,22 @@ app.put('/forms/:formId', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), as
   } catch (error) {
     console.error('Update form failed:', error);
     res.status(500).json({ message: 'Unable to update form.' });
+  }
+});
+
+app.delete('/forms/:formId', roleGuard(['CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { formId } = req.params;
+    const form = await prisma.form.findUnique({ where: { id: formId } });
+    if (!form) {
+      return res.status(404).json({ message: 'Form not found.' });
+    }
+
+    await prisma.form.delete({ where: { id: formId } });
+    res.json({ message: 'Form deleted successfully.' });
+  } catch (error) {
+    console.error('Delete form failed:', error);
+    res.status(500).json({ message: 'Unable to delete form.' });
   }
 });
 
