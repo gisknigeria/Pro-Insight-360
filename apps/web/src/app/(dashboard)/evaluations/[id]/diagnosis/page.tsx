@@ -48,10 +48,45 @@ export default function EvaluationDiagnosisPage() {
 
   const scores = scoresApi.data;
   const conflicts = conflictsApi.data;
-  const gaps = gapsApi.data;
+  const gaps = gapsApi.data as any[] | null;
   const scoresLoading = scoresApi.loading;
   const conflictsLoading = conflictsApi.loading;
   const gapsLoading = gapsApi.loading;
+
+  function buildGapSummary(gapsData: any[] | null) {
+    if (!gapsData) return null;
+
+    const bySeverity = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    };
+
+    const byCategory: Record<string, any[]> = {};
+
+    for (const gap of gapsData) {
+      const severity = (gap.severity || 'low').toLowerCase();
+      if (severity in bySeverity) {
+        bySeverity[severity as keyof typeof bySeverity] += 1;
+      }
+
+      const category = gap.category || 'Other';
+      if (!byCategory[category]) {
+        byCategory[category] = [];
+      }
+      byCategory[category].push(gap);
+    }
+
+    return {
+      total: gapsData.length,
+      bySeverity,
+      byCategory,
+      gaps: gapsData,
+    };
+  }
+
+  const gapSummary = buildGapSummary(gaps);
 
   async function runDiagnosis() {
     setRunning(true);
@@ -260,7 +295,7 @@ export default function EvaluationDiagnosisPage() {
             {gapsLoading ? (
               <p className="text-slate-400 text-sm">Loading gap analysis…</p>
             ) : (
-              <GapAnalysisPanel summary={gaps} />
+              <GapAnalysisPanel summary={gapSummary} />
             )}
           </div>
         )}
@@ -271,7 +306,7 @@ export default function EvaluationDiagnosisPage() {
             <EmptyState
               icon="💬"
               title="Response aggregation"
-              description="Detailed response charts are available in Phase 4 dashboards."
+              description="Detailed response charts are not yet available here. They will be added in a future dashboard release."
             />
           </div>
         )}
