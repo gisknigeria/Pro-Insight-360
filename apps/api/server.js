@@ -332,6 +332,10 @@ async function generateAiDiagnosis({ evaluation, scores, conflictCount, response
 }
 
 function authenticate(req, res, next) {
+  if (req.path.match(/^\/forms\/[^/]+\/definition$/)) {
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Authorization token missing.' });
