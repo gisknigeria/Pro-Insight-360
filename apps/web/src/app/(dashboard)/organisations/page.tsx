@@ -31,6 +31,21 @@ export default function OrganisationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function deleteOrganisation(id: string) {
+    if (!window.confirm('Delete this organisation? This cannot be undone.')) return;
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/organisations/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      window.alert(payload?.message || 'Unable to delete organisation.');
+      return;
+    }
+    setOrganisations((current) => current.filter((org) => org.id !== id));
+  }
+
   return (
     <div>
       <div className="mb-8">
@@ -83,17 +98,28 @@ export default function OrganisationsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {organisations.map((org) => (
             <div key={org.id} className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition">
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="font-semibold text-slate-900">{org.name}</h3>
-                <span
-                  className={`text-xs px-2 py-1 rounded ${
-                    org.status === 'ACTIVE'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {org.status}
-                </span>
+              <div className="flex justify-between items-start mb-3 gap-3">
+                <div>
+                  <h3 className="font-semibold text-slate-900">{org.name}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => deleteOrganisation(org.id)}
+                    className="text-red-600 hover:text-red-800 text-xs font-medium"
+                  >
+                    Delete
+                  </button>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      org.status === 'ACTIVE'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {org.status}
+                  </span>
+                </div>
               </div>
               <p className="text-sm text-slate-600 mb-4">{org.description || '—'}</p>
               <div className="grid grid-cols-2 gap-4 mb-4 text-sm">

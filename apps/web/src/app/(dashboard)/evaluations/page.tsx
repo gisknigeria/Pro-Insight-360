@@ -49,6 +49,24 @@ export default function EvaluationsPage() {
     setArchiveTarget(null);
   }
 
+  async function deleteEvaluation(id: string) {
+    if (!window.confirm('Delete this evaluation and all linked forms and reports? This cannot be undone.')) {
+      return;
+    }
+
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/evaluations/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.ok) {
+      setEvaluations((prev) => prev.filter((evaluation) => evaluation.id !== id));
+    } else {
+      const payload = await response.json().catch(() => null);
+      window.alert(payload?.message || 'Unable to delete evaluation.');
+    }
+  }
+
   const active = evaluations.filter((e) => e.status !== 'ARCHIVED');
   const archived = evaluations.filter((e) => e.status === 'ARCHIVED');
 
@@ -118,6 +136,13 @@ export default function EvaluationsPage() {
                       >
                         View
                       </Link>
+                      <button
+                        onClick={() => deleteEvaluation(ev.id)}
+                        className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 rounded-lg transition-colors"
+                        aria-label={`Delete ${ev.title}`}
+                      >
+                        Delete
+                      </button>
                       {ev.status !== 'ARCHIVED' && (
                         <button
                           onClick={() => setArchiveTarget(ev)}

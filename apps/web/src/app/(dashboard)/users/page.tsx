@@ -67,6 +67,21 @@ export default function UsersPage() {
     }
   }
 
+  async function handleDeleteUser(user: User) {
+    if (!confirm(`Delete user ${user.name || user.email}? This cannot be undone.`)) return;
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      setError(payload?.message || 'Unable to delete user.');
+      return;
+    }
+    setUsers((current) => current.filter((item) => item.id !== user.id));
+  }
+
   return (
     <div>
       <div className="mb-8">
@@ -190,6 +205,13 @@ export default function UsersPage() {
                           className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
                         >
                           Reset password
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(user)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Delete
                         </button>
                       </td>
                     </tr>

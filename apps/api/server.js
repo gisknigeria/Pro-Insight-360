@@ -362,6 +362,23 @@ function roleGuard(allowedRoles) {
   };
 }
 
+async function isAssignedToEvaluation(user, evaluationId) {
+  if (!user) return false;
+  if (['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN'].includes(user.role)) {
+    return true;
+  }
+
+  const assignment = await prisma.formAssignment.findFirst({
+    where: {
+      respondentId: user.sub,
+      form: { evaluationId },
+    },
+    select: { id: true },
+  });
+
+  return Boolean(assignment);
+}
+
 app.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -543,6 +560,29 @@ app.put('/users/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'A
   }
 });
 
+app.delete('/users/:id', roleGuard(['SUPER_ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    await prisma.$transaction([
+      prisma.conflict.updateMany({ where: { resolvedById: id }, data: { resolvedById: null } }),
+      prisma.diagnosis.updateMany({ where: { reviewedById: id }, data: { reviewedById: null } }),
+      prisma.formAssignment.deleteMany({ where: { respondentId: id } }),
+      prisma.response.deleteMany({ where: { respondentId: id } }),
+      prisma.user.delete({ where: { id } }),
+    ]);
+
+    res.json({ message: 'User deleted successfully.' });
+  } catch (error) {
+    console.error('Delete user failed:', error);
+    res.status(400).json({ message: 'Unable to delete user. Remove linked records first.' });
+  }
+});
+
 app.post('/organisations', async (req, res) => {
   try {
     const { name, sector, description } = req.body;
@@ -566,6 +606,29 @@ app.post('/organisations', async (req, res) => {
   } catch (error) {
     console.error('Create organisation failed:', error);
     res.status(500).json({ message: 'Unable to create organisation.' });
+  }
+});
+
+app.delete('/organisations/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const organisation = await prisma.organisation.findUnique({
+      where: { id },
+      include: { users: true, evaluations: true },
+    });
+    if (!organisation) {
+      return res.status(404).json({ message: 'Organisation not found.' });
+    }
+
+    if (organisation.users.length > 0 || organisation.evaluations.length > 0) {
+      return res.status(400).json({ message: 'Cannot delete organisation with linked users or evaluations.' });
+    }
+
+    await prisma.organisation.delete({ where: { id } });
+    res.json({ message: 'Organisation deleted successfully.' });
+  } catch (error) {
+    console.error('Delete organisation failed:', error);
+    res.status(500).json({ message: 'Unable to delete organisation.' });
   }
 });
 
@@ -1665,7 +1728,24 @@ app.get('/digital-readiness', async (req, res) => {
 
 app.get('/evaluations', async (req, res) => {
   try {
+    const where = {};
+
+    if (!['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN'].includes(req.user.role)) {
+      const assignments = await prisma.formAssignment.findMany({
+        where: { respondentId: req.user.sub },
+        select: { form: { select: { evaluationId: true } } },
+      });
+
+      const evaluationIds = Array.from(new Set(assignments.map((assignment) => assignment.form.evaluationId)));
+      if (evaluationIds.length === 0) {
+        return res.json([]);
+      }
+
+      where.id = { in: evaluationIds };
+    }
+
     const evaluations = await prisma.evaluation.findMany({
+      where,
       include: {
         organisation: true,
         forms: true,
@@ -1727,9 +1807,29 @@ app.patch('/evaluations/:id/archive', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'C
   }
 });
 
+app.delete('/evaluations/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const evaluation = await prisma.evaluation.findUnique({ where: { id } });
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+    await prisma.evaluation.delete({ where: { id } });
+    res.json({ message: 'Evaluation deleted successfully.' });
+  } catch (error) {
+    console.error('Delete evaluation failed:', error);
+    res.status(500).json({ message: 'Unable to delete evaluation.' });
+  }
+});
+
 app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
   try {
     const { id } = req.params;
+    const hasAccess = await isAssignedToEvaluation(req.user, id);
+    if (!hasAccess) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
     const evaluation = await prisma.evaluation.findUnique({ where: { id } });
     if (!evaluation) {
       return res.status(404).json({ message: 'Evaluation not found.' });
@@ -1944,6 +2044,11 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
 app.post('/diagnosis/evaluations/:id/detect-conflicts', async (req, res) => {
   try {
     const { id } = req.params;
+    const hasAccess = await isAssignedToEvaluation(req.user, id);
+    if (!hasAccess) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
     const evaluation = await prisma.evaluation.findUnique({
       where: { id },
       include: { forms: true },
@@ -2011,6 +2116,11 @@ app.post('/diagnosis/evaluations/:id/detect-conflicts', async (req, res) => {
 app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
   try {
     const { id } = req.params;
+    const hasAccess = await isAssignedToEvaluation(req.user, id);
+    if (!hasAccess) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
     const evaluation = await prisma.evaluation.findUnique({
       where: { id },
       include: { forms: true },
@@ -2085,6 +2195,11 @@ app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
 app.get('/diagnosis/evaluations/:id/scores', async (req, res) => {
   try {
     const { id } = req.params;
+    const hasAccess = await isAssignedToEvaluation(req.user, id);
+    if (!hasAccess) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
     const scores = await prisma.scoreResult.findMany({
       where: { evaluationId: id },
       orderBy: { computedAt: 'desc' },
@@ -2106,6 +2221,11 @@ app.get('/diagnosis/evaluations/:id/scores', async (req, res) => {
 app.get('/diagnosis/evaluations/:id/conflicts', async (req, res) => {
   try {
     const { id } = req.params;
+    const hasAccess = await isAssignedToEvaluation(req.user, id);
+    if (!hasAccess) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
     const conflicts = await prisma.conflict.findMany({
       where: { evaluationId: id },
       include: { question: true },
@@ -2135,6 +2255,11 @@ app.get('/diagnosis/evaluations/:id/conflicts', async (req, res) => {
 app.get('/diagnosis/evaluations/:id/gaps', async (req, res) => {
   try {
     const { id } = req.params;
+    const hasAccess = await isAssignedToEvaluation(req.user, id);
+    if (!hasAccess) {
+      return res.status(404).json({ message: 'Evaluation not found.' });
+    }
+
     const lowScores = await prisma.scoreResult.findMany({
       where: { evaluationId: id, score: { lt: 75 } },
       orderBy: { score: 'asc' },
