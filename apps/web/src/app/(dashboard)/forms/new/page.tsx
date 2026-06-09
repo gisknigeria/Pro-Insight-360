@@ -594,7 +594,7 @@ export default function NewFormPage() {
   const [evaluations, setEvaluations] = useState<EvaluationOption[]>([]);
   const [values, setValues] = useState({
     name: defaultDiagnosticChecklist.title,
-    description: defaultDiagnosticChecklist.description,
+    description: defaultDiagnosticChecklist.description ?? '',
     evaluationId: '',
     accessMode: 'REGISTERED',
   });
