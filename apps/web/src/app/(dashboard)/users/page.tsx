@@ -28,6 +28,8 @@ export default function UsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resetInfo, setResetInfo] = useState<{ email: string; setupToken: string; temporaryPassword: string } | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -38,6 +40,31 @@ export default function UsersPage() {
       .then(setUsers)
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleResetPassword(user: User) {
+    setError('');
+    setResetInfo(null);
+    if (!confirm(`Reset password for ${user.name || user.email}?`)) return;
+
+    const token = localStorage.getItem('accessToken');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.message || 'Unable to reset password.');
+        return;
+      }
+      setResetInfo({ email: data.email, setupToken: data.setupToken, temporaryPassword: data.temporaryPassword });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to connect to server.');
+    }
+  }
 
   return (
     <div>
@@ -80,7 +107,25 @@ export default function UsersPage() {
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      ) : users.length === 0 ? (
+      ) : (
+        <>
+          {error ? (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+          {resetInfo ? (
+            <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+              <p className="font-semibold text-slate-900">Password reset link generated for {resetInfo.email}</p>
+              <p className="mt-2">
+                <strong>Temporary password:</strong> <span className="font-mono">{resetInfo.temporaryPassword}</span>
+              </p>
+              <p className="mt-2">
+                <strong>Setup token:</strong> <span className="font-mono break-all">{resetInfo.setupToken}</span>
+              </p>
+            </div>
+          ) : null}
+          {users.length === 0 ? (
         <EmptyState
           icon="👥"
           title="No users yet"
@@ -127,8 +172,15 @@ export default function UsersPage() {
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '—'}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right space-x-2">
                     <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                    <button
+                      type="button"
+                      onClick={() => handleResetPassword(user)}
+                      className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+                    >
+                      Reset password
+                    </button>
                   </td>
                 </tr>
               ))}

@@ -12,11 +12,10 @@ export default function OrgChartUploader({ onData }: { onData?: (rows: OrgRow[])
   const [error, setError] = useState<string | null>(null);
 
   function parseCSV(text: string): OrgRow[] {
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const rows: OrgRow[] = [];
     for (const line of lines) {
-      const parts = line.split(",").map(p => p.trim());
-      // simple CSV: name,jobTitle,department,reportsTo
+      const parts = line.split(",").map((p) => p.trim());
       const row: OrgRow = { name: parts[0] || "" };
       if (parts[1]) row.jobTitle = parts[1];
       if (parts[2]) row.department = parts[2];
@@ -26,6 +25,29 @@ export default function OrgChartUploader({ onData }: { onData?: (rows: OrgRow[])
     return rows;
   }
 
+  function parseJSON(text: string): OrgRow[] {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => ({
+        name: String(item.name || item.title || ''),
+        jobTitle: item.jobTitle || item.title || undefined,
+        department: item.department || undefined,
+        reportsTo: item.reportsTo || item.reports_to || undefined,
+      }));
+    }
+
+    if (parsed?.nodes && Array.isArray(parsed.nodes)) {
+      return parsed.nodes.map((item) => ({
+        name: String(item.name || item.title || ''),
+        jobTitle: item.jobTitle || item.title || undefined,
+        department: item.department || undefined,
+        reportsTo: item.reportsTo || item.reports_to || undefined,
+      }));
+    }
+
+    throw new Error('JSON file must contain an array of rows or a { nodes: [...] } object.');
+  }
+
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -33,11 +55,23 @@ export default function OrgChartUploader({ onData }: { onData?: (rows: OrgRow[])
     reader.onload = () => {
       const text = String(reader.result || "");
       try {
-        const parsed = parseCSV(text);
+        let parsed: OrgRow[];
+        if (file.name.toLowerCase().endsWith('.json')) {
+          parsed = parseJSON(text);
+        } else {
+          try {
+            parsed = parseJSON(text);
+          } catch {
+            parsed = parseCSV(text);
+          }
+        }
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          throw new Error('No rows found in file.');
+        }
         setError(null);
         onData?.(parsed);
       } catch (err) {
-        setError("Failed to parse file");
+        setError(err instanceof Error ? err.message : "Failed to parse file");
       }
     };
     reader.readAsText(file);

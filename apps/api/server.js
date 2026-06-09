@@ -45,6 +45,11 @@ function getJsonValue(value) {
   }
 }
 
+const geminiApiKey = process.env.GEMINI_API_KEY;
+const groqApiKey = process.env.GROQ_API_KEY;
+const geminiModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const groqModel = process.env.GROQ_MODEL || 'llama-3.1-70b-versatile';
+
 function getScoreBand(score) {
   if (score >= 85) return 'ADVANCED';
   if (score >= 70) return 'DEVELOPING';
@@ -57,6 +62,141 @@ function getGapSeverity(score) {
   if (score < 55) return 'HIGH';
   if (score < 70) return 'MEDIUM';
   return 'LOW';
+}
+
+async function callGemini(prompt) {
+  if (!geminiApiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta2/models/${encodeURIComponent(geminiModel)}:generateText?key=${encodeURIComponent(geminiApiKey)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt: { text: prompt },
+      temperature: 0.2,
+      maxOutputTokens: 512,
+    }),
+  });
+
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`Gemini call failed ${response.status}: ${body}`);
+  }
+
+  const json = JSON.parse(body);
+  const output =
+    json?.candidates?.[0]?.output ||
+    json?.candidates?.[0]?.content?.[0]?.text ||
+    json?.candidates?.[0]?.text ||
+    json?.candidates?.[0]?.message?.content?.[0]?.text;
+  return typeof output === 'string' ? output : JSON.stringify(output || '');
+}
+
+async function callGroq(prompt) {
+  if (!groqApiKey) {
+    throw new Error('GROQ_API_KEY is not configured.');
+  }
+
+  const url = `https://api.groq.com/v1/models/${encodeURIComponent(groqModel)}/predict`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${groqApiKey}`,
+    },
+    body: JSON.stringify({
+      prompt,
+      max_output_tokens: 512,
+      temperature: 0.2,
+    }),
+  });
+
+  const json = await response.json();
+  const output =
+    json?.output?.[0]?.content ||
+    json?.output?.[0]?.text ||
+    json?.output?.[0] ||
+    json?.result;
+  return typeof output === 'string' ? output : JSON.stringify(output || '');
+}
+
+function extractJsonObject(text) {
+  if (!text) return null;
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function buildDiagnosisPrompt({ evaluation, scores, conflictCount }) {
+  const categoryScores = scores
+    .filter((score) => score.scoreType === 'CATEGORY')
+    .map((score) => `- ${score.category}: ${score.score}`)
+    .join('\n');
+
+  const dimensionScores = scores
+    .filter((score) => score.scoreType === 'DIMENSION')
+    .map((score) => `- ${score.category}: ${score.score}`)
+    .join('\n');
+
+  return `Generate a structured diagnosis for an organisational evaluation. Return only valid JSON with the properties: executiveSummary, strengths, weaknesses, opportunities, recommendations.
+
+Evaluation title: ${evaluation.title}
+Total forms: ${evaluation.formCount}
+Total responses: ${evaluation.responseCount}
+Conflict count: ${conflictCount}
+Category scores:\n${categoryScores}
+Dimension scores:\n${dimensionScores}
+
+The JSON output must look like this:\n{
+  "executiveSummary": "...",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "opportunities": ["..."],
+  "recommendations": ["..."]
+}
+
+Keep responses concise and aligned to the evaluation data above.`;
+}
+
+async function generateAiDiagnosis({ evaluation, scores, conflictCount }) {
+  const prompt = buildDiagnosisPrompt({ evaluation, scores, conflictCount });
+  let aiText = null;
+
+  try {
+    aiText = await callGemini(prompt);
+  } catch (geminiError) {
+    console.error('Gemini provider failed:', geminiError?.message || geminiError);
+    try {
+      aiText = await callGroq(prompt);
+    } catch (groqError) {
+      console.error('Groq provider failed:', groqError?.message || groqError);
+      throw new Error('Both Gemini and Groq providers failed.');
+    }
+  }
+
+  const content = extractJsonObject(aiText);
+  if (!content || typeof content !== 'object') {
+    throw new Error('AI provider did not return valid JSON.');
+  }
+
+  return {
+    executiveSummary: String(content.executiveSummary || content.summary || 'AI diagnosis generated.'),
+    strengths: Array.isArray(content.strengths) ? content.strengths.slice(0, 5).map(String) : [],
+    weaknesses: Array.isArray(content.weaknesses) ? content.weaknesses.slice(0, 5).map(String) : [],
+    opportunities: Array.isArray(content.opportunities) ? content.opportunities.slice(0, 5).map(String) : [],
+    recommendations: Array.isArray(content.recommendations) ? content.recommendations.slice(0, 8).map(String) : [],
+  };
 }
 
 function authenticate(req, res, next) {
@@ -217,6 +357,38 @@ app.post('/organisations', async (req, res) => {
   }
 });
 
+app.post('/organograms', async (req, res) => {
+  try {
+    const { evaluationId, rawData } = req.body;
+    if (!evaluationId) {
+      return res.status(400).json({ message: 'Evaluation is required.' });
+    }
+
+    const nodes = Array.isArray(rawData?.nodes) ? rawData.nodes : [];
+    const departments = Array.isArray(rawData?.departments)
+      ? rawData.departments
+      : Array.from(new Set(nodes.map((node) => node.department).filter(Boolean)));
+
+    const organogram = await prisma.organogram.create({
+      data: {
+        evaluationId,
+        rawData: { nodes, departments },
+        renderStatus: 'RENDERED',
+      },
+    });
+
+    res.status(201).json({
+      id: organogram.id,
+      evaluationId: organogram.evaluationId,
+      createdAt: organogram.createdAt,
+      status: organogram.renderStatus,
+    });
+  } catch (error) {
+    console.error('Create organogram failed:', error);
+    res.status(500).json({ message: 'Unable to create organogram.' });
+  }
+});
+
 app.post('/users', async (req, res) => {
   try {
     const { name, email, role, organisationId, department } = req.body;
@@ -262,6 +434,41 @@ app.post('/users', async (req, res) => {
   } catch (error) {
     console.error('Create user failed:', error);
     res.status(500).json({ message: 'Unable to create user.' });
+  }
+});
+
+app.post('/users/:id/reset-password', roleGuard(['SUPER_ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const tempPassword = crypto.randomBytes(16).toString('hex');
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const setupToken = crypto.randomBytes(32).toString('hex');
+
+    await prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash,
+        setupToken,
+        setupTokenExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        isActive: true,
+      },
+    });
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      setupToken,
+      temporaryPassword: tempPassword,
+    });
+  } catch (error) {
+    console.error('Reset password failed:', error);
+    res.status(500).json({ message: 'Unable to reset password.' });
   }
 });
 
@@ -1201,24 +1408,63 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
       });
     }
 
+    const [responseCount, conflictCount] = await Promise.all([
+      prisma.response.count({ where: { form: { evaluationId: id } } }),
+      prisma.conflict.count({ where: { evaluationId: id } }),
+    ]);
+
+    const aiInput = {
+      evaluation: {
+        id: evaluation.id,
+        title: evaluation.title,
+        formCount: await prisma.form.count({ where: { evaluationId: id } }),
+        responseCount,
+      },
+      scores: results,
+      conflictCount,
+    };
+
+    let diagnosisContent;
+    let isAiGenerated = false;
+
+    try {
+      diagnosisContent = await generateAiDiagnosis(aiInput);
+      isAiGenerated = true;
+    } catch (providerError) {
+      console.error('AI provider error:', providerError?.message || providerError);
+      diagnosisContent = {
+        executiveSummary: 'Evaluation scores have been computed and are ready for review.',
+        strengths: ['Strong organisational alignment', 'Data-driven approach'],
+        weaknesses: ['Infrastructure gaps remain', 'Process maturity needs improvement'],
+        opportunities: ['Improve training', 'Automate key workflows'],
+        recommendations: ['Create a targeted improvement plan', 'Enhance data governance'],
+      };
+    }
+
     const existingDiagnosis = await prisma.diagnosis.findFirst({ where: { evaluationId: id } });
-    if (!existingDiagnosis) {
+    if (existingDiagnosis) {
+      await prisma.diagnosis.update({
+        where: { id: existingDiagnosis.id },
+        data: {
+          content: diagnosisContent,
+          status: 'IN_REVIEW',
+          isAiGenerated,
+          generatedAt: new Date(),
+          version: existingDiagnosis.version + 1,
+        },
+      });
+    } else {
       await prisma.diagnosis.create({
         data: {
           evaluationId: id,
-          content: {
-            executiveSummary: 'Evaluation scores have been computed and are ready for review.',
-            strengths: ['Strong organisational alignment', 'Data-driven approach'],
-            weaknesses: ['Infrastructure gaps remain', 'Process maturity needs improvement'],
-            opportunities: ['Improve training', 'Automate key workflows'],
-            recommendations: ['Create a targeted improvement plan', 'Enhance data governance'],
-          },
+          content: diagnosisContent,
           status: 'IN_REVIEW',
+          isAiGenerated,
         },
       });
     }
 
-    res.json({ message: 'Scores generated.' });
+    res.json({ message: 'Scores generated and AI diagnosis requested.', provider: isAiGenerated ? 'gemini/groq' : 'fallback' });
   } catch (error) {
     console.error('Compute scores failed:', error);
     res.status(500).json({ message: 'Unable to compute diagnosis scores.' });

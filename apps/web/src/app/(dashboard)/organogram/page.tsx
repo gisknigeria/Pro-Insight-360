@@ -38,7 +38,11 @@ export default function OrganogramPage() {
               Visualize and analyze organizational hierarchies and reporting structures.
             </p>
           </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          <button
+            type="button"
+            onClick={() => (window.location.href = '/organogram/new')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
             + Create Organogram
           </button>
         </div>

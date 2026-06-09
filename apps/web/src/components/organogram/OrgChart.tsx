@@ -6,12 +6,14 @@ import { detectCycle } from "./cycleDetector";
 function buildTree(rows: OrgRow[]) {
   const map = new Map<string, any>();
   for (const r of rows) {
-    map.set(r.name, { ...r, children: [] });
+    map.set(r.name, { ...r, children: [], parent: null });
   }
   const roots: any[] = [];
   for (const node of map.values()) {
     if (node.reportsTo && map.has(node.reportsTo)) {
-      map.get(node.reportsTo).children.push(node);
+      const parent = map.get(node.reportsTo);
+      parent.children.push(node);
+      node.parent = parent;
     } else {
       roots.push(node);
     }
