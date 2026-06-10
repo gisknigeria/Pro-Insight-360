@@ -1,24 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { ScoreCard } from '@/components/diagnosis/score-card';
 import { ConflictsPanel } from '@/components/diagnosis/conflicts-panel';
 import { GapAnalysisPanel } from '@/components/diagnosis/gap-analysis-panel';
 import { EmptyState } from '@/components/ui/empty-state';
+import { isClientAdmin } from '@/lib/auth';
 
 type Tab = 'scores' | 'conflicts' | 'gaps' | 'responses';
 
-function useApi<T>(url: string) {
+function useApi<T>(url: string | null) {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    if (!url) {
+      return;
+    }
+
     const token = localStorage.getItem('accessToken');
     setLoading(true);
     setError('');
+
     fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -51,6 +57,7 @@ function useApi<T>(url: string) {
 
 export default function EvaluationDiagnosisPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [activeTab, setActiveTab] = useState<Tab>('scores');
   const [running, setRunning] = useState(false);
@@ -59,12 +66,37 @@ export default function EvaluationDiagnosisPage() {
   const [allResponsesLoading, setAllResponsesLoading] = useState(false);
   const [showAllResponses, setShowAllResponses] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
-  const scoresApi = useApi<any[]>(`/diagnosis/evaluations/${id}/scores`);
-  const conflictsApi = useApi<any[]>(`/diagnosis/evaluations/${id}/conflicts`);
-  const gapsApi = useApi<any>(`/diagnosis/evaluations/${id}/gaps`);
-  const responsesApi = useApi<any>(`/diagnosis/evaluations/${id}/responses`);
-  const diagnosisApi = useApi<any>(`/diagnosis/evaluations/${id}/diagnosis`);
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      router.replace('/login');
+      return;
+    }
+
+    if (isClientAdmin()) {
+      router.replace('/dashboard');
+      return;
+    }
+
+    setHasAccess(true);
+  }, [router]);
+
+  const shouldFetch = hasAccess === true;
+  const scoresApi = useApi<any[]>(shouldFetch ? `/diagnosis/evaluations/${id}/scores` : null);
+  const conflictsApi = useApi<any[]>(shouldFetch ? `/diagnosis/evaluations/${id}/conflicts` : null);
+  const gapsApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/gaps` : null);
+  const responsesApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/responses` : null);
+  const diagnosisApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/diagnosis` : null);
+
+  if (hasAccess === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <p className="text-slate-500 text-sm">Checking access…</p>
+      </div>
+    );
+  }
 
   const scores = scoresApi.data;
   const conflicts = conflictsApi.data;

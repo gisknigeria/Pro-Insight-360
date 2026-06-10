@@ -49,6 +49,9 @@ export default function AIDiagnosisPage() {
   const [publishLoading, setPublishLoading] = useState(false);
   const [publishMessage, setPublishMessage] = useState('');
   const [publishError, setPublishError] = useState('');
+  const [reviewLoadingId, setReviewLoadingId] = useState<string | null>(null);
+  const [reviewMessage, setReviewMessage] = useState('');
+  const [reviewError, setReviewError] = useState('');
 
   const chatPromptTemplate = `You are given the submitted form responses for an organisational evaluation. Analyze the responses and return only valid JSON with these properties:
 {
@@ -156,6 +159,49 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
     } finally {
       setPublishLoading(false);
     }
+  }
+
+  async function updateDiagnosisStatus(diagnosisId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string) {
+    setReviewMessage('');
+    setReviewError('');
+    setReviewLoadingId(diagnosisId);
+
+    try {
+      const result = await apiFetch<{ id: string; status: string; reviewedBy?: { name: string } }>(`/diagnoses/${diagnosisId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, rejectionReason }),
+      });
+
+      setDiagnoses((prev) =>
+        prev.map((diagnosis) =>
+          diagnosis.id === result.id
+            ? {
+                ...diagnosis,
+                status: result.status as Diagnosis['status'],
+                approvedBy: result.reviewedBy ? { name: result.reviewedBy.name } : diagnosis.approvedBy,
+              }
+            : diagnosis,
+        ),
+      );
+      setReviewMessage(`Diagnosis ${status.toLowerCase()} successfully.`);
+    } catch (error: any) {
+      setReviewError(error?.message || `Unable to ${status.toLowerCase()} diagnosis.`);
+    } finally {
+      setReviewLoadingId(null);
+    }
+  }
+
+  function handleApproveDiagnosis(diagnosisId: string) {
+    updateDiagnosisStatus(diagnosisId, 'APPROVED');
+  }
+
+  function handleRejectDiagnosis(diagnosisId: string) {
+    const reason = window.prompt('Please provide a reason for rejection:');
+    if (!reason || !reason.trim()) {
+      setReviewError('Rejection reason is required.');
+      return;
+    }
+    updateDiagnosisStatus(diagnosisId, 'REJECTED', reason.trim());
   }
 
   const dashboardMetrics = useMemo(() => {
@@ -475,6 +521,17 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
         </div>
       )}
 
+      {reviewMessage && (
+        <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+          {reviewMessage}
+        </div>
+      )}
+      {reviewError && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {reviewError}
+        </div>
+      )}
+
       {/* Diagnoses */}
       {loading ? (
         <div className="text-center py-12">
@@ -586,11 +643,19 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
                       </div>
                       {diagnosis.status === 'PENDING_REVIEW' && (
                         <div className="flex gap-2">
-                          <button className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
-                            Reject
+                          <button
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed"
+                            onClick={() => handleRejectDiagnosis(diagnosis.id)}
+                            disabled={reviewLoadingId === diagnosis.id}
+                          >
+                            {reviewLoadingId === diagnosis.id ? 'Processing…' : 'Reject'}
                           </button>
-                          <button className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
-                            Approve
+                          <button
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed"
+                            onClick={() => handleApproveDiagnosis(diagnosis.id)}
+                            disabled={reviewLoadingId === diagnosis.id}
+                          >
+                            {reviewLoadingId === diagnosis.id ? 'Processing…' : 'Approve'}
                           </button>
                         </div>
                       )}

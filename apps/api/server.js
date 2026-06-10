@@ -1819,6 +1819,59 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
   }
 });
 
+app.patch('/diagnoses/:id/status', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
+    if (!['APPROVED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be APPROVED or REJECTED.' });
+    }
+
+    const updateData: any = {
+      status,
+      reviewedById: req.user.sub,
+      reviewedAt: new Date(),
+    };
+    if (status === 'REJECTED') {
+      updateData.rejectionReason = String(rejectionReason || '').trim() || null;
+    } else {
+      updateData.rejectionReason = null;
+    }
+
+    const updated = await prisma.diagnosis.update({
+      where: { id },
+      data: updateData,
+      include: { reviewedBy: true },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.sub,
+        action: status === 'APPROVED' ? 'DIAGNOSIS_APPROVED' : 'DIAGNOSIS_REJECTED',
+        resourceType: 'Diagnosis',
+        resourceId: updated.id,
+        metadata: {
+          reviewedById: req.user.sub,
+          reviewedByEmail: req.user.email,
+          rejectionReason: updateData.rejectionReason || null,
+          status,
+          reviewedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    res.json({
+      id: updated.id,
+      status: updated.status,
+      reviewedBy: updated.reviewedBy ? { name: updated.reviewedBy.name || updated.reviewedBy.email } : undefined,
+      rejectionReason: updated.rejectionReason,
+    });
+  } catch (error) {
+    console.error('Update diagnosis status failed:', error);
+    res.status(500).json({ message: 'Unable to update diagnosis status.' });
+  }
+});
+
 app.get('/diagnosis/evaluations/:id/diagnosis', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
