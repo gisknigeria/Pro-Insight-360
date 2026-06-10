@@ -6,6 +6,8 @@ import { GapAnalysisPanel } from '@/components/diagnosis/gap-analysis-panel';
 import { isClientAdmin } from '@/lib/auth';
 import { EmptyState } from '@/components/ui/empty-state';
 
+type GapSeverity = 'critical' | 'high' | 'medium' | 'low';
+
 interface Gap {
   id: string;
   category: string;
@@ -18,6 +20,17 @@ interface Gap {
   when?: string;
   evaluation: { id: string; title: string };
   createdAt: string;
+}
+
+interface GapSummaryItem extends Omit<Gap, 'severity'> {
+  severity: GapSeverity;
+}
+
+interface GapSummary {
+  total: number;
+  bySeverity: Record<GapSeverity, number>;
+  byCategory: Record<string, GapSummaryItem[]>;
+  gaps: GapSummaryItem[];
 }
 
 const SEVERITY_CONFIG = {
@@ -53,18 +66,18 @@ export default function GapAnalysisPage() {
     [filterSeverity, gaps],
   );
 
-  const gapSummary = useMemo(() => {
-    const bySeverity = {
+  const gapSummary = useMemo<GapSummary>(() => {
+    const bySeverity: Record<GapSeverity, number> = {
       critical: 0,
       high: 0,
       medium: 0,
       low: 0,
-    } as Record<'critical' | 'high' | 'medium' | 'low', number>;
+    };
 
-    const byCategory: Record<string, Array<any>> = {};
+    const byCategory: Record<string, GapSummaryItem[]> = {};
 
     filtered.forEach((gap) => {
-      const severity = String(gap.severity || 'LOW').toLowerCase() as 'critical' | 'high' | 'medium' | 'low';
+      const severity = String(gap.severity || 'LOW').toLowerCase() as GapSeverity;
       if (severity in bySeverity) {
         bySeverity[severity] += 1;
       }
@@ -84,7 +97,10 @@ export default function GapAnalysisPage() {
       total: filtered.length,
       bySeverity,
       byCategory,
-      gaps: filtered.map((gap) => ({ ...gap, severity: String(gap.severity || 'LOW').toLowerCase() })),
+      gaps: filtered.map((gap) => ({
+        ...gap,
+        severity: String(gap.severity || 'LOW').toLowerCase() as GapSeverity,
+      })),
     };
   }, [filtered]);
 
