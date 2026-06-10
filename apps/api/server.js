@@ -2134,32 +2134,24 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
       sampleAnswers,
     };
 
-    let diagnosisContent;
-    let isAiGenerated = false;
-
-    try {
-      diagnosisContent = await generateAiDiagnosis(aiInput);
-      isAiGenerated = true;
-    } catch (providerError) {
-      console.error('AI provider error:', providerError?.message || providerError);
-      diagnosisContent = {
-        executiveSummary: responseCount > 0
-          ? 'Evaluation scores have been computed and are ready for review.'
-          : 'No submitted responses are available yet. Submit at least one response to generate a more accurate diagnosis.',
-        strengths: ['Strong organisational alignment', 'Data-driven approach'],
-        weaknesses: ['Infrastructure gaps remain', 'Process maturity needs improvement'],
-        opportunities: ['Improve training', 'Automate key workflows'],
-        recommendations: ['Create a targeted improvement plan', 'Enhance data governance'],
-        actionPlan: [
-          {
-            who: 'Evaluation leadership team',
-            what: 'Review submitted responses and prioritise the most critical gaps',
-            how: 'Use the score and response summaries to create a short action plan, clarify ownership, and set a timeline',
-            when: 'Within the next 2 weeks',
-          },
-        ],
-      };
-    }
+    const diagnosisContent = {
+      executiveSummary: responseCount > 0
+        ? 'Evaluation scores have been computed and are ready for review.'
+        : 'No submitted responses are available yet. Submit at least one response to generate a more accurate diagnosis.',
+      strengths: ['Strong organisational alignment', 'Data-driven approach'],
+      weaknesses: ['Infrastructure gaps remain', 'Process maturity needs improvement'],
+      opportunities: ['Improve training', 'Automate key workflows'],
+      recommendations: ['Create a targeted improvement plan', 'Enhance data governance'],
+      actionPlan: [
+        {
+          who: 'Evaluation leadership team',
+          what: 'Review submitted responses and prioritise the most critical gaps',
+          how: 'Use the score and response summaries to create a short action plan, clarify ownership, and set a timeline',
+          when: 'Within the next 2 weeks',
+        },
+      ],
+    };
+    const isAiGenerated = false;
 
     const existingDiagnosis = await prisma.diagnosis.findFirst({ where: { evaluationId: id } });
     if (existingDiagnosis) {
@@ -2184,7 +2176,7 @@ app.post('/diagnosis/evaluations/:id/score', async (req, res) => {
       });
     }
 
-    res.json({ message: 'Scores generated and AI diagnosis requested.', provider: isAiGenerated ? 'gemini/groq' : 'fallback' });
+    res.json({ message: 'Scores generated and diagnosis content stored.', provider: 'none' });
   } catch (error) {
     console.error('Compute scores failed:', error);
     res.status(500).json({ message: 'Unable to compute diagnosis scores.' });

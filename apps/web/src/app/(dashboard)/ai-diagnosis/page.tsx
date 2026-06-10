@@ -31,6 +31,22 @@ export default function AIDiagnosisPage() {
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [chatOutput, setChatOutput] = useState('');
+  const [parsedChat, setParsedChat] = useState<any | null>(null);
+  const [parseError, setParseError] = useState('');
+
+  const chatPromptTemplate = `You are given the submitted form responses for an organisational evaluation. Analyze the responses and return only valid JSON with these properties:
+{
+  "executiveSummary": "...",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "opportunities": ["..."],
+  "recommendations": ["..."],
+  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
+  "charts": [{"title":"...","data":[{"label":"...","value":...}]}],
+  "organogram": {"nodes":[{"id":"...","label":"...","group":"..."}],"links":[{"source":"...","target":"...","relation":"..."}]}
+}
+Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -41,6 +57,27 @@ export default function AIDiagnosisPage() {
       .then(setDiagnoses)
       .finally(() => setLoading(false));
   }, []);
+
+  function extractJsonObject(text: string) {
+    try {
+      const jsonStart = text.indexOf('{');
+      const jsonText = jsonStart >= 0 ? text.slice(jsonStart) : text;
+      return JSON.parse(jsonText);
+    } catch (error) {
+      throw new Error('Unable to parse JSON from ChatGPT output. Please paste only valid JSON or remove any surrounding text/code fences.');
+    }
+  }
+
+  function handleParseChatOutput() {
+    setParseError('');
+    try {
+      const parsed = extractJsonObject(chatOutput.trim());
+      setParsedChat(parsed);
+    } catch (error: any) {
+      setParsedChat(null);
+      setParseError(error.message);
+    }
+  }
 
   return (
     <div>
@@ -68,6 +105,155 @@ export default function AIDiagnosisPage() {
           </div>
         ))}
       </div>
+
+      <div className="mb-8 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-3">Manual ChatGPT import</h2>
+        <p className="text-sm text-slate-600 mb-4">
+          Copy the response output from the evaluation page, paste it into ChatGPT, and ask for a structured JSON analysis. Then paste the ChatGPT JSON result here to render it in the app.
+        </p>
+        <div className="grid gap-4">
+          <textarea
+            value={chatOutput}
+            onChange={(event) => setChatOutput(event.target.value)}
+            rows={10}
+            placeholder="Paste ChatGPT JSON output here"
+            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+          <button
+            type="button"
+            onClick={handleParseChatOutput}
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+          >
+            Parse and render ChatGPT output
+          </button>
+          {parseError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {parseError}
+            </div>
+          )}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+            <p className="font-semibold text-slate-900 mb-2">Recommended ChatGPT prompt</p>
+            <pre className="whitespace-pre-wrap text-xs text-slate-600">{chatPromptTemplate}</pre>
+          </div>
+        </div>
+      </div>
+
+      {parsedChat && (
+        <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Rendered ChatGPT analysis</h2>
+          {parsedChat.executiveSummary && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-slate-900 mb-2">Executive Summary</h3>
+              <p className="text-slate-700 text-sm whitespace-pre-wrap">{parsedChat.executiveSummary}</p>
+            </div>
+          )}
+          {Array.isArray(parsedChat.strengths) && parsedChat.strengths.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-slate-900 mb-2">Strengths</h3>
+              <ul className="list-disc list-inside text-slate-700 text-sm space-y-1">
+                {parsedChat.strengths.map((item: string, idx: number) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {Array.isArray(parsedChat.weaknesses) && parsedChat.weaknesses.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-slate-900 mb-2">Weaknesses</h3>
+              <ul className="list-disc list-inside text-slate-700 text-sm space-y-1">
+                {parsedChat.weaknesses.map((item: string, idx: number) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {Array.isArray(parsedChat.opportunities) && parsedChat.opportunities.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-slate-900 mb-2">Opportunities</h3>
+              <ul className="list-disc list-inside text-slate-700 text-sm space-y-1">
+                {parsedChat.opportunities.map((item: string, idx: number) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {Array.isArray(parsedChat.recommendations) && parsedChat.recommendations.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-slate-900 mb-2">Recommendations</h3>
+              <ul className="list-disc list-inside text-slate-700 text-sm space-y-1">
+                {parsedChat.recommendations.map((item: string, idx: number) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {Array.isArray(parsedChat.actionPlan) && parsedChat.actionPlan.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-slate-900 mb-2">Action Plan</h3>
+              <div className="space-y-3">
+                {parsedChat.actionPlan.map((item: any, idx: number) => (
+                  <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                    <p className="font-semibold text-slate-900">{item.what}</p>
+                    <p className="text-slate-600 text-xs mt-1">Who: {item.who} • When: {item.when}</p>
+                    <p className="text-slate-700 mt-2">How: {item.how}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {Array.isArray(parsedChat.charts) && parsedChat.charts.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-slate-900 mb-2">Charts</h3>
+              <div className="space-y-4">
+                {parsedChat.charts.map((chart: any, chartIndex: number) => (
+                  <div key={chartIndex} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="font-semibold text-slate-900 mb-3">{chart.title}</p>
+                    <div className="space-y-2">
+                      {Array.isArray(chart.data) && chart.data.map((row: any, rowIndex: number) => (
+                        <div key={rowIndex} className="space-y-1">
+                          <div className="flex justify-between text-xs text-slate-500">
+                            <span>{row.label}</span>
+                            <span>{row.value}</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-600 rounded-full"
+                              style={{ width: `${Math.min(100, Number(row.value) || 0)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {parsedChat.organogram && (
+            <div>
+              <h3 className="font-semibold text-slate-900 mb-2">Organogram</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Nodes</p>
+                  <ul className="text-sm text-slate-700 space-y-2">
+                    {Array.isArray(parsedChat.organogram.nodes) && parsedChat.organogram.nodes.map((node: any, idx: number) => (
+                      <li key={idx}>{node.label} ({node.group || 'group'})</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Links</p>
+                  <ul className="text-sm text-slate-700 space-y-2">
+                    {Array.isArray(parsedChat.organogram.links) && parsedChat.organogram.links.map((link: any, idx: number) => (
+                      <li key={idx}>{link.source} → {link.target} ({link.relation || 'relation'})</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Diagnoses */}
       {loading ? (
