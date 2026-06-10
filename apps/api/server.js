@@ -1730,6 +1730,8 @@ app.get('/diagnoses', async (req, res) => {
           opportunities: content.opportunities || [],
           recommendations: content.recommendations || [],
           actionPlan: Array.isArray(content.actionPlan) ? content.actionPlan : [],
+          charts: Array.isArray(content.charts) ? content.charts : [],
+          organogram: content.organogram || null,
         },
         approvedBy: diagnosis.reviewedBy ? { name: diagnosis.reviewedBy.name || diagnosis.reviewedBy.email } : undefined,
         createdAt: diagnosis.generatedAt,

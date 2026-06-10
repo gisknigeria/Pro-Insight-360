@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { isClientAdmin } from '@/lib/auth';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface Gap {
@@ -25,11 +27,17 @@ const SEVERITY_CONFIG = {
 };
 
 export default function GapAnalysisPage() {
+  const router = useRouter();
   const [gaps, setGaps] = useState<Gap[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterSeverity, setFilterSeverity] = useState<string>('ALL');
 
   useEffect(() => {
+    if (!isClientAdmin()) {
+      router.replace('/dashboard');
+      return;
+    }
+
     const token = localStorage.getItem('accessToken');
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/gap-analysis`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -37,7 +45,7 @@ export default function GapAnalysisPage() {
       .then((r) => r.json())
       .then(setGaps)
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
   const filtered = filterSeverity === 'ALL' ? gaps : gaps.filter((g) => g.severity === filterSeverity);
 

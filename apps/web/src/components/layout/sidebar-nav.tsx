@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Gap Analysis',
     href: '/gap-analysis',
     icon: '🔍',
-    roles: ['SUPER_ADMIN'],
+    roles: ['CLIENT_ADMIN'],
   },
   {
     label: 'My Forms',

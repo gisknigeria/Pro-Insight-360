@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ScoreCard } from '@/components/diagnosis/score-card';
-import { ConflictsPanel } from '@/components/diagnosis/conflicts-panel';
 import { GapAnalysisPanel } from '@/components/diagnosis/gap-analysis-panel';
+import RadarChart from '@/components/charts/RadarChart';
+import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
 import { isClientAdmin } from '@/lib/auth';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-type Tab = 'scores' | 'conflicts' | 'gaps' | 'responses';
+type Tab = 'analysis' | 'gaps' | 'responses';
 
 function useApi<T>(url: string | null) {
   const [data, setData] = useState<T | null>(null);
@@ -59,7 +60,7 @@ export default function EvaluationDiagnosisPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const [activeTab, setActiveTab] = useState<Tab>('scores');
+  const [activeTab, setActiveTab] = useState<Tab>('analysis');
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState('');
   const [allResponses, setAllResponses] = useState<any[] | null>(null);
@@ -84,11 +85,69 @@ export default function EvaluationDiagnosisPage() {
   }, [router]);
 
   const shouldFetch = hasAccess === true;
-  const scoresApi = useApi<any[]>(shouldFetch ? `/diagnosis/evaluations/${id}/scores` : null);
-  const conflictsApi = useApi<any[]>(shouldFetch ? `/diagnosis/evaluations/${id}/conflicts` : null);
   const gapsApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/gaps` : null);
   const responsesApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/responses` : null);
   const diagnosisApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/diagnosis` : null);
+
+  const diagnosis = diagnosisApi.data?.diagnosis ?? null;
+  const chartData = Array.isArray(diagnosis?.sections?.charts) ? diagnosis.sections.charts : [];
+  const orgRows = useMemo(() => {
+    const organogram = diagnosis?.sections?.organogram;
+    if (!organogram || !Array.isArray(organogram.nodes) || !Array.isArray(organogram.links)) {
+      return [];
+    }
+
+    const map = new Map<string, { name: string; title: string; reportsTo: string }>();
+    organogram.nodes.forEach((node: any) => {
+      const name = String(node.label || node.id || 'Unknown');
+      map.set(name, {
+        name,
+        title: String(node.group || 'Team'),
+        reportsTo: '',
+      });
+    });
+
+    organogram.links.forEach((link: any) => {
+      const sourceName = String(link.source || link.sourceLabel || link.sourceId || '');
+      const targetName = String(link.target || link.targetLabel || link.targetId || '');
+      const source = map.get(sourceName);
+      if (source) {
+        source.reportsTo = targetName;
+      }
+    });
+
+    return Array.from(map.values());
+  }, [diagnosis?.sections?.organogram]);
+
+  const readinessRadarData = useMemo(() => {
+    if (!chartData || chartData.length === 0) return null;
+    const readinessChart = chartData.find((chart: any) => /readiness/i.test(String(chart.title || '')));
+    if (readinessChart && Array.isArray(readinessChart.data)) {
+      return readinessChart.data
+        .filter((item: any) => item != null && (typeof item.value === 'number' || !Number.isNaN(Number(item.value))))
+        .map((item: any) => ({
+          category: String(item.label || item.name || 'Metric'),
+          score: Number(item.value ?? item.count ?? 0),
+          fullMark: 100,
+        }));
+    }
+
+    if (!diagnosis) return null;
+    const counts = {
+      strengths: Array.isArray(diagnosis.sections?.strengths) ? diagnosis.sections.strengths.length : 0,
+      weaknesses: Array.isArray(diagnosis.sections?.weaknesses) ? diagnosis.sections.weaknesses.length : 0,
+      opportunities: Array.isArray(diagnosis.sections?.opportunities) ? diagnosis.sections.opportunities.length : 0,
+      recommendations: Array.isArray(diagnosis.sections?.recommendations) ? diagnosis.sections.recommendations.length : 0,
+      actionPlan: Array.isArray(diagnosis.sections?.actionPlan) ? diagnosis.sections.actionPlan.length : 0,
+    };
+    return [
+      { category: 'Strengths', score: Math.min(100, counts.strengths * 15 + 20), fullMark: 100 },
+      { category: 'Weaknesses', score: Math.max(24, 100 - counts.weaknesses * 15), fullMark: 100 },
+      { category: 'Opportunities', score: Math.min(100, counts.opportunities * 15 + 20), fullMark: 100 },
+      { category: 'Recommendations', score: Math.min(100, counts.recommendations * 12 + 20), fullMark: 100 },
+      { category: 'Action Plan', score: Math.min(100, counts.actionPlan * 15 + 20), fullMark: 100 },
+    ];
+  }, [chartData, diagnosis]);
 
   if (hasAccess === null) {
     return (
@@ -98,16 +157,11 @@ export default function EvaluationDiagnosisPage() {
     );
   }
 
-  const scores = scoresApi.data;
-  const conflicts = conflictsApi.data;
   const gaps = gapsApi.data as any[] | null;
   const responses = responsesApi.data;
-  const diagnosis = diagnosisApi.data?.diagnosis ?? null;
-  const scoresLoading = scoresApi.loading;
-  const conflictsLoading = conflictsApi.loading;
   const gapsLoading = gapsApi.loading;
   const responsesLoading = responsesApi.loading;
-  const pageError = scoresApi.error || conflictsApi.error || gapsApi.error || responsesApi.error;
+  const pageError = gapsApi.error || responsesApi.error || diagnosisApi.error;
 
   function buildGapSummary(gapsData: any[] | null) {
     if (!gapsData) return null;
@@ -153,33 +207,15 @@ export default function EvaluationDiagnosisPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnosis/evaluations/${id}/detect-conflicts`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      scoresApi.refresh();
-      conflictsApi.refresh();
       gapsApi.refresh();
       responsesApi.refresh();
+      diagnosisApi.refresh();
       setRunMsg('Diagnosis complete. Results refreshed.');
     } catch {
       setRunMsg('Diagnosis failed. Please try again.');
     } finally {
       setRunning(false);
     }
-  }
-
-  async function resolveConflict(conflictId: string, note: string) {
-    const token = localStorage.getItem('accessToken');
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnosis/conflicts/${conflictId}/resolve`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ resolutionNote: note }),
-    });
   }
 
   async function loadAllResponses() {
@@ -242,20 +278,10 @@ export default function EvaluationDiagnosisPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'scores', label: 'Readiness Scores', icon: '📊' },
-    { id: 'conflicts', label: 'Conflicts', icon: '⚠️' },
-    { id: 'gaps', label: 'Gap Analysis', icon: '🔍' },
+    { id: 'analysis', label: 'Analysis', icon: '🧠' },
+    { id: 'gaps', label: 'Gap', icon: '🔍' },
     { id: 'responses', label: 'Responses', icon: '💬' },
   ];
-
-  // Extract key scores from the scores array
-  const digitalScore = scores?.find((s: any) => s.scoreType === 'DIGITAL_READINESS' && !s.category);
-  const gisScore = scores?.find((s: any) => s.scoreType === 'GIS_READINESS');
-  const infraScore = scores?.find((s: any) => s.scoreType === 'INFRASTRUCTURE');
-  const dimensionScores = scores?.filter((s: any) => s.scoreType === 'DIMENSION') ?? [];
-  const categoryScores = scores?.filter((s: any) => s.scoreType === 'CATEGORY') ?? [];
-
-  const unresolvedConflicts = conflicts?.filter((c: any) => !c.isResolved).length ?? 0;
 
 
   return (
@@ -265,7 +291,7 @@ export default function EvaluationDiagnosisPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Diagnosis Engine</h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Aggregated scores, conflict detection, and gap analysis for this evaluation.
+            Saved analysis, gap review, and response insights for this evaluation.
           </p>
         </div>
         <button
@@ -293,61 +319,10 @@ export default function EvaluationDiagnosisPage() {
 
       <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
         <p className="font-medium text-slate-900">Diagnosis summary</p>
-        <p className="mt-1">Run the diagnosis to refresh scores, check conflicts, and update gap analysis for this evaluation.</p>
+        <p className="mt-1">Run the diagnosis to refresh the latest gap analysis and saved evaluation diagnosis.</p>
       </div>
 
-      {diagnosis && (
-        <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-slate-700">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Latest evaluation diagnosis</p>
-              <p className="mt-1 text-sm text-slate-600">This report is attached to the selected evaluation and is available to the organisation.</p>
-            </div>
-            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${diagnosis.isAiGenerated ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-              {diagnosis.isAiGenerated ? 'AI-generated' : 'System diagnosis'}
-            </span>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
-              <p className="text-sm font-semibold text-slate-900">Executive summary</p>
-              <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{diagnosis.sections?.executiveSummary || 'No summary available.'}</p>
-            </div>
-            <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
-              <p className="text-sm font-semibold text-slate-900">Status</p>
-              <p className="mt-2 text-sm text-slate-700">{diagnosis.status}</p>
-              <p className="mt-2 text-xs text-slate-500">Updated {new Date(diagnosis.generatedAt).toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick stats */}
-      {/* {digitalScore && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <ScoreCard
-            label="Digital Readiness"
-            score={Number(digitalScore.score)}
-            band={digitalScore.band}
-            icon="💻"
-          />
-          {gisScore && (
-            <ScoreCard
-              label="GIS Readiness"
-              score={Number(gisScore.score)}
-              band={gisScore.band}
-              icon="🗺️"
-            />
-          )}
-          {infraScore && (
-            <ScoreCard
-              label="Infrastructure"
-              score={Number(infraScore.score)}
-              band={infraScore.band}
-              icon="🏗️"
-            />
-          )}
-        </div>
-      )} */}
+    
 
       {/* Tabs */}
       <div className="border-b border-slate-200 mb-6">
@@ -365,11 +340,6 @@ export default function EvaluationDiagnosisPage() {
             >
               <span aria-hidden="true">{tab.icon}</span>
               {tab.label}
-              {tab.id === 'conflicts' && unresolvedConflicts > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">
-                  {unresolvedConflicts}
-                </span>
-              )}
             </button>
           ))}
         </nav>
@@ -377,69 +347,142 @@ export default function EvaluationDiagnosisPage() {
 
       {/* Tab content */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        {activeTab === 'scores' && (
+        {activeTab === 'analysis' && (
           <div>
-            <h2 className="text-base font-semibold text-slate-900 mb-4">Readiness Scores</h2>
-            {scoresLoading ? (
-              <p className="text-slate-400 text-sm">Loading scores…</p>
-            ) : !scores || scores.length === 0 ? (
+            <h2 className="text-base font-semibold text-slate-900 mb-4">Saved Analysis</h2>
+            {!diagnosis ? (
               <EmptyState
-                icon="📊"
-                title="No scores yet"
-                description="Run the diagnosis to compute readiness scores for this evaluation."
+                icon="🧠"
+                title="No saved analysis yet"
+                description="Publish or generate a diagnosis to show the saved analysis content here."
                 actionLabel="Run Diagnosis"
                 onAction={runDiagnosis}
               />
             ) : (
               <div className="space-y-6">
-                {/* Dimension scores */}
-                {dimensionScores.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-600 mb-3">Evaluation Dimensions</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {dimensionScores.map((s: any) => (
-                        <ScoreCard
-                          key={s.id}
-                          label={s.category}
-                          score={Number(s.score)}
-                          band={s.band}
-                        />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-slate-900">Executive summary</p>
+                    <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{diagnosis.sections?.executiveSummary || 'No summary available.'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-slate-900">Diagnosis status</p>
+                    <p className="mt-2 text-sm text-slate-700">{diagnosis.status}</p>
+                    <p className="mt-2 text-xs text-slate-500">Updated {diagnosis.generatedAt ? new Date(diagnosis.generatedAt).toLocaleString() : 'Unknown'}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-slate-900">Strengths</p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                      {Array.isArray(diagnosis.sections?.strengths) && diagnosis.sections.strengths.length > 0 ? (
+                        diagnosis.sections.strengths.map((item: string, idx: number) => (
+                          <li key={idx} className="flex gap-2"><span className="text-green-600">✓</span>{item}</li>
+                        ))
+                      ) : (
+                        <li className="text-slate-500">No strengths provided.</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-slate-900">Weaknesses</p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                      {Array.isArray(diagnosis.sections?.weaknesses) && diagnosis.sections.weaknesses.length > 0 ? (
+                        diagnosis.sections.weaknesses.map((item: string, idx: number) => (
+                          <li key={idx} className="flex gap-2"><span className="text-orange-600">⚠️</span>{item}</li>
+                        ))
+                      ) : (
+                        <li className="text-slate-500">No weaknesses provided.</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-slate-900">Opportunities</p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                      {Array.isArray(diagnosis.sections?.opportunities) && diagnosis.sections.opportunities.length > 0 ? (
+                        diagnosis.sections.opportunities.map((item: string, idx: number) => (
+                          <li key={idx} className="flex gap-2"><span className="text-blue-600">→</span>{item}</li>
+                        ))
+                      ) : (
+                        <li className="text-slate-500">No opportunities provided.</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-slate-900">Recommendations</p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                      {Array.isArray(diagnosis.sections?.recommendations) && diagnosis.sections.recommendations.length > 0 ? (
+                        diagnosis.sections.recommendations.map((item: string, idx: number) => (
+                          <li key={idx} className="flex gap-2"><span className="text-slate-500">•</span>{item}</li>
+                        ))
+                      ) : (
+                        <li className="text-slate-500">No recommendations provided.</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+
+                {Array.isArray(diagnosis.sections?.actionPlan) && diagnosis.sections.actionPlan.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Action plan</h3>
+                    <div className="space-y-4">
+                      {diagnosis.sections.actionPlan.map((item: any, idx: number) => (
+                        <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-sm font-semibold text-slate-900">{item.what}</p>
+                          <p className="text-sm text-slate-600 mt-2">Who: {item.who || 'N/A'} • When: {item.when || 'TBD'}</p>
+                          <p className="text-sm text-slate-700 mt-2">How: {item.how || 'No details provided.'}</p>
+                        </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Category scores */}
-                {/* {categoryScores.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-600 mb-3">Digital Readiness Categories</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {categoryScores.map((s: any) => (
-                        <ScoreCard
-                          key={s.id}
-                          label={s.category}
-                          score={Number(s.score)}
-                          band={s.band}
-                        />
+                {readinessRadarData && readinessRadarData.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <RadarChart data={readinessRadarData} title="Readiness overview" height={320} showLegend={false} />
+                  </div>
+                )}
+
+                {chartData.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-slate-900">Supporting charts</h3>
+                      <p className="text-sm text-slate-600">Visual interpretations saved with the diagnosis.</p>
+                    </div>
+                    <div className="space-y-4">
+                      {chartData.map((chart: any, chartIndex: number) => (
+                        <div key={chartIndex} className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <p className="text-sm font-semibold text-slate-900 mb-3">{chart.title || 'Chart'}</p>
+                          <div className="h-60">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={Array.isArray(chart.data) ? chart.data.map((row: any) => ({ name: String(row.label || row.name || ''), value: Number(row.value ?? row.count ?? 0) })) : []}>
+                                <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+                                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={50} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <Tooltip cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
+                                <Bar dataKey="value" fill="#2563eb" radius={[8, 8, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
-                )} */}
-              </div>
-            )}
-          </div>
-        )}
+                )}
 
-        {activeTab === 'conflicts' && (
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 mb-4">Response Conflicts</h2>
-            {conflictsLoading ? (
-              <p className="text-slate-400 text-sm">Loading conflicts…</p>
-            ) : (
-              <ConflictsPanel
-                conflicts={conflicts ?? []}
-                onResolve={resolveConflict}
-              />
+                {orgRows.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 overflow-x-auto">
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-slate-900">Organogram</h3>
+                      <p className="text-sm text-slate-600">Saved organisational structure from the diagnosis report.</p>
+                    </div>
+                    <div className="min-w-[1000px]">
+                      <OrgChart rows={orgRows as any} />
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
