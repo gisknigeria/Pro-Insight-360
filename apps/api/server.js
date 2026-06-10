@@ -1866,6 +1866,7 @@ app.get('/published-analyses', authenticate, async (req, res) => {
           publishedBy: metadata.publishedByEmail || undefined,
           recipientId: metadata.recipientId,
           recipientName: metadata.recipientName || metadata.recipientEmail,
+          evaluationId: metadata.evaluationId || null,
           summary: metadata.summary || '',
           analysis: metadata.analysis || null,
         };

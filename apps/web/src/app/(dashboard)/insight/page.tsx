@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch } from '@/lib/api';
@@ -79,6 +80,7 @@ interface PublishedAnalysis {
   publishedBy?: string;
   recipientId: string;
   recipientName?: string;
+  evaluationId?: string | null;
   summary: string;
   analysis: {
     executiveSummary?: string;
@@ -310,15 +312,23 @@ export default function InsightPage() {
                 ) : (
                   <div className="grid gap-4">
                     {companyEvaluations.map((evaluation) => (
-                      <div key={evaluation.id} className="rounded-3xl border border-slate-200 p-4">
+                      <div key={evaluation.id} className="rounded-3xl border border-slate-200 p-4 hover:border-blue-300 transition-colors">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <h3 className="font-semibold text-slate-900">{evaluation.title}</h3>
+                            <Link href={`/evaluations/${evaluation.id}`} className="font-semibold text-slate-900 hover:text-blue-600 transition-colors text-sm block">
+                              {evaluation.title}
+                            </Link>
                             <p className="text-sm text-slate-500">Started {evaluation.startDate ? new Date(evaluation.startDate).toLocaleDateString() : new Date(evaluation.createdAt).toLocaleDateString()}</p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <Pill label={evaluation.status.replace('_', ' ')} />
                             <Pill label={`${evaluation._count.forms} form${evaluation._count.forms !== 1 ? 's' : ''}`} />
+                            <Link
+                              href={`/evaluations/${evaluation.id}/diagnosis`}
+                              className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-blue-50 transition"
+                            >
+                              View diagnosis
+                            </Link>
                           </div>
                         </div>
                       </div>
@@ -392,13 +402,23 @@ export default function InsightPage() {
                 ) : (
                   <div className="space-y-4">
                     {topPublishedAnalyses.map((item) => (
-                      <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                      <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4 hover:border-blue-300 transition-colors">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <h3 className="font-semibold text-slate-900">{item.summary ? item.summary.slice(0, 80) : 'Published insight'}</h3>
+                            <h3 className="font-semibold text-slate-900 text-sm">{item.summary ? item.summary.slice(0, 80) : 'Published insight'}</h3>
                             <p className="text-xs text-slate-500">Published {new Date(item.publishedAt).toLocaleDateString()} by {item.publishedBy || 'consultant'}</p>
                           </div>
-                          <Pill label={item.recipientName ? `For ${item.recipientName}` : 'Shared insight'} />
+                          <div className="flex items-center gap-2">
+                            {item.evaluationId ? (
+                              <Link
+                                href={`/evaluations/${item.evaluationId}/diagnosis`}
+                                className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-blue-50 transition"
+                              >
+                                View evaluation report
+                              </Link>
+                            ) : null}
+                            <Pill label={item.recipientName ? `For ${item.recipientName}` : 'Shared insight'} />
+                          </div>
                         </div>
                         <p className="mt-3 text-sm text-slate-700 line-clamp-3">
                           {item.analysis?.executiveSummary || item.summary || 'No summary available.'}
