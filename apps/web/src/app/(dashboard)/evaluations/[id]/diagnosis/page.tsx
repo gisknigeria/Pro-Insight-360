@@ -8,7 +8,8 @@ import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
 import { isClientAdmin } from '@/lib/auth';
 import { apiFetch } from '@/lib/api';
-import { useApi } from '@/lib/useApi';
+import { evaluationApiEndpoints } from '@/lib/apiEndpoints';
+import { useEvaluationDiagnosis } from '@/lib/useEvaluationDiagnosis';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type Tab = 'analysis' | 'gaps' | 'responses';
@@ -42,9 +43,7 @@ export default function EvaluationDiagnosisPage() {
   }, [router]);
 
   const shouldFetch = hasAccess === true;
-  const gapsApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/gaps` : null);
-  const responsesApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/responses` : null);
-  const diagnosisApi = useApi<any>(shouldFetch ? `/diagnosis/evaluations/${id}/diagnosis` : null);
+  const { gapsApi, responsesApi, diagnosisApi } = useEvaluationDiagnosis(id, shouldFetch);
 
   const diagnosis = diagnosisApi.data?.diagnosis ?? null;
   const chartData = Array.isArray(diagnosis?.sections?.charts) ? diagnosis.sections.charts : [];
@@ -160,7 +159,7 @@ export default function EvaluationDiagnosisPage() {
     setRunMsg('');
 
     try {
-      await apiFetch<void>(`/diagnosis/evaluations/${id}/score`, {
+      await apiFetch<void>(evaluationApiEndpoints.score(id), {
         method: 'POST',
       });
       gapsApi.refresh();
@@ -184,7 +183,7 @@ export default function EvaluationDiagnosisPage() {
     setCopyMessage('');
 
     try {
-      const payload = await apiFetch<{ responses?: any[] }>(`/diagnosis/evaluations/${id}/responses/full`);
+      const payload = await apiFetch<{ responses?: any[] }>(evaluationApiEndpoints.responsesFull(id));
       const responsesPayload = payload.responses || [];
       setAllResponses(responsesPayload);
       setShowAllResponses(true);
