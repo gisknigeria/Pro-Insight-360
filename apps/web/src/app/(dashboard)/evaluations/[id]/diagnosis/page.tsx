@@ -7,54 +7,11 @@ import RadarChart from '@/components/charts/RadarChart';
 import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
 import { isClientAdmin } from '@/lib/auth';
+import { apiFetch } from '@/lib/api';
+import { useApi } from '@/lib/useApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type Tab = 'analysis' | 'gaps' | 'responses';
-
-function useApi<T>(url: string | null) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    if (!url) {
-      return;
-    }
-
-    const token = localStorage.getItem('accessToken');
-    setLoading(true);
-    setError('');
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (res) => {
-        const payload = await res.json().catch(() => null);
-        if (!res.ok) {
-          const message = typeof payload?.message === 'string'
-            ? payload.message
-            : 'Failed to load data.';
-          setError(message);
-          setData(null);
-          return;
-        }
-        setData(payload as T);
-      })
-      .catch(() => {
-        setError('Failed to load data.');
-        setData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [url, refreshKey]);
-
-  return {
-    data,
-    loading,
-    error,
-    refresh: () => setRefreshKey((current) => current + 1),
-  };
-}
 
 export default function EvaluationDiagnosisPage() {
   const params = useParams();
@@ -201,11 +158,10 @@ export default function EvaluationDiagnosisPage() {
   async function runDiagnosis() {
     setRunning(true);
     setRunMsg('');
-    const token = localStorage.getItem('accessToken');
+
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnosis/evaluations/${id}/score`, {
+      await apiFetch<void>(`/diagnosis/evaluations/${id}/score`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
       });
       gapsApi.refresh();
       responsesApi.refresh();
@@ -226,17 +182,9 @@ export default function EvaluationDiagnosisPage() {
 
     setAllResponsesLoading(true);
     setCopyMessage('');
-    const token = localStorage.getItem('accessToken');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnosis/evaluations/${id}/responses/full`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        setAllResponses([]);
-        return [];
-      }
-      const payload = await response.json();
+      const payload = await apiFetch<{ responses?: any[] }>(`/diagnosis/evaluations/${id}/responses/full`);
       const responsesPayload = payload.responses || [];
       setAllResponses(responsesPayload);
       setShowAllResponses(true);
