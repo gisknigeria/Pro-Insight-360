@@ -198,18 +198,3 @@ export default function OrganisationsPage() {
     </div>
   );
 }
-</write_to_file>
-<task_progress>
-- [x] Analyze codebase structure and existing design patterns
-- [x] Redesign globals.css with modern design system, animations, and utilities
-- [x] Redesign root layout with better font loading and meta tags
-- [x] Redesign dashboard layout with premium sidebar and animations
-- [x] Redesign sidebar navigation component
-- [x] Redesign dashboard page with beautiful cards and micro-interactions
-- [x] Redesign login page with modern animated UI
-- [x] Redesign evaluations list page with modern card layouts and micro-interactions
-- [x] Redesign users page with beautiful responsive table
-- [x] Redesign organisations page with modern cards and micro-interactions
-- [ ] Check remaining pages (settings, forms, gap-analysis, organisations/new, etc.)
-</task_progress>
-</write_to_file>
