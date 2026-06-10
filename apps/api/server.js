@@ -1827,7 +1827,7 @@ app.patch('/diagnoses/:id/status', authenticate, roleGuard(['SUPER_ADMIN', 'CONS
       return res.status(400).json({ message: 'Invalid status. Must be APPROVED or REJECTED.' });
     }
 
-    const updateData: any = {
+    const updateData = {
       status,
       reviewedById: req.user.sub,
       reviewedAt: new Date(),
