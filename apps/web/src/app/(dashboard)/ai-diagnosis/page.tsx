@@ -129,7 +129,7 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
         method: 'POST',
         body: JSON.stringify({ recipientId: selectedAdminId, analysis: parsedChat }),
       });
-      setPublishMessage(result.message || 'Analysis published successfully.');
+      setPublishMessage(`${result.message || 'Analysis published successfully.'} Your client admin can review it in Insights.`);
       setPublishError('');
     } catch (error: any) {
       setPublishError(error?.message || 'Unable to publish analysis.');

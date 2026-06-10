@@ -73,6 +73,23 @@ interface GapSummary {
   when: string;
 }
 
+interface PublishedAnalysis {
+  id: string;
+  publishedAt: string;
+  publishedBy?: string;
+  recipientId: string;
+  recipientName?: string;
+  summary: string;
+  analysis: {
+    executiveSummary?: string;
+    strengths?: string[];
+    weaknesses?: string[];
+    opportunities?: string[];
+    recommendations?: string[];
+    actionPlan?: Array<{ who?: string; what?: string; how?: string; when?: string }>;
+  } | null;
+}
+
 function StatCard({ label, value, icon, color = 'blue' }: { label: string; value: string | number; icon: string; color?: string }) {
   const colorClasses: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-600',
@@ -105,6 +122,7 @@ export default function InsightPage() {
   const [responses, setResponses] = useState<ResponseItem[]>([]);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [gapSummaries, setGapSummaries] = useState<GapSummary[]>([]);
+  const [publishedAnalyses, setPublishedAnalyses] = useState<PublishedAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -128,12 +146,13 @@ export default function InsightPage() {
       }
 
       try {
-        const [user, allEvaluations, allResponses, allDiagnoses, allGaps] = await Promise.all([
+        const [user, allEvaluations, allResponses, allDiagnoses, allGaps, allPublishedAnalyses] = await Promise.all([
           apiFetch<UserSummary>(`/users/${userId}`),
           apiFetch<Evaluation[]>('/evaluations'),
           apiFetch<ResponseItem[]>('/responses'),
           apiFetch<Diagnosis[]>('/diagnoses'),
           apiFetch<GapSummary[]>('/gap-analysis'),
+          apiFetch<PublishedAnalysis[]>('/published-analyses'),
         ]);
 
         setUserOrg(user.organisation);
@@ -141,6 +160,7 @@ export default function InsightPage() {
         setResponses(allResponses);
         setDiagnoses(allDiagnoses);
         setGapSummaries(allGaps);
+        setPublishedAnalyses(allPublishedAnalyses);
       } catch (fetchError: any) {
         setError(fetchError?.message || 'Unable to load insights at this time.');
       } finally {
@@ -209,6 +229,7 @@ export default function InsightPage() {
 
   const lowCompletionForms = formSummaries.filter((form) => form.averageCompletion < 70).slice(0, 4);
   const topDiagnoses = companyDiagnoses.slice(0, 3);
+  const topPublishedAnalyses = publishedAnalyses.slice(0, 3);
 
   if (loading) {
     return (
@@ -352,6 +373,36 @@ export default function InsightPage() {
                           <Pill label={diagnosis.isAiGenerated ? 'AI insight' : diagnosis.status} />
                         </div>
                         <p className="mt-3 text-sm text-slate-700 line-clamp-3">{diagnosis.sections.executiveSummary || 'Summary not available.'}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-4 mb-5">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900">Published reports</h2>
+                    <p className="text-sm text-slate-500">Reports and insights shared with you from the diagnosis workflow.</p>
+                  </div>
+                  <span className="text-sm font-medium text-slate-500">{publishedAnalyses.length} delivered</span>
+                </div>
+                {publishedAnalyses.length === 0 ? (
+                  <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No published insights have been shared with your account yet.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {topPublishedAnalyses.map((item) => (
+                      <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h3 className="font-semibold text-slate-900">{item.summary ? item.summary.slice(0, 80) : 'Published insight'}</h3>
+                            <p className="text-xs text-slate-500">Published {new Date(item.publishedAt).toLocaleDateString()} by {item.publishedBy || 'consultant'}</p>
+                          </div>
+                          <Pill label={item.recipientName ? `For ${item.recipientName}` : 'Shared insight'} />
+                        </div>
+                        <p className="mt-3 text-sm text-slate-700 line-clamp-3">
+                          {item.analysis?.executiveSummary || item.summary || 'No summary available.'}
+                        </p>
                       </div>
                     ))}
                   </div>

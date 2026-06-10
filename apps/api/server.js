@@ -1768,7 +1768,11 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
         metadata: {
           recipientId,
           recipientEmail: recipient.email,
+          recipientName: recipient.name,
+          publishedById: req.user.sub,
+          publishedByEmail: req.user.email,
           summary: String(analysis.executiveSummary || ''),
+          analysis,
           publishedAt: new Date().toISOString(),
         },
       },
@@ -1778,6 +1782,35 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
   } catch (error) {
     console.error('Publish diagnosis failed:', error);
     res.status(500).json({ message: 'Unable to publish analysis.' });
+  }
+});
+
+app.get('/published-analyses', authenticate, async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      where: { action: 'DIAGNOSIS_PUBLISHED' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const publishedAnalyses = logs
+      .map((log) => {
+        const metadata = log.metadata && typeof log.metadata === 'object' ? log.metadata : {};
+        return {
+          id: log.id,
+          publishedAt: log.createdAt,
+          publishedBy: metadata.publishedByEmail || undefined,
+          recipientId: metadata.recipientId,
+          recipientName: metadata.recipientName || metadata.recipientEmail,
+          summary: metadata.summary || '',
+          analysis: metadata.analysis || null,
+        };
+      })
+      .filter((item) => item.recipientId === req.user.sub);
+
+    res.json(publishedAnalyses);
+  } catch (error) {
+    console.error('Fetch published analyses failed:', error);
+    res.status(500).json({ message: 'Unable to fetch published analyses.' });
   }
 });
 
