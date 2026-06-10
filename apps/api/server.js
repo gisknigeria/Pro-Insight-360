@@ -1745,7 +1745,7 @@ app.get('/diagnoses', async (req, res) => {
 
 app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
-    const { recipientId, analysis } = req.body;
+    const { recipientId, evaluationId, analysis } = req.body;
     if (!recipientId || !analysis || typeof analysis !== 'object') {
       return res.status(400).json({ message: 'recipientId and analysis are required.' });
     }
@@ -1759,16 +1759,50 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
       return res.status(400).json({ message: 'Selected recipient must be a client admin.' });
     }
 
+    let diagnosisId = null;
+    if (evaluationId) {
+      const evaluation = await prisma.evaluation.findUnique({ where: { id: evaluationId } });
+      if (!evaluation) {
+        return res.status(404).json({ message: 'Evaluation not found.' });
+      }
+
+      const existingDiagnosis = await prisma.diagnosis.findFirst({ where: { evaluationId } });
+      if (existingDiagnosis) {
+        const updated = await prisma.diagnosis.update({
+          where: { id: existingDiagnosis.id },
+          data: {
+            content: analysis,
+            status: 'PENDING_REVIEW',
+            isAiGenerated: true,
+            generatedAt: new Date(),
+            version: existingDiagnosis.version + 1,
+          },
+        });
+        diagnosisId = updated.id;
+      } else {
+        const created = await prisma.diagnosis.create({
+          data: {
+            evaluationId,
+            content: analysis,
+            status: 'PENDING_REVIEW',
+            isAiGenerated: true,
+          },
+        });
+        diagnosisId = created.id;
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
         userId: req.user.sub,
         action: 'DIAGNOSIS_PUBLISHED',
         resourceType: 'Diagnosis',
-        resourceId: null,
+        resourceId: diagnosisId,
         metadata: {
           recipientId,
           recipientEmail: recipient.email,
           recipientName: recipient.name,
+          evaluationId: evaluationId || null,
           publishedById: req.user.sub,
           publishedByEmail: req.user.email,
           summary: String(analysis.executiveSummary || ''),
@@ -1778,10 +1812,41 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
       },
     });
 
-    res.json({ message: `Analysis published to ${recipient.name || recipient.email}.` });
+    res.json({ message: `Analysis published to ${recipient.name || recipient.email}.`, diagnosisId });
   } catch (error) {
     console.error('Publish diagnosis failed:', error);
     res.status(500).json({ message: 'Unable to publish analysis.' });
+  }
+});
+
+app.get('/diagnosis/evaluations/:id/diagnosis', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const diagnosis = await prisma.diagnosis.findFirst({
+      where: { evaluationId: id },
+      include: { evaluation: { select: { id: true, title: true } } },
+      orderBy: { generatedAt: 'desc' },
+    });
+
+    if (!diagnosis) {
+      return res.json({ diagnosis: null });
+    }
+
+    res.json({
+      diagnosis: {
+        id: diagnosis.id,
+        evaluation: diagnosis.evaluation,
+        status: diagnosis.status,
+        isAiGenerated: diagnosis.isAiGenerated,
+        sections: diagnosis.content || {},
+        reviewedById: diagnosis.reviewedById,
+        generatedAt: diagnosis.generatedAt,
+        version: diagnosis.version,
+      },
+    });
+  } catch (error) {
+    console.error('Fetch diagnosis by evaluation failed:', error);
+    res.status(500).json({ message: 'Unable to fetch diagnosis for evaluation.' });
   }
 });
 

@@ -50,24 +50,24 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-100">
       <div className="lg:flex">
-        <div
-          className={`fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-200 ease-out lg:static lg:translate-x-0 bg-slate-900 ${isNavOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto border-r border-slate-200 bg-slate-950 text-slate-100 shadow-2xl shadow-slate-900/20 transition-transform duration-200 ease-out lg:static lg:translate-x-0 ${isNavOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         >
           <SidebarNav role={user.role} userName={user.email} />
-        </div>
+        </aside>
 
         {isNavOpen && (
           <button
             type="button"
             onClick={() => setIsNavOpen(false)}
-            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm lg:hidden"
             aria-label="Close navigation"
           />
         )}
 
-        <main className="flex-1 min-h-screen overflow-y-auto lg:pl-64">
+        <main className="flex-1 min-h-screen overflow-y-auto lg:pl-72">
           <div className="border-b border-slate-200 bg-white/95 lg:hidden">
             <div className="flex items-center justify-between max-w-7xl mx-auto px-4 py-3 sm:px-6">
               <button

@@ -102,22 +102,29 @@ export function SidebarNav({ role, userName }: SidebarNavProps) {
   return (
     <nav
       aria-label="Main navigation"
-      className="flex flex-col h-full bg-slate-900 text-white w-64 shrink-0"
+      className="flex flex-col h-full bg-slate-950 text-slate-100 w-72 shrink-0"
     >
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-slate-700">
-        <p className="font-bold text-white text-base">Pro-Insight 360</p>
-        <p className="text-slate-400 text-xs mt-0.5">Evaluate. Diagnose. Transform.</p>
+      <div className="px-6 py-6 border-b border-slate-800">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-white text-lg">Pro-Insight 360</p>
+            <p className="text-slate-400 text-xs mt-1">Evaluate. Diagnose. Transform.</p>
+          </div>
+          <span className="inline-flex items-center rounded-full bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-200 ring-1 ring-blue-500/20">
+            Live
+          </span>
+        </div>
       </div>
 
       {/* User info */}
-      <div className="px-6 py-4 border-b border-slate-700">
-        <p className="text-sm font-medium text-white truncate">{userName}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{roleLabels[role]}</p>
+      <div className="px-6 py-5 border-b border-slate-800">
+        <p className="text-sm font-semibold text-white truncate">{userName}</p>
+        <p className="text-xs text-slate-500 mt-1">{roleLabels[role]}</p>
       </div>
 
       {/* Nav items */}
-      <ul className="flex-1 overflow-y-auto py-3 space-y-0.5 px-3" role="list">
+      <ul className="flex-1 overflow-y-auto py-4 space-y-1 px-3" role="list">
         {visibleItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + '/');
@@ -126,14 +133,18 @@ export function SidebarNav({ role, userName }: SidebarNavProps) {
               <Link
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`group flex items-center gap-3 w-full rounded-3xl px-4 py-3 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-slate-800 text-white shadow-sm shadow-slate-900/20 ring-1 ring-blue-500/30'
+                    : 'text-slate-300 hover:bg-slate-900 hover:text-white'
                 }`}
               >
-                {/* Icon always paired with text label (Requirement 25.12) */}
-                <span aria-hidden="true" className="text-base w-5 text-center">
+                <span
+                  aria-hidden="true"
+                  className={`text-base w-5 text-center transition-colors duration-200 ${
+                    isActive ? 'text-blue-300' : 'text-slate-400 group-hover:text-blue-300'
+                  }`}
+                >
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
@@ -144,13 +155,13 @@ export function SidebarNav({ role, userName }: SidebarNavProps) {
       </ul>
 
       {/* Sign out */}
-      <div className="px-3 py-4 border-t border-slate-700">
+      <div className="px-6 py-5 border-t border-slate-800">
         <button
           onClick={() => {
             localStorage.removeItem('accessToken');
             window.location.href = '/login';
           }}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          className="flex items-center gap-3 w-full rounded-3xl bg-slate-900/80 px-4 py-3 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
         >
           <span aria-hidden="true" className="text-base w-5 text-center">
             🚪

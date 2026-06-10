@@ -64,11 +64,13 @@ export default function EvaluationDiagnosisPage() {
   const conflictsApi = useApi<any[]>(`/diagnosis/evaluations/${id}/conflicts`);
   const gapsApi = useApi<any>(`/diagnosis/evaluations/${id}/gaps`);
   const responsesApi = useApi<any>(`/diagnosis/evaluations/${id}/responses`);
+  const diagnosisApi = useApi<any>(`/diagnosis/evaluations/${id}/diagnosis`);
 
   const scores = scoresApi.data;
   const conflicts = conflictsApi.data;
   const gaps = gapsApi.data as any[] | null;
   const responses = responsesApi.data;
+  const diagnosis = diagnosisApi.data?.diagnosis ?? null;
   const scoresLoading = scoresApi.loading;
   const conflictsLoading = conflictsApi.loading;
   const gapsLoading = gapsApi.loading;
@@ -261,6 +263,31 @@ export default function EvaluationDiagnosisPage() {
         <p className="font-medium text-slate-900">Diagnosis summary</p>
         <p className="mt-1">Run the diagnosis to refresh scores, check conflicts, and update gap analysis for this evaluation.</p>
       </div>
+
+      {diagnosis && (
+        <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Latest evaluation diagnosis</p>
+              <p className="mt-1 text-sm text-slate-600">This report is attached to the selected evaluation and is available to the organisation.</p>
+            </div>
+            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${diagnosis.isAiGenerated ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+              {diagnosis.isAiGenerated ? 'AI-generated' : 'System diagnosis'}
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+              <p className="text-sm font-semibold text-slate-900">Executive summary</p>
+              <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{diagnosis.sections?.executiveSummary || 'No summary available.'}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+              <p className="text-sm font-semibold text-slate-900">Status</p>
+              <p className="mt-2 text-sm text-slate-700">{diagnosis.status}</p>
+              <p className="mt-2 text-xs text-slate-500">Updated {new Date(diagnosis.generatedAt).toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick stats */}
       {digitalScore && (

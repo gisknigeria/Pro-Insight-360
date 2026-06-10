@@ -41,85 +41,81 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+    <main className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(99,102,241,0.14),_transparent_28%),linear-gradient(180deg,#eff6ff_0,#f8fafc_100%)] px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Logo / Brand */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Pro-Insight 360</h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            Evaluate. Diagnose. Transform.
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.32em] text-slate-700 shadow-sm shadow-slate-900/5">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+            Pro-Insight 360
+          </div>
+          <h1 className="mt-6 text-3xl font-semibold text-slate-900 sm:text-4xl">
+            Welcome back.
+          </h1>
+          <p className="mt-3 text-slate-500 text-sm sm:text-base">
+            Sign in to continue managing your organisation’s evaluation and insights.
           </p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-          <h2 className="text-xl font-semibold text-slate-900 mb-1">
+        <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white/95 p-10 shadow-2xl shadow-slate-900/10 backdrop-blur">
+          <h2 className="text-2xl font-semibold text-slate-900 mb-2">
             Sign in to your account
           </h2>
-          <p className="text-slate-500 text-sm mb-6">
+          <p className="text-slate-500 text-sm mb-7">
             Enter your email and password to continue.
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
-            {/* Error message */}
             {error && (
               <div
                 role="alert"
-                className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm"
+                className="mb-5 rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
               >
                 {error}
               </div>
             )}
 
-            {/* Email field */}
-            <div className="mb-4">
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-slate-700 mb-1"
-              >
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@organisation.com"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                aria-describedby="email-hint"
-              />
-              <p id="email-hint" className="mt-1 text-xs text-slate-500">
-                Use the email address your administrator invited you with.
-              </p>
+            <div className="space-y-5">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@organisation.com"
+                  className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  aria-describedby="email-hint"
+                />
+                <p id="email-hint" className="mt-2 text-xs text-slate-500">
+                  Use the email address your administrator invited you with.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
             </div>
 
-            {/* Password field */}
-            <div className="mb-6">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-slate-700 mb-1"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-            </div>
-
-            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="mt-8 w-full rounded-3xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/10 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
               aria-busy={loading}
             >
               {loading ? 'Signing in…' : 'Sign in'}

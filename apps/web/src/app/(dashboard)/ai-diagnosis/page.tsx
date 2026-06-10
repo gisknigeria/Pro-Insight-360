@@ -44,6 +44,8 @@ export default function AIDiagnosisPage() {
   const [parseError, setParseError] = useState('');
   const [clientAdmins, setClientAdmins] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [selectedAdminId, setSelectedAdminId] = useState<string>('');
+  const [evaluations, setEvaluations] = useState<Array<{ id: string; title: string }>>([]);
+  const [selectedEvaluationId, setSelectedEvaluationId] = useState<string>('');
   const [publishLoading, setPublishLoading] = useState(false);
   const [publishMessage, setPublishMessage] = useState('');
   const [publishError, setPublishError] = useState('');
@@ -81,6 +83,15 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
         }
       })
       .catch(() => setClientAdmins([]));
+
+    apiFetch<Array<{ id: string; title: string }>>('/evaluations')
+      .then((items) => {
+        setEvaluations(items);
+        if (items.length > 0) {
+          setSelectedEvaluationId(items[0].id);
+        }
+      })
+      .catch(() => setEvaluations([]));
   }, []);
 
   function extractJsonObject(text: string) {
@@ -122,14 +133,22 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
       setPublishError('Select a client admin to publish this analysis.');
       return;
     }
+    if (!selectedEvaluationId) {
+      setPublishError('Select an evaluation to attach this analysis to.');
+      return;
+    }
 
     setPublishLoading(true);
     try {
       const result = await apiFetch<{ message: string }>('/diagnoses/publish', {
         method: 'POST',
-        body: JSON.stringify({ recipientId: selectedAdminId, analysis: parsedChat }),
+        body: JSON.stringify({
+          recipientId: selectedAdminId,
+          evaluationId: selectedEvaluationId,
+          analysis: parsedChat,
+        }),
       });
-      setPublishMessage(`${result.message || 'Analysis published successfully.'} Your client admin can review it in Insights.`);
+      setPublishMessage(`${result.message || 'Analysis published successfully.'} Your client admin can review it in Insights and it is now linked to the selected evaluation.`);
       setPublishError('');
     } catch (error: any) {
       setPublishError(error?.message || 'Unable to publish analysis.');
@@ -278,6 +297,27 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
                   )}
                 </select>
               </label>
+              <label className="block text-sm text-slate-700 mb-5">
+                Evaluation
+                <select
+                  value={selectedEvaluationId}
+                  onChange={(event) => setSelectedEvaluationId(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  {evaluations.length === 0 ? (
+                    <option value="">No evaluations available</option>
+                  ) : (
+                    evaluations.map((evaluation) => (
+                      <option key={evaluation.id} value={evaluation.id}>
+                        {evaluation.title}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+              <div className="mb-4 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
+                This will attach the published analysis to the selected evaluation and make it visible as the evaluation diagnosis result for your organisation.
+              </div>
               <button
                 type="button"
                 disabled={publishLoading || clientAdmins.length === 0}

@@ -208,14 +208,23 @@ function SetupForm() {
 
 export default function SetupPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+    <main className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.16),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(99,102,241,0.12),_transparent_28%),linear-gradient(180deg,#eff6ff_0,#f8fafc_100%)] px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Pro-Insight 360</h1>
-          <p className="text-slate-500 mt-1 text-sm">Evaluate. Diagnose. Transform.</p>
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.32em] text-slate-700 shadow-sm shadow-slate-900/5">
+            Set up your account
+          </div>
+          <h1 className="mt-6 text-3xl font-semibold text-slate-900 sm:text-4xl">
+            Create a secure access key.
+          </h1>
+          <p className="mt-3 text-slate-500 text-sm sm:text-base">
+            Complete your account setup so you can access organisational insights.
+          </p>
         </div>
         <Suspense fallback={<div className="text-center text-slate-500 text-sm">Loading…</div>}>
-          <SetupForm />
+          <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white/95 p-10 shadow-2xl shadow-slate-900/10 backdrop-blur">
+            <SetupForm />
+          </div>
         </Suspense>
       </div>
     </main>
