@@ -77,16 +77,20 @@ export default function AIDiagnosisPage() {
 }
 Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
 
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+  async function loadDiagnoses() {
+    setLoading(true);
+    try {
+      const data = await apiFetch<Diagnosis[]>('/diagnoses');
+      setDiagnoses(data);
+    } catch (error) {
+      setDiagnoses([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnoses`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then(setDiagnoses)
-      .catch(() => setDiagnoses([]))
-      .finally(() => setLoading(false));
+  useEffect(() => {
+    loadDiagnoses();
 
     apiFetch<{ id: string; name: string; email: string; role: string }[]>('/users')
       .then((users) => {
@@ -242,17 +246,8 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
         body: JSON.stringify({ status, rejectionReason }),
       });
 
-      setDiagnoses((prev) =>
-        prev.map((diagnosis) =>
-          diagnosis.id === result.id
-            ? {
-                ...diagnosis,
-                status: result.status as Diagnosis['status'],
-                approvedBy: result.reviewedBy ? { name: result.reviewedBy.name } : diagnosis.approvedBy,
-              }
-            : diagnosis,
-        ),
-      );
+      const updatedDiagnoses = await apiFetch<Diagnosis[]>('/diagnoses');
+      setDiagnoses(updatedDiagnoses);
       setReviewMessage(`Diagnosis ${status.toLowerCase()} successfully.`);
     } catch (error: any) {
       setReviewError(error?.message || `Unable to ${status.toLowerCase()} diagnosis.`);
@@ -266,6 +261,7 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
   }
 
   function handleRejectDiagnosis(diagnosisId: string) {
+    setReviewError('');
     const reason = window.prompt('Please provide a reason for rejection:');
     if (!reason || !reason.trim()) {
       setReviewError('Rejection reason is required.');
@@ -701,15 +697,23 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
                       {diagnosis.status === 'PENDING_REVIEW' && (
                         <div className="flex gap-2">
                           <button
+                            type="button"
                             className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed"
-                            onClick={() => handleRejectDiagnosis(diagnosis.id)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleRejectDiagnosis(diagnosis.id);
+                            }}
                             disabled={reviewLoadingId === diagnosis.id}
                           >
                             {reviewLoadingId === diagnosis.id ? 'Processing…' : 'Reject'}
                           </button>
                           <button
+                            type="button"
                             className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed"
-                            onClick={() => handleApproveDiagnosis(diagnosis.id)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleApproveDiagnosis(diagnosis.id);
+                            }}
                             disabled={reviewLoadingId === diagnosis.id}
                           >
                             {reviewLoadingId === diagnosis.id ? 'Processing…' : 'Approve'}

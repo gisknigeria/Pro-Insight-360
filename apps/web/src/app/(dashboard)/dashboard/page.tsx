@@ -3,7 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import OrgChart from '@/components/organogram/OrgChart';
+import ConsultantDashboard from '@/components/dashboards/ConsultantDashboard';
+import HODDashboard from '@/components/dashboards/HODDashboard';
+import RespondentDashboard from '@/components/dashboards/RespondentDashboard';
 import { apiFetch } from '@/lib/api';
+import { getUserRole } from '@/lib/auth';
 
 interface Organisation {
   id: string;
@@ -400,10 +404,107 @@ function EmptyDashboard({ message }: { message: string }) {
   );
 }
 
+function SuperAdminDashboard() {
+  const cards = [
+    {
+      title: 'Organisations',
+      description: 'View and manage client organisations, sectors, and evaluation memberships.',
+      href: '/organisations',
+      icon: '🏢',
+    },
+    {
+      title: 'Evaluations',
+      description: 'Track evaluation progress, status, and AI review readiness across clients.',
+      href: '/evaluations',
+      icon: '📋',
+    },
+    {
+      title: 'AI Diagnosis',
+      description: 'Launch or review AI diagnosis workflows and monitor analysis health.',
+      href: '/ai-diagnosis',
+      icon: '🤖',
+    },
+    {
+      title: 'Forms & Templates',
+      description: 'Manage form templates and assessment designs for client rollouts.',
+      href: '/forms',
+      icon: '📝',
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div className="mb-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">Super Admin Dashboard</h1>
+            <p className="text-sm text-muted max-w-2xl mt-1">
+              Central platform overview for managing organisations, evaluations, AI diagnosis workflows, and access controls.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <Link
+            key={card.href}
+            href={card.href}
+            className="group rounded-3xl border border-border bg-surface p-6 transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-2xl text-primary mb-4">
+              {card.icon}
+            </div>
+            <h2 className="text-lg font-semibold text-foreground mb-2">{card.title}</h2>
+            <p className="text-sm text-muted leading-relaxed">{card.description}</p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Quick actions</h2>
+            <p className="text-sm text-muted mt-1">Jump straight into the sections you use most as a platform administrator.</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/organisations"
+            className="rounded-2xl border border-border bg-surface-muted px-4 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-white"
+          >
+            Browse organisations
+          </Link>
+          <Link
+            href="/evaluations"
+            className="rounded-2xl border border-border bg-surface-muted px-4 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-white"
+          >
+            Review evaluations
+          </Link>
+          <Link
+            href="/ai-diagnosis"
+            className="rounded-2xl border border-border bg-surface-muted px-4 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-white"
+          >
+            Open AI diagnosis
+          </Link>
+          <Link
+            href="/forms"
+            className="rounded-2xl border border-border bg-surface-muted px-4 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-white"
+          >
+            Manage forms
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════
    ✨ Main Dashboard Page
    ═══════════════════════════════════════════ */
 export default function DashboardPage() {
+  const [role, setRole] = useState<string | null>(null);
   const [userOrg, setUserOrg] = useState<Organisation | null>(null);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [responses, setResponses] = useState<ResponseItem[]>([]);
@@ -415,6 +516,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setMounted(true);
+    const rawRole = getUserRole();
+    setRole(rawRole?.trim().toUpperCase() ?? null);
 
     async function loadDashboardData() {
       const token = localStorage.getItem('accessToken');
@@ -479,6 +582,31 @@ export default function DashboardPage() {
   const activeEvaluations = companyEvaluations.filter((evaluation) => evaluation.status !== 'ARCHIVED');
   const latestPublished = publishedAnalyses[0] || null;
   const latestPublishedEvaluation = latestPublished ? companyEvaluations.find((evaluation) => evaluation.id === latestPublished.evaluationId) : undefined;
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <p className="text-sm text-muted">Preparing dashboard…</p>
+      </div>
+    );
+  }
+
+  if (role && role !== 'CLIENT_ADMIN') {
+    if (role === 'SUPER_ADMIN') {
+      return <SuperAdminDashboard />;
+    }
+    if (role === 'CONSULTANT') {
+      return <ConsultantDashboard />;
+    }
+    if (role === 'HOD') {
+      return <HODDashboard />;
+    }
+    if (role === 'RESPONDENT') {
+      return <RespondentDashboard />;
+    }
+
+    return <EmptyDashboard message="Your dashboard is being prepared. Please check back shortly." />;
+  }
 
   if (loading) {
     return <DashboardSkeleton />;
