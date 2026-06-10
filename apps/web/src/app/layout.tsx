@@ -6,7 +6,15 @@ export const metadata: Metadata = {
   description:
     'Professional organisational evaluation, diagnosis and solution recommendation platform by GIS Konsult Ltd.',
   manifest: '/manifest.json',
-  themeColor: '#1d4ed8',
+  themeColor: '#4361ee',
+  icons: {
+    icon: '/favicon.ico',
+  },
+  openGraph: {
+    title: 'Pro-Insight 360',
+    description: 'Evaluate. Diagnose. Transform.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -17,11 +25,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
+        {/* ── Font preconnect for performance ── */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1d4ed8" />
+        <meta name="theme-color" content="#4361ee" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
       </head>
       <body className="min-h-full flex flex-col antialiased">
         {children}

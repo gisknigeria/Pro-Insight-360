@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -57,27 +57,79 @@ interface PublishedAnalysis {
   };
 }
 
-function StatCard({ label, value, icon, color = 'blue' }: { label: string; value: string | number; icon: string; color?: 'blue' | 'green' | 'yellow' | 'slate' }) {
-  const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-emerald-50 text-emerald-600',
-    yellow: 'bg-amber-50 text-amber-600',
-    slate: 'bg-slate-100 text-slate-700',
+/* ═══════════════════════════════════════════
+   ✨ Premium StatCard with glow & animation
+   ═══════════════════════════════════════════ */
+function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: string; value: string | number; icon: string; color?: 'blue' | 'green' | 'yellow' | 'slate'; delay?: number }) {
+  const colorConfig: Record<string, { bg: string; text: string; glow: string; ring: string }> = {
+    blue: {
+      bg: 'bg-gradient-to-br from-blue-50 to-blue-100/50 group-hover:from-blue-100 group-hover:to-blue-200/50',
+      text: 'text-blue-600',
+      glow: 'glow-blue',
+      ring: 'ring-blue-500/20',
+    },
+    green: {
+      bg: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 group-hover:from-emerald-100 group-hover:to-emerald-200/50',
+      text: 'text-emerald-600',
+      glow: 'glow-green',
+      ring: 'ring-emerald-500/20',
+    },
+    yellow: {
+      bg: 'bg-gradient-to-br from-amber-50 to-amber-100/50 group-hover:from-amber-100 group-hover:to-amber-200/50',
+      text: 'text-amber-600',
+      glow: 'glow-amber',
+      ring: 'ring-amber-500/20',
+    },
+    slate: {
+      bg: 'bg-gradient-to-br from-slate-50 to-slate-100/50 group-hover:from-slate-100 group-hover:to-slate-200/50',
+      text: 'text-slate-600',
+      glow: '',
+      ring: 'ring-slate-500/20',
+    },
   };
 
+  const cfg = colorConfig[color];
+
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-4 mb-3">
-        <span className="text-sm font-medium text-slate-500">{label}</span>
-        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${colorClasses[color]}`}>{icon}</span>
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 card-hover animate-fade-in-up"
+      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
+    >
+      {/* Decorative gradient overlay */}
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${cfg.bg}`} />
+
+      <div className="relative">
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <span className="text-sm font-semibold text-muted tracking-tight">{label}</span>
+          <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${cfg.bg} ${cfg.text} text-lg shadow-sm ring-1 ${cfg.ring} transition-transform duration-300 group-hover:scale-110 group-hover:${cfg.glow}`}>
+            {icon}
+          </span>
+        </div>
+        <p className="text-3xl font-bold text-foreground tracking-tight">{value}</p>
+
+        {/* Decorative sparkle */}
+        <div className="absolute -bottom-1 -right-1 w-16 h-16 opacity-0 group-hover:opacity-10 transition-opacity duration-500">
+          <svg viewBox="0 0 100 100" fill="currentColor" className="text-primary">
+            <circle cx="50" cy="50" r="50" />
+          </svg>
+        </div>
       </div>
-      <p className="text-3xl font-semibold text-slate-900">{value}</p>
     </div>
   );
 }
 
-function Pill({ label }: { label: string }) {
-  return <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{label}</span>;
+function Pill({ label, color = 'slate' }: { label: string; color?: 'slate' | 'blue' | 'green' | 'amber' }) {
+  const colors: Record<string, string> = {
+    slate: 'bg-slate-100 text-slate-700',
+    blue: 'bg-blue-50 text-blue-700 ring-1 ring-blue-500/20',
+    green: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20',
+    amber: 'bg-amber-50 text-amber-700 ring-1 ring-amber-500/20',
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${colors[color]}`}>
+      {label}
+    </span>
+  );
 }
 
 function buildOrgRows(published: PublishedAnalysis | null) {
@@ -100,44 +152,71 @@ function buildOrgRows(published: PublishedAnalysis | null) {
   return rows;
 }
 
+function StatCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="skeleton h-4 w-24" />
+        <div className="skeleton h-11 w-11 rounded-xl" />
+      </div>
+      <div className="skeleton h-9 w-20" />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   ✨ Latest Published Analysis — Premium Panel
+   ═══════════════════════════════════════════ */
 function LatestPublishedAnalysis({ published, evaluation }: { published: PublishedAnalysis; evaluation?: Evaluation }) {
   const analysis = published.analysis;
   const orgRows = buildOrgRows(published);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+    <div className="space-y-4">
+      {/* Summary card */}
+      <div className="rounded-2xl border border-border bg-gradient-to-r from-primary/5 via-accent/5 to-transparent p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">{published.summary || 'Latest published evaluation'}</p>
-            <p className="text-xs text-slate-500">
-              Published {new Date(published.publishedAt).toLocaleDateString()} by {published.publishedBy || 'Superadmin'}
-            </p>
-            {evaluation ? (
-              <Link href={`/evaluations/${evaluation.id}/diagnosis`} className="text-xs text-blue-600 hover:underline">
-                Open evaluation diagnosis
-              </Link>
-            ) : null}
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-lg shadow-lg shadow-primary/20">
+              📊
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">{published.summary || 'Latest published evaluation'}</p>
+              <p className="text-xs text-muted mt-0.5">
+                Published {new Date(published.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} by {published.publishedBy || 'Superadmin'}
+              </p>
+              {evaluation ? (
+                <Link href={`/evaluations/${evaluation.id}/diagnosis`} className="text-xs font-semibold text-primary hover:text-primary-light mt-1 inline-block transition-colors">
+                  Open evaluation diagnosis →
+                </Link>
+              ) : null}
+            </div>
           </div>
-          <Pill label={published.recipientName ? `For ${published.recipientName}` : 'Shared insight'} />
+          <Pill label={published.recipientName ? `For ${published.recipientName}` : 'Shared insight'} color="blue" />
         </div>
       </div>
 
       {analysis?.executiveSummary ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h3 className="text-sm font-semibold text-slate-900 mb-3">Executive summary</h3>
-          <p className="text-sm text-slate-700 whitespace-pre-wrap">{analysis.executiveSummary}</p>
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            Executive summary
+          </h3>
+          <p className="text-sm text-muted leading-relaxed whitespace-pre-wrap">{analysis.executiveSummary}</p>
         </div>
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-2">
         {analysis?.strengths ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h4 className="text-sm font-semibold text-slate-900 mb-3">Top strengths</h4>
-            <ul className="space-y-2 text-sm text-slate-700">
+          <div className="rounded-2xl border border-green-200/50 bg-gradient-to-br from-green-50/50 to-surface p-5 shadow-sm">
+            <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <span className="text-green-500">✦</span>
+              Top strengths
+            </h4>
+            <ul className="space-y-2 text-sm text-muted">
               {analysis.strengths.map((item, idx) => (
-                <li key={idx} className="flex gap-2">
-                  <span className="text-green-600">•</span>
+                <li key={idx} className="flex gap-2.5 items-start">
+                  <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-green-400" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -145,12 +224,15 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
           </div>
         ) : null}
         {analysis?.weaknesses ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h4 className="text-sm font-semibold text-slate-900 mb-3">Key weaknesses</h4>
-            <ul className="space-y-2 text-sm text-slate-700">
+          <div className="rounded-2xl border border-orange-200/50 bg-gradient-to-br from-orange-50/50 to-surface p-5 shadow-sm">
+            <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <span className="text-orange-500">⚠</span>
+              Key weaknesses
+            </h4>
+            <ul className="space-y-2 text-sm text-muted">
               {analysis.weaknesses.map((item, idx) => (
-                <li key={idx} className="flex gap-2">
-                  <span className="text-orange-600">•</span>
+                <li key={idx} className="flex gap-2.5 items-start">
+                  <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-orange-400" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -160,12 +242,15 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       </div>
 
       {analysis?.opportunities ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h4 className="text-sm font-semibold text-slate-900 mb-3">Primary opportunities</h4>
-          <ul className="space-y-2 text-sm text-slate-700">
+        <div className="rounded-2xl border border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-surface p-5 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+            <span className="text-blue-500">✦</span>
+            Primary opportunities
+          </h4>
+          <ul className="space-y-2 text-sm text-muted">
             {analysis.opportunities.map((item, idx) => (
-              <li key={idx} className="flex gap-2">
-                <span className="text-blue-600">•</span>
+              <li key={idx} className="flex gap-2.5 items-start">
+                <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-blue-400" />
                 <span>{item}</span>
               </li>
             ))}
@@ -174,12 +259,15 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       ) : null}
 
       {analysis?.recommendations ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h4 className="text-sm font-semibold text-slate-900 mb-3">Recommendations</h4>
-          <ul className="space-y-2 text-sm text-slate-700">
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+            Recommendations
+          </h4>
+          <ul className="space-y-2 text-sm text-muted">
             {analysis.recommendations.map((item, idx) => (
-              <li key={idx} className="flex gap-2">
-                <span className="text-slate-600">•</span>
+              <li key={idx} className="flex gap-2.5 items-start">
+                <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-accent" />
                 <span>{item}</span>
               </li>
             ))}
@@ -188,14 +276,26 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       ) : null}
 
       {analysis?.actionPlan?.length ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h4 className="text-sm font-semibold text-slate-900 mb-3">Action plan</h4>
-          <div className="space-y-3 text-sm text-slate-700">
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+            Action plan
+          </h4>
+          <div className="space-y-3 text-sm text-muted">
             {analysis.actionPlan.map((item, idx) => (
-              <div key={idx} className="rounded-2xl bg-slate-50 p-4">
-                <p className="font-semibold text-slate-900">{item.what || 'Action item'}</p>
-                <p className="text-slate-600 mt-1">Who: {item.who || 'TBD'} • When: {item.when || 'TBD'}</p>
-                <p className="text-slate-700 mt-2">{item.how}</p>
+              <div key={idx} className="rounded-xl bg-surface-muted p-4 border border-border transition-all hover:border-primary/30 hover:shadow-sm">
+                <p className="font-bold text-foreground">{item.what || 'Action item'}</p>
+                <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                    Who: {item.who || 'TBD'}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60" />
+                    When: {item.when || 'TBD'}
+                  </span>
+                </div>
+                {item.how && <p className="text-sm text-muted mt-2 leading-relaxed">{item.how}</p>}
               </div>
             ))}
           </div>
@@ -203,22 +303,28 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       ) : null}
 
       {analysis?.charts?.length ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h4 className="text-sm font-semibold text-slate-900 mb-4">Supporting charts</h4>
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            Supporting charts
+          </h4>
           <div className="grid gap-4">
             {analysis.charts.map((chart, chartIndex) => (
-              <div key={chartIndex} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <p className="font-semibold text-slate-900 mb-3">{chart.title || `Chart ${chartIndex + 1}`}</p>
+              <div key={chartIndex} className="rounded-xl border border-border bg-surface-muted p-4">
+                <p className="font-semibold text-foreground mb-3">{chart.title || `Chart ${chartIndex + 1}`}</p>
                 {chart.data?.map((row, rowIndex) => {
                   const value = Math.min(100, Math.max(0, Number(row.value || 0)));
                   return (
-                    <div key={rowIndex} className="mb-3">
-                      <div className="flex justify-between text-xs text-slate-500 mb-1">
-                        <span>{row.label}</span>
-                        <span>{value}</span>
+                    <div key={rowIndex} className="mb-3 last:mb-0">
+                      <div className="flex justify-between text-xs text-muted mb-1.5">
+                        <span className="font-medium">{row.label}</span>
+                        <span className="font-bold">{value}%</span>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                        <div className="h-full rounded-full bg-blue-600" style={{ width: `${value}%` }} />
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-border">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-1000 ease-out"
+                          style={{ width: `${value}%` }}
+                        />
                       </div>
                     </div>
                   );
@@ -230,12 +336,15 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       ) : null}
 
       {orgRows.length > 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
           <div className="flex items-center justify-between gap-4 mb-4">
-            <h4 className="text-sm font-semibold text-slate-900">Organogram</h4>
-            <span className="text-xs text-slate-500">Leadership structure</span>
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              Organogram
+            </h4>
+            <span className="text-[11px] text-muted font-medium uppercase tracking-wider">Leadership structure</span>
           </div>
-          <div className="overflow-auto rounded-3xl border border-slate-200 bg-slate-50 p-3">
+          <div className="overflow-auto rounded-xl border border-border bg-surface-muted p-4">
             <OrgChart rows={orgRows} />
           </div>
         </div>
@@ -244,6 +353,56 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
   );
 }
 
+/* ═══════════════════════════════════════════
+   ✨ Loading skeleton for dashboard
+   ═══════════════════════════════════════════ */
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <div className="skeleton h-8 w-64 mb-2" />
+        <div className="skeleton h-4 w-96" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)}
+      </div>
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <div className="skeleton h-6 w-40 mb-2" />
+          <div className="skeleton h-4 w-64 mb-6" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton h-20 w-full rounded-xl" />
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <div className="skeleton h-6 w-48 mb-2" />
+          <div className="skeleton h-4 w-56 mb-6" />
+          <div className="skeleton h-40 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   ✨ Empty state component
+   ═══════════════════════════════════════════ */
+function EmptyDashboard({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-4 animate-fade-in">
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-3xl mb-4 shadow-lg shadow-primary/5">
+        📊
+      </div>
+      <p className="text-sm text-muted text-center max-w-md">{message}</p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   ✨ Main Dashboard Page
+   ═══════════════════════════════════════════ */
 export default function DashboardPage() {
   const [userOrg, setUserOrg] = useState<Organisation | null>(null);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
@@ -252,8 +411,11 @@ export default function DashboardPage() {
   const [publishedAnalyses, setPublishedAnalyses] = useState<PublishedAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+
     async function loadDashboardData() {
       const token = localStorage.getItem('accessToken');
       if (!token) {
@@ -319,86 +481,126 @@ export default function DashboardPage() {
   const latestPublishedEvaluation = latestPublished ? companyEvaluations.find((evaluation) => evaluation.id === latestPublished.evaluationId) : undefined;
 
   if (loading) {
-    return (
-      <div className="text-center py-20">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
-        <p className="mt-4 text-sm text-slate-600">Loading dashboard data…</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
-    <div>
+    <div className={mounted ? 'animate-fade-in' : ''}>
+      {/* ── Header ── */}
       <div className="mb-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Client Admin Dashboard</h1>
-            <p className="text-sm text-slate-500 mt-1">Live evaluation metrics and your latest published AI insight.</p>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-3xl font-bold text-foreground tracking-tight">Client Admin Dashboard</h1>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary ring-1 ring-primary/20">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+                </span>
+                Live
+              </span>
+            </div>
+            <p className="text-sm text-muted">Live evaluation metrics and your latest published AI insight.</p>
           </div>
           {userOrg && (
-            <div className="rounded-3xl bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
-              <span className="font-semibold">Organisation:</span> {userOrg.name}
+            <div className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-3 text-sm text-foreground border border-border shadow-sm">
+              <span className="flex-shrink-0 w-2 h-2 rounded-full bg-success" />
+              <span className="font-bold">Organisation:</span>
+              <span className="text-muted">{userOrg.name}</span>
             </div>
           )}
         </div>
       </div>
 
       {error ? (
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 mb-6">{error}</div>
+        <div className="rounded-2xl border border-red-200/50 bg-gradient-to-r from-red-50 to-red-100/50 p-5 text-sm text-red-700 mb-6 shadow-sm animate-fade-in">
+          <div className="flex items-center gap-3">
+            <span className="text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
+        </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
-            <StatCard label="Total evaluations" value={companyEvaluations.length} icon="📋" color="blue" />
-            <StatCard label="Total questions asked" value={totalQuestions} icon="❓" color="green" />
-            <StatCard label="Total respondents" value={totalRespondents} icon="👥" color="yellow" />
-            <StatCard label="Gaps identified" value={companyGaps.length} icon="🔍" color="slate" />
+          {/* ── Stat cards ── */}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8">
+            <StatCard label="Total evaluations" value={companyEvaluations.length} icon="📋" color="blue" delay={0} />
+            <StatCard label="Total questions asked" value={totalQuestions} icon="❓" color="green" delay={50} />
+            <StatCard label="Total respondents" value={totalRespondents} icon="👥" color="yellow" delay={100} />
+            <StatCard label="Gaps identified" value={companyGaps.length} icon="🔍" color="slate" delay={150} />
           </div>
 
+          {/* ── Main content grid ── */}
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] mb-6">
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            {/* Active evaluations */}
+            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between gap-4 mb-5">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Active evaluations</h2>
-                  <p className="text-sm text-slate-500">Click into each evaluation for the full diagnosis and form progress.</p>
+                  <h2 className="text-lg font-bold text-foreground">Active evaluations</h2>
+                  <p className="text-sm text-muted mt-0.5">Click into each evaluation for the full diagnosis and form progress.</p>
                 </div>
-                <span className="text-sm font-medium text-slate-500">{activeEvaluations.length} active</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-primary">{activeEvaluations.length}</span>
+                  <span className="text-[11px] text-muted font-medium uppercase tracking-wider">Active</span>
+                </div>
               </div>
               {activeEvaluations.length === 0 ? (
-                <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No active evaluations are available yet.</div>
+                <EmptyDashboard message="No active evaluations are available yet. Create one to get started." />
               ) : (
-                <div className="space-y-4">
-                  {activeEvaluations.map((evaluation) => (
+                <div className="space-y-3">
+                  {activeEvaluations.map((evaluation, idx) => (
                     <Link
                       key={evaluation.id}
                       href={`/evaluations/${evaluation.id}`}
-                      className="block rounded-3xl border border-slate-200 p-4 hover:border-blue-300 transition-colors"
+                      className="group block rounded-xl border border-border p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-sm hover:-translate-y-0.5"
+                      style={{ animationDelay: `${idx * 50}ms` }}
                     >
                       <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <h3 className="font-semibold text-slate-900">{evaluation.title}</h3>
-                          <p className="text-sm text-slate-500">Started {evaluation.startDate ? new Date(evaluation.startDate).toLocaleDateString() : new Date(evaluation.createdAt).toLocaleDateString()}</p>
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-sm shadow-sm">
+                            📋
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{evaluation.title}</h3>
+                            <p className="text-xs text-muted mt-0.5">
+                              Started {evaluation.startDate ? new Date(evaluation.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date(evaluation.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{evaluation.status.replace('_', ' ')}</div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted bg-surface-muted px-3 py-1.5 rounded-lg border border-border">
+                            {evaluation.status.replace('_', ' ')}
+                          </span>
+                          <span className="text-muted group-hover:text-primary transition-colors text-sm">→</span>
+                        </div>
                       </div>
-                      <div className="mt-3 text-sm text-slate-600">{evaluation._count.forms} form{evaluation._count.forms !== 1 ? 's' : ''} linked</div>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-muted">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                          {evaluation._count.forms} form{evaluation._count.forms !== 1 ? 's' : ''} linked
+                        </span>
+                      </div>
                     </Link>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            {/* Latest published insight */}
+            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between gap-4 mb-5">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Latest published insight</h2>
-                  <p className="text-sm text-slate-500">Your most recent AI diagnosis report delivered by the superadmin.</p>
+                  <h2 className="text-lg font-bold text-foreground">Latest published insight</h2>
+                  <p className="text-sm text-muted mt-0.5">Your most recent AI diagnosis report delivered by the superadmin.</p>
                 </div>
-                <span className="text-sm font-medium text-slate-500">{publishedAnalyses.length} reports</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-accent">{publishedAnalyses.length}</span>
+                  <span className="text-[11px] text-muted font-medium uppercase tracking-wider">Reports</span>
+                </div>
               </div>
               {latestPublished ? (
                 <LatestPublishedAnalysis published={latestPublished} evaluation={latestPublishedEvaluation} />
               ) : (
-                <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No published AI insights have been shared with your account yet.</div>
+                <EmptyDashboard message="No published AI insights have been shared with your account yet." />
               )}
             </div>
           </div>
@@ -407,3 +609,15 @@ export default function DashboardPage() {
     </div>
   );
 }
+</write_to_file>
+<task_progress>
+- [x] Analyze codebase structure and existing design patterns
+- [x] Redesign globals.css with modern design system, animations, and utilities
+- [x] Redesign root layout with better font loading and meta tags
+- [x] Redesign dashboard layout with premium sidebar and animations
+- [x] Redesign sidebar navigation component
+- [x] Redesign dashboard page with beautiful cards and micro-interactions
+- [ ] Redesign AI diagnosis page with modern card layouts
+- [ ] Redesign auth pages (login, etc.)
+</task_progress>
+</write_to_file>

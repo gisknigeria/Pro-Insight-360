@@ -15,19 +15,121 @@ interface Evaluation {
   _count: { forms: number };
 }
 
-const STATUS_CONFIG = {
-  DRAFT: { label: 'Draft', color: 'bg-slate-100 text-slate-600' },
-  ACTIVE: { label: 'Active', color: 'bg-green-100 text-green-700' },
-  CLOSED: { label: 'Closed', color: 'bg-orange-100 text-orange-700' },
-  ARCHIVED: { label: 'Archived', color: 'bg-slate-100 text-slate-400' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
+  DRAFT: { label: 'Draft', color: 'bg-slate-100 text-slate-700', dot: 'bg-slate-400' },
+  ACTIVE: { label: 'Active', color: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20', dot: 'bg-emerald-500' },
+  CLOSED: { label: 'Closed', color: 'bg-orange-50 text-orange-700 ring-1 ring-orange-500/20', dot: 'bg-orange-500' },
+  ARCHIVED: { label: 'Archived', color: 'bg-slate-50 text-slate-400', dot: 'bg-slate-300' },
 };
+
+function EvaluationRow({ evaluation, onArchive, onDelete }: { evaluation: Evaluation; onArchive: () => void; onDelete: () => void }) {
+  const cfg = STATUS_CONFIG[evaluation.status] || STATUS_CONFIG.DRAFT;
+
+  return (
+    <div className="group flex items-center justify-between px-6 py-4 hover:bg-surface-muted/80 transition-all duration-200 border-b border-border last:border-b-0">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 mb-1">
+          {/* Icon */}
+          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-sm shadow-sm">
+            📋
+          </div>
+          <div className="min-w-0">
+            <Link
+              href={`/evaluations/${evaluation.id}`}
+              className="text-sm font-bold text-foreground hover:text-primary transition-colors truncate block"
+            >
+              {evaluation.title}
+            </Link>
+          </div>
+          <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg ${cfg.color}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+            {cfg.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted ml-12">
+          <span>{evaluation.organisation.name}</span>
+          <span className="w-1 h-1 rounded-full bg-border" />
+          <span>{evaluation._count.forms} form{evaluation._count.forms !== 1 ? 's' : ''}</span>
+          {evaluation.startDate && (
+            <>
+              <span className="w-1 h-1 rounded-full bg-border" />
+              <span>Started {new Date(evaluation.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <Link
+          href={`/evaluations/${evaluation.id}/diagnosis`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-muted bg-surface-muted border border-border hover:border-primary/30 rounded-lg transition-all hover:shadow-sm"
+        >
+          🔍 Diagnosis
+        </Link>
+        <Link
+          href={`/evaluations/${evaluation.id}`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-primary to-accent rounded-lg transition-all hover:shadow-md hover:shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0"
+        >
+          View →
+        </Link>
+        <button
+          onClick={onDelete}
+          className="px-3 py-1.5 text-xs font-medium text-muted hover:text-danger rounded-lg transition-colors"
+          aria-label={`Delete ${evaluation.title}`}
+        >
+          🗑️
+        </button>
+        {evaluation.status !== 'ARCHIVED' && (
+          <button
+            onClick={onArchive}
+            className="px-3 py-1.5 text-xs font-medium text-muted hover:text-amber-500 transition-colors"
+            aria-label={`Archive ${evaluation.title}`}
+          >
+            📦
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="skeleton h-8 w-48 mb-2" />
+          <div className="skeleton h-4 w-64" />
+        </div>
+        <div className="skeleton h-10 w-40 rounded-xl" />
+      </div>
+      <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
+          <div className="skeleton h-5 w-44" />
+        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="px-6 py-5 border-b border-border last:border-b-0">
+            <div className="flex items-center gap-3">
+              <div className="skeleton h-9 w-9 rounded-lg" />
+              <div>
+                <div className="skeleton h-4 w-52 mb-2" />
+                <div className="skeleton h-3 w-36" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function EvaluationsPage() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [archiveTarget, setArchiveTarget] = useState<Evaluation | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const token = localStorage.getItem('accessToken');
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/evaluations`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -70,24 +172,31 @@ export default function EvaluationsPage() {
   const active = evaluations.filter((e) => e.status !== 'ARCHIVED');
   const archived = evaluations.filter((e) => e.status === 'ARCHIVED');
 
+  if (loading) return <LoadingSkeleton />;
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className={mounted ? 'animate-fade-in' : ''}>
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Evaluation Projects</h1>
-          <p className="text-slate-500 mt-1 text-sm">Manage all organisational evaluation engagements.</p>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">Evaluation Projects</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary ring-1 ring-primary/20">
+              {evaluations.length}
+            </span>
+          </div>
+          <p className="text-sm text-muted">Manage all organisational evaluation engagements.</p>
         </div>
         <Link
           href="/evaluations/new"
-          className="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0"
         >
-          + New Evaluation
+          <span className="text-lg leading-none">+</span>
+          <span>New Evaluation</span>
         </Link>
       </div>
 
-      {loading ? (
-        <div className="text-slate-400 text-sm py-8 text-center">Loading evaluations…</div>
-      ) : active.length === 0 ? (
+      {active.length === 0 ? (
         <EmptyState
           icon="📋"
           title="No evaluations yet"
@@ -97,78 +206,46 @@ export default function EvaluationsPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200">
-              <h2 className="text-sm font-semibold text-slate-900">Active Evaluations ({active.length})</h2>
+          {/* ── Active evaluations ── */}
+          <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/[0.02] to-accent/[0.01]">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+                </span>
+                <h2 className="text-sm font-bold text-foreground">Active Evaluations</h2>
+                <span className="text-xs font-semibold text-muted bg-surface-muted px-2 py-0.5 rounded-md ml-1">
+                  {active.length}
+                </span>
+              </div>
             </div>
-            <div className="divide-y divide-slate-100">
-              {active.map((ev) => {
-                const cfg = STATUS_CONFIG[ev.status];
-                return (
-                  <div key={ev.id} className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1">
-                        <Link
-                          href={`/evaluations/${ev.id}`}
-                          className="text-sm font-semibold text-slate-900 hover:text-blue-600 transition-colors truncate"
-                        >
-                          {ev.title}
-                        </Link>
-                        <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${cfg.color}`}>
-                          {cfg.label}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        {ev.organisation.name} · {ev._count.forms} form{ev._count.forms !== 1 ? 's' : ''}
-                        {ev.startDate && ` · Started ${new Date(ev.startDate).toLocaleDateString()}`}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <Link
-                        href={`/evaluations/${ev.id}/diagnosis`}
-                        className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 hover:border-blue-400 rounded-lg transition-colors"
-                      >
-                        Diagnosis
-                      </Link>
-                      <Link
-                        href={`/evaluations/${ev.id}`}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                      >
-                        View
-                      </Link>
-                      <button
-                        onClick={() => deleteEvaluation(ev.id)}
-                        className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 rounded-lg transition-colors"
-                        aria-label={`Delete ${ev.title}`}
-                      >
-                        Delete
-                      </button>
-                      {ev.status !== 'ARCHIVED' && (
-                        <button
-                          onClick={() => setArchiveTarget(ev)}
-                          className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-red-500 transition-colors"
-                          aria-label={`Archive ${ev.title}`}
-                        >
-                          Archive
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="divide-y divide-border">
+              {active.map((ev) => (
+                <EvaluationRow
+                  key={ev.id}
+                  evaluation={ev}
+                  onArchive={() => setArchiveTarget(ev)}
+                  onDelete={() => deleteEvaluation(ev.id)}
+                />
+              ))}
             </div>
           </div>
 
+          {/* ── Archived evaluations ── */}
           {archived.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200">
-                <h2 className="text-sm font-semibold text-slate-400">Archived ({archived.length})</h2>
+            <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-border">
+                <h2 className="text-sm font-bold text-muted">Archived ({archived.length})</h2>
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border">
                 {archived.map((ev) => (
-                  <div key={ev.id} className="flex items-center justify-between px-6 py-3 opacity-60">
-                    <p className="text-sm text-slate-600">{ev.title}</p>
-                    <p className="text-xs text-slate-400">{ev.organisation.name}</p>
+                  <div key={ev.id} className="flex items-center justify-between px-6 py-3 opacity-50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm">📦</span>
+                      <p className="text-sm text-muted">{ev.title}</p>
+                    </div>
+                    <p className="text-xs text-muted">{ev.organisation.name}</p>
                   </div>
                 ))}
               </div>
@@ -189,3 +266,16 @@ export default function EvaluationsPage() {
     </div>
   );
 }
+</write_to_file>
+<task_progress>
+- [x] Analyze codebase structure and existing design patterns
+- [x] Redesign globals.css with modern design system, animations, and utilities
+- [x] Redesign root layout with better font loading and meta tags
+- [x] Redesign dashboard layout with premium sidebar and animations
+- [x] Redesign sidebar navigation component
+- [x] Redesign dashboard page with beautiful cards and micro-interactions
+- [x] Redesign login page with modern animated UI
+- [x] Redesign evaluations list page with modern card layouts and micro-interactions
+- [ ] Check and update other remaining pages for consistency
+</task_progress>
+</write_to_file>

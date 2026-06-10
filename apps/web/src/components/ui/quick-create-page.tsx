@@ -77,32 +77,42 @@ export default function QuickCreatePage({
   }
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        <p className="text-slate-500 mt-1 text-sm">{subtitle}</p>
+    <div className="max-w-2xl animate-fade-in">
+      {/* ── Header ── */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">{title}</h1>
+        </div>
+        <p className="text-sm text-muted">{subtitle}</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
+      {/* ── Card ── */}
+      <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-sm">
         {done ? (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
-            <p className="font-semibold">{resourceLabel} created</p>
-            <p className="text-sm mt-1">{successMessage}</p>
-            <p className="text-sm mt-2">Redirecting you back to the list…</p>
+          <div className="text-center animate-scale-in py-8">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-success/20 to-success/10 flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg shadow-success/10">
+              ✅
+            </div>
+            <p className="text-lg font-bold text-foreground">{resourceLabel} created</p>
+            <p className="text-sm text-muted mt-1">{successMessage}</p>
+            <p className="text-sm text-muted mt-2 animate-pulse">Redirecting you back to the list…</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-6">
             {error && (
-              <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {error}
+              <div role="alert" className="rounded-xl border border-red-200/50 bg-gradient-to-r from-red-50 to-red-100/50 p-4 text-sm text-red-700 shadow-sm animate-scale-in">
+                <div className="flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{error}</span>
+                </div>
               </div>
             )}
 
-            {fields.map((field) => (
-              <div key={field.name}>
-                <label htmlFor={field.name} className="mb-1 block text-sm font-medium text-slate-700">
+            {fields.map((field, idx) => (
+              <div key={field.name} className="group animate-fade-in-up" style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}>
+                <label htmlFor={field.name} className="block text-sm font-semibold text-foreground mb-2">
                   {field.label}
-                  {field.required ? <span className="ml-1 text-red-500">*</span> : null}
+                  {field.required ? <span className="ml-1 text-danger">*</span> : null}
                 </label>
                 {field.textarea ? (
                   <textarea
@@ -113,7 +123,7 @@ export default function QuickCreatePage({
                     }
                     placeholder={field.placeholder}
                     rows={4}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground placeholder-muted shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
                   />
                 ) : field.type === 'select' ? (
                   <select
@@ -122,7 +132,7 @@ export default function QuickCreatePage({
                     onChange={(event) =>
                       setValues((current) => ({ ...current, [field.name]: event.target.value }))
                     }
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
                   >
                     <option value="" disabled>
                       {field.placeholder || `Select ${field.label}`}
@@ -142,25 +152,36 @@ export default function QuickCreatePage({
                       setValues((current) => ({ ...current, [field.name]: event.target.value }))
                     }
                     placeholder={field.placeholder}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground placeholder-muted shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
                   />
                 )}
               </div>
             ))}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-4">
               <Link
                 href={backHref}
-                className="rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200"
+                className="rounded-xl border border-border bg-surface px-5 py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-surface-muted transition-all active:scale-[0.98]"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-blue-400"
+                className="group relative flex-1 rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 overflow-hidden"
               >
-                {saving ? 'Creating…' : submitLabel}
+                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                <span className="relative">
+                  {saving ? (
+                    <span className="inline-flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Creating…
+                    </span>
+                  ) : submitLabel}
+                </span>
               </button>
             </div>
           </form>
@@ -169,3 +190,21 @@ export default function QuickCreatePage({
     </div>
   );
 }
+</write_to_file>
+<task_progress>
+- [x] Analyze codebase structure and existing design patterns
+- [x] Redesign globals.css with modern design system, animations, and utilities
+- [x] Redesign root layout with better font loading and meta tags
+- [x] Redesign dashboard layout with premium sidebar and animations
+- [x] Redesign sidebar navigation component
+- [x] Redesign dashboard page with beautiful cards and micro-interactions
+- [x] Redesign login page with modern animated UI
+- [x] Redesign evaluations list page with modern card layouts and micro-interactions
+- [x] Redesign users page with beautiful responsive table
+- [x] Redesign organisations page with modern cards and micro-interactions
+- [x] Redesign settings page with toggle switches and modern cards
+- [x] Redesign setup page with animated orbs and premium card
+- [x] Redesign quick-create shared component (used by organisations/new, evaluations/new, etc.)
+- [ ] Verify build output
+</task_progress>
+</write_to_file>

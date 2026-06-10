@@ -10,6 +10,26 @@ interface Settings {
   darkMode: boolean;
 }
 
+function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id: string }) {
+  return (
+    <button
+      id={id}
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 ${
+        checked ? 'bg-primary' : 'bg-border'
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition-all duration-200 ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  );
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     emailNotifications: true,
@@ -19,6 +39,7 @@ export default function SettingsPage() {
     darkMode: false,
   });
   const [saved, setSaved] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const handleSave = async () => {
     const token = localStorage.getItem('accessToken');
@@ -35,59 +56,65 @@ export default function SettingsPage() {
   };
 
   return (
-    <div>
+    <div className={mounted ? 'animate-fade-in' : ''}>
+      {/* ── Header ── */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-500 mt-1 text-sm">
-          Configure your preferences and notification settings.
-        </p>
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Settings</h1>
+        </div>
+        <p className="text-sm text-muted">Configure your preferences and notification settings.</p>
       </div>
 
-      {/* Alert */}
+      {/* ── Success alert ── */}
       {saved && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-          ✓ Settings saved successfully
+        <div className="mb-6 rounded-xl border border-green-200/50 bg-gradient-to-r from-green-50 to-green-100/50 p-4 text-sm text-green-700 shadow-sm animate-scale-in">
+          <div className="flex items-center gap-2">
+            <span>✅</span>
+            <span className="font-semibold">Settings saved successfully</span>
+          </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Notifications */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Notifications</h2>
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+        {/* ── Notifications ── */}
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-lg shadow-sm">
+              🔔
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Notifications</h2>
+              <p className="text-xs text-muted">Control how you receive updates</p>
+            </div>
+          </div>
+          <div className="space-y-5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-semibold text-foreground text-sm">Email Notifications</p>
+                <p className="text-xs text-muted mt-0.5">Receive email updates about your evaluations</p>
+              </div>
+              <ToggleSwitch
+                id="emailNotifications"
                 checked={settings.emailNotifications}
-                onChange={(e) =>
-                  setSettings({ ...settings, emailNotifications: e.target.checked })
-                }
-                className="w-4 h-4 rounded border-slate-300"
+                onChange={(v) => setSettings({ ...settings, emailNotifications: v })}
               />
-              <div>
-                <p className="font-medium text-slate-900">Email Notifications</p>
-                <p className="text-sm text-slate-600">Receive email updates about your evaluations</p>
-              </div>
-            </label>
+            </div>
 
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.formReminders}
-                onChange={(e) =>
-                  setSettings({ ...settings, formReminders: e.target.checked })
-                }
-                className="w-4 h-4 rounded border-slate-300"
-              />
-              <div>
-                <p className="font-medium text-slate-900">Form Reminders</p>
-                <p className="text-sm text-slate-600">Get reminders for pending forms</p>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-semibold text-foreground text-sm">Form Reminders</p>
+                <p className="text-xs text-muted mt-0.5">Get reminders for pending forms</p>
               </div>
-            </label>
+              <ToggleSwitch
+                id="formReminders"
+                checked={settings.formReminders}
+                onChange={(v) => setSettings({ ...settings, formReminders: v })}
+              />
+            </div>
 
             {settings.formReminders && (
-              <div className="ml-7">
-                <label className="block text-sm font-medium text-slate-900 mb-2">
+              <div className="ml-2 pl-5 border-l-2 border-primary/20 animate-slide-in-right">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Reminder Frequency
                 </label>
                 <select
@@ -98,7 +125,7 @@ export default function SettingsPage() {
                       reminderFrequency: e.target.value as 'DAILY' | 'WEEKLY' | 'NEVER',
                     })
                   }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                  className="w-full max-w-xs rounded-xl border border-border bg-surface-muted px-4 py-2.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 >
                   <option value="DAILY">Daily</option>
                   <option value="WEEKLY">Weekly</option>
@@ -109,78 +136,112 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Privacy & Data */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Privacy & Data</h2>
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+        {/* ── Privacy & Data ── */}
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-lg shadow-sm">
+              🔒
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Privacy & Data</h2>
+              <p className="text-xs text-muted">Manage your data preferences</p>
+            </div>
+          </div>
+          <div className="space-y-5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-semibold text-foreground text-sm">Allow Data Export</p>
+                <p className="text-xs text-muted mt-0.5">Allow exporting evaluation data</p>
+              </div>
+              <ToggleSwitch
+                id="dataExport"
                 checked={settings.dataExport}
-                onChange={(e) =>
-                  setSettings({ ...settings, dataExport: e.target.checked })
-                }
-                className="w-4 h-4 rounded border-slate-300"
+                onChange={(v) => setSettings({ ...settings, dataExport: v })}
               />
-              <div>
-                <p className="font-medium text-slate-900">Allow Data Export</p>
-                <p className="text-sm text-slate-600">Allow exporting evaluation data</p>
-              </div>
-            </label>
+            </div>
 
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.darkMode}
-                onChange={(e) =>
-                  setSettings({ ...settings, darkMode: e.target.checked })
-                }
-                className="w-4 h-4 rounded border-slate-300"
-              />
-              <div>
-                <p className="font-medium text-slate-900">Dark Mode</p>
-                <p className="text-sm text-slate-600">Use dark theme for the interface</p>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-semibold text-foreground text-sm">Dark Mode</p>
+                <p className="text-xs text-muted mt-0.5">Use dark theme for the interface</p>
               </div>
-            </label>
+              <ToggleSwitch
+                id="darkMode"
+                checked={settings.darkMode}
+                onChange={(v) => setSettings({ ...settings, darkMode: v })}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Account */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6 mt-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Account</h2>
-        <div className="space-y-4">
+      {/* ── Account ── */}
+      <div className="rounded-2xl border border-border bg-surface p-6 mt-6 shadow-sm transition-all hover:shadow-md">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-lg shadow-sm">
+            👤
+          </div>
           <div>
-            <label className="block text-sm font-medium text-slate-900 mb-1">
-              Change Password
-            </label>
-            <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+            <h2 className="text-lg font-bold text-foreground">Account</h2>
+            <p className="text-xs text-muted">Security and account management</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-border bg-surface-muted p-4 transition-all hover:border-primary/30 hover:shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="text-lg">🔑</span>
+              <div>
+                <p className="font-semibold text-foreground text-sm">Change Password</p>
+                <p className="text-xs text-muted">Update your account password</p>
+              </div>
+            </div>
+            <button className="mt-3 text-xs font-bold text-primary hover:text-primary-light transition-colors inline-flex items-center gap-1">
               Update Password →
             </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-900 mb-1">
-              Two-Factor Authentication
-            </label>
-            <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+          <div className="rounded-xl border border-border bg-surface-muted p-4 transition-all hover:border-primary/30 hover:shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="text-lg">🔐</span>
+              <div>
+                <p className="font-semibold text-foreground text-sm">Two-Factor Auth</p>
+                <p className="text-xs text-muted">Add an extra layer of security</p>
+              </div>
+            </div>
+            <button className="mt-3 text-xs font-bold text-primary hover:text-primary-light transition-colors inline-flex items-center gap-1">
               Enable MFA →
             </button>
           </div>
         </div>
       </div>
 
-      {/* Save Button */}
+      {/* ── Save Button ── */}
       <div className="mt-8 flex gap-4">
         <button
           onClick={handleSave}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0"
         >
-          Save Settings
+          {saved ? '✅ Saved!' : 'Save Settings'}
         </button>
-        <button className="px-6 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200">
+        <button className="rounded-xl border border-border bg-surface px-6 py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-surface-muted transition-all active:scale-[0.98]">
           Cancel
         </button>
       </div>
     </div>
   );
 }
+</write_to_file>
+<task_progress>
+- [x] Analyze codebase structure and existing design patterns
+- [x] Redesign globals.css with modern design system, animations, and utilities
+- [x] Redesign root layout with better font loading and meta tags
+- [x] Redesign dashboard layout with premium sidebar and animations
+- [x] Redesign sidebar navigation component
+- [x] Redesign dashboard page with beautiful cards and micro-interactions
+- [x] Redesign login page with modern animated UI
+- [x] Redesign evaluations list page with modern card layouts and micro-interactions
+- [x] Redesign users page with beautiful responsive table
+- [x] Redesign organisations page with modern cards and micro-interactions
+- [x] Redesign settings page with toggle switches and modern cards
+- [ ] Check remaining pages for consistency
+</task_progress>
+</write_to_file>

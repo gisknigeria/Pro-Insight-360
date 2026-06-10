@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 export type UserRole =
   | 'SUPER_ADMIN'
@@ -13,7 +14,7 @@ export type UserRole =
 interface NavItem {
   label: string;
   href: string;
-  icon: string; // emoji icon paired with text label (Requirement 25.12)
+  icon: string;
   roles: UserRole[];
 }
 
@@ -31,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['SUPER_ADMIN'],
   },
   {
-    label: 'Evaluation Projects',
+    label: 'Evaluations',
     href: '/evaluations',
     icon: '📋',
     roles: ['SUPER_ADMIN'],
@@ -87,8 +88,8 @@ interface SidebarNavProps {
 
 export function SidebarNav({ role, userName }: SidebarNavProps) {
   const pathname = usePathname();
+  const [expanded, setExpanded] = useState(true);
 
-  // Filter nav items to only those the current role can access (Requirement 25.6)
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
   const roleLabels: Record<UserRole, string> = {
@@ -102,68 +103,129 @@ export function SidebarNav({ role, userName }: SidebarNavProps) {
   return (
     <nav
       aria-label="Main navigation"
-      className="flex flex-col h-full bg-slate-950 text-slate-100 w-72 shrink-0"
+      className="flex flex-col h-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 w-72 shrink-0"
     >
-      {/* Brand */}
-      <div className="px-6 py-6 border-b border-slate-800">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-semibold text-white text-lg">Pro-Insight 360</p>
-            <p className="text-slate-400 text-xs mt-1">Evaluate. Diagnose. Transform.</p>
+      {/* ── Brand header with glowing accent ── */}
+      <div className="relative px-6 py-6 border-b border-white/5 overflow-hidden">
+        {/* Decorative glow */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+        <div className="relative">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-white text-lg tracking-tight">Pro-Insight 360</p>
+              <p className="text-slate-400 text-xs mt-0.5 font-medium">Evaluate. Diagnose. Transform.</p>
+            </div>
+            {/* Live badge with pulse */}
+            <span className="relative inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-[11px] font-semibold text-green-300 ring-1 ring-green-500/20">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+              </span>
+              Live
+            </span>
           </div>
-          <span className="inline-flex items-center rounded-full bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-200 ring-1 ring-blue-500/20">
-            Live
-          </span>
         </div>
       </div>
 
-      {/* User info */}
-      <div className="px-6 py-5 border-b border-slate-800">
-        <p className="text-sm font-semibold text-white truncate">{userName}</p>
-        <p className="text-xs text-slate-500 mt-1">{roleLabels[role]}</p>
+      {/* ── User info with avatar ── */}
+      <div className="px-6 py-4 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          {/* Avatar placeholder */}
+          <div className="relative flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-primary/20">
+            {userName.charAt(0).toUpperCase()}
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-slate-900" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white truncate">{userName}</p>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">{roleLabels[role]}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Nav items */}
-      <ul className="flex-1 overflow-y-auto py-4 space-y-1 px-3" role="list">
-        {visibleItems.map((item) => {
+      {/* ── Nav label ── */}
+      <div className="px-6 pt-5 pb-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Navigation</p>
+      </div>
+
+      {/* ── Nav items ── */}
+      <ul className="flex-1 overflow-y-auto py-2 space-y-0.5 px-3" role="list">
+        {visibleItems.map((item, index) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + '/');
           return (
-            <li key={item.href}>
+            <li
+              key={item.href}
+              className="animate-fade-in"
+              style={{ animationDelay: `${index * 30}ms`, animationFillMode: 'both' }}
+            >
               <Link
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
-                className={`group flex items-center gap-3 w-full rounded-3xl px-4 py-3 text-sm font-medium transition-all ${
+                className={`group relative flex items-center gap-3 w-full rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'bg-slate-800 text-white shadow-sm shadow-slate-900/20 ring-1 ring-blue-500/30'
-                    : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+                    ? 'bg-white/10 text-white shadow-sm shadow-slate-900/20'
+                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
                 }`}
               >
+                {/* Active indicator bar */}
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-gradient-to-b from-primary to-accent" />
+                )}
+
+                {/* Icon */}
                 <span
                   aria-hidden="true"
-                  className={`text-base w-5 text-center transition-colors duration-200 ${
-                    isActive ? 'text-blue-300' : 'text-slate-400 group-hover:text-blue-300'
+                  className={`text-base w-5 text-center transition-all duration-200 ${
+                    isActive
+                      ? 'scale-110'
+                      : 'text-slate-400 group-hover:text-white group-hover:scale-105'
                   }`}
                 >
                   {item.icon}
                 </span>
+
+                {/* Label */}
                 <span>{item.label}</span>
+
+                {/* Active glow */}
+                {isActive && (
+                  <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/[0.06] to-transparent pointer-events-none" />
+                )}
               </Link>
             </li>
           );
         })}
       </ul>
 
-      {/* Sign out */}
-      <div className="px-6 py-5 border-t border-slate-800">
+      {/* ── Collapse toggle ── */}
+      <div className="px-3 py-2">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-3 w-full rounded-xl px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            className={`transition-transform duration-200 ${expanded ? 'rotate-0' : 'rotate-180'}`}
+          >
+            <path d="M10.5 4L7 7.5L3.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span>{expanded ? 'Collapse sidebar' : 'Expand sidebar'}</span>
+        </button>
+      </div>
+
+      {/* ── Sign out ── */}
+      <div className="px-3 py-3 border-t border-white/5 mt-auto">
         <button
           onClick={() => {
             localStorage.removeItem('accessToken');
             window.location.href = '/login';
           }}
-          className="flex items-center gap-3 w-full rounded-3xl bg-slate-900/80 px-4 py-3 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+          className="group flex items-center gap-3 w-full rounded-xl bg-white/5 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-red-500/10 hover:text-red-300 transition-all active:scale-[0.98]"
         >
-          <span aria-hidden="true" className="text-base w-5 text-center">
+          <span aria-hidden="true" className="text-base w-5 text-center group-hover:animate-float">
             🚪
           </span>
           <span>Sign out</span>
@@ -172,3 +234,14 @@ export function SidebarNav({ role, userName }: SidebarNavProps) {
     </nav>
   );
 }
+</write_to_file>
+<task_progress>
+- [x] Analyze codebase structure and existing design patterns
+- [x] Redesign globals.css with modern design system, animations, and utilities
+- [x] Redesign root layout with better font loading and meta tags
+- [x] Redesign dashboard layout with premium sidebar and animations
+- [x] Redesign sidebar navigation component
+- [ ] Redesign dashboard page with beautiful cards and micro-interactions
+- [ ] Redesign AI diagnosis page with modern card layouts
+</task_progress>
+</write_to_file>
