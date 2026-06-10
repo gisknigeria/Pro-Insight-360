@@ -1730,6 +1730,44 @@ app.get('/diagnoses', async (req, res) => {
   }
 });
 
+app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { recipientId, analysis } = req.body;
+    if (!recipientId || !analysis || typeof analysis !== 'object') {
+      return res.status(400).json({ message: 'recipientId and analysis are required.' });
+    }
+
+    const recipient = await prisma.user.findUnique({ where: { id: recipientId } });
+    if (!recipient) {
+      return res.status(404).json({ message: 'Recipient not found.' });
+    }
+
+    if (recipient.role !== 'CLIENT_ADMIN') {
+      return res.status(400).json({ message: 'Selected recipient must be a client admin.' });
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.sub,
+        action: 'DIAGNOSIS_PUBLISHED',
+        resourceType: 'Diagnosis',
+        resourceId: null,
+        metadata: {
+          recipientId,
+          recipientEmail: recipient.email,
+          summary: String(analysis.executiveSummary || ''),
+          publishedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    res.json({ message: `Analysis published to ${recipient.name || recipient.email}.` });
+  } catch (error) {
+    console.error('Publish diagnosis failed:', error);
+    res.status(500).json({ message: 'Unable to publish analysis.' });
+  }
+});
+
 app.get('/ai-status', authenticate, async (req, res) => {
   try {
     const providers = [];
