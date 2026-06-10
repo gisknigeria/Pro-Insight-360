@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
+import OrgChart from '@/components/organogram/OrgChart';
 import { apiFetch } from '@/lib/api';
 
 interface Organisation {
@@ -89,6 +90,8 @@ interface PublishedAnalysis {
     opportunities?: string[];
     recommendations?: string[];
     actionPlan?: Array<{ who?: string; what?: string; how?: string; when?: string }>;
+    charts?: Array<{ title?: string; data?: Array<{ label?: string; value?: number }> }>;
+    organogram?: { nodes?: Array<{ id?: string; label?: string; group?: string }>; links?: Array<{ source?: string; target?: string; relation?: string }> };
   } | null;
 }
 
@@ -116,6 +119,177 @@ function StatCard({ label, value, icon, color = 'blue' }: { label: string; value
 
 function Pill({ label }: { label: string }) {
   return <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{label}</span>;
+}
+
+function buildOrgRows(organogram: PublishedAnalysis['analysis'] | null) {
+  if (!organogram?.organogram?.nodes) return [];
+  const nodes = Array.isArray(organogram.organogram.nodes) ? organogram.organogram.nodes : [];
+  const links = Array.isArray(organogram.organogram.links) ? organogram.organogram.links : [];
+  const rows: Array<{ name: string; title: string; reportsTo: string }> = [];
+
+  nodes.forEach((node) => {
+    const name = node.label || node.id || 'Unknown';
+    rows.push({
+      name,
+      title: node.group || 'Team member',
+      reportsTo: '',
+    });
+  });
+
+  links.forEach((link) => {
+    const sourceName = link.source || '';
+    const targetName = link.target || '';
+    const row = rows.find((r) => r.name === sourceName || r.name === targetName);
+    if (row && targetName) {
+      row.reportsTo = targetName;
+    }
+  });
+
+  return rows;
+}
+
+function LatestPublishedReport({ published, evaluation }: { published: PublishedAnalysis; evaluation?: Evaluation }) {
+  const analysis = published.analysis;
+  const orgRows = buildOrgRows(analysis);
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">{published.summary || 'Published evaluation insight'}</p>
+            <p className="text-xs text-slate-500">Published {new Date(published.publishedAt).toLocaleDateString()} by {published.publishedBy || 'Superadmin'}</p>
+            {evaluation ? (
+              <Link href={`/evaluations/${evaluation.id}/diagnosis`} className="text-xs text-blue-600 hover:underline">
+                View {evaluation.title} diagnosis
+              </Link>
+            ) : null}
+          </div>
+          <Pill label={published.recipientName ? `For ${published.recipientName}` : 'Shared insight'} />
+        </div>
+      </div>
+
+      {analysis?.executiveSummary ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-slate-900 mb-3">Executive summary</h3>
+          <p className="text-sm text-slate-700 whitespace-pre-wrap">{analysis.executiveSummary}</p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {analysis?.strengths ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-5">
+            <h4 className="text-sm font-semibold text-slate-900 mb-3">Strengths</h4>
+            <ul className="space-y-2 text-sm text-slate-700">
+              {analysis.strengths.map((item, idx) => (
+                <li key={idx} className="flex gap-2">
+                  <span className="text-green-600">•</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {analysis?.weaknesses ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-5">
+            <h4 className="text-sm font-semibold text-slate-900 mb-3">Weaknesses</h4>
+            <ul className="space-y-2 text-sm text-slate-700">
+              {analysis.weaknesses.map((item, idx) => (
+                <li key={idx} className="flex gap-2">
+                  <span className="text-orange-600">•</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+
+      {analysis?.opportunities ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h4 className="text-sm font-semibold text-slate-900 mb-3">Opportunities</h4>
+          <ul className="space-y-2 text-sm text-slate-700">
+            {analysis.opportunities.map((item, idx) => (
+              <li key={idx} className="flex gap-2">
+                <span className="text-blue-600">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {analysis?.recommendations ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h4 className="text-sm font-semibold text-slate-900 mb-3">Recommendations</h4>
+          <ul className="space-y-2 text-sm text-slate-700">
+            {analysis.recommendations.map((item, idx) => (
+              <li key={idx} className="flex gap-2">
+                <span className="text-slate-600">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {analysis?.actionPlan?.length ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h4 className="text-sm font-semibold text-slate-900 mb-3">Action plan</h4>
+          <div className="space-y-3 text-sm text-slate-700">
+            {analysis.actionPlan.map((item, idx) => (
+              <div key={idx} className="rounded-2xl bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">{item.what}</p>
+                <p className="text-slate-600 mt-1">Who: {item.who || 'TBD'} • When: {item.when || 'TBD'}</p>
+                <p className="text-slate-700 mt-2">{item.how}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {analysis?.charts?.length ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h4 className="text-sm font-semibold text-slate-900 mb-4">Generated charts</h4>
+          <div className="grid gap-4">
+            {analysis.charts.map((chart, chartIndex) => (
+              <div key={chartIndex} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900 mb-3">{chart.title || `Chart ${chartIndex + 1}`}</p>
+                {chart.data?.map((row, rowIndex) => {
+                  const value = Number(row.value || 0);
+                  const width = Math.min(100, Math.round(value));
+                  return (
+                    <div key={rowIndex} className="mb-3">
+                      <div className="flex justify-between text-xs text-slate-500 mb-1">
+                        <span>{row.label}</span>
+                        <span>{value}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                        <div className="h-full rounded-full bg-blue-600" style={{ width: `${width}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {orgRows.length > 0 ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h4 className="text-sm font-semibold text-slate-900">Generated organogram</h4>
+            <span className="text-xs text-slate-500">Interactive structure preview</span>
+          </div>
+          <div className="overflow-auto rounded-3xl border border-slate-200 bg-slate-50 p-3">
+            <OrgChart rows={orgRows} />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function InsightPage() {
@@ -267,10 +441,10 @@ export default function InsightPage() {
       ) : (
         <>
           <div className="grid gap-4 xl:grid-cols-4 mb-6">
-            <StatCard label="Active evaluations" value={companyEvaluations.length} icon="📋" color="blue" />
-            <StatCard label="Total respondents" value={totalRespondents} icon="👥" color="green" />
-            <StatCard label="Total responses" value={totalResponses} icon="💬" color="yellow" />
-            <StatCard label="Avg question completion" value={`${averageCompletion}%`} icon="📈" color="slate" />
+            <StatCard label="Total evaluations" value={companyEvaluations.length} icon="📋" color="blue" />
+            <StatCard label="Total questions asked" value={totalQuestions} icon="❓" color="green" />
+            <StatCard label="Total respondents" value={totalRespondents} icon="👥" color="yellow" />
+            <StatCard label="Gaps identified" value={companyGaps.length} icon="🔍" color="slate" />
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr] mb-6">
@@ -392,40 +566,18 @@ export default function InsightPage() {
               <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4 mb-5">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Published reports</h2>
-                    <p className="text-sm text-slate-500">Reports and insights shared with you from the diagnosis workflow.</p>
+                    <h2 className="text-xl font-semibold text-slate-900">Latest published evaluation</h2>
+                    <p className="text-sm text-slate-500">See the most recent report delivered to your account by the superadmin.</p>
                   </div>
-                  <span className="text-sm font-medium text-slate-500">{publishedAnalyses.length} delivered</span>
+                  <span className="text-sm font-medium text-slate-500">{publishedAnalyses.length} reports delivered</span>
                 </div>
                 {publishedAnalyses.length === 0 ? (
                   <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No published insights have been shared with your account yet.</div>
                 ) : (
-                  <div className="space-y-4">
-                    {topPublishedAnalyses.map((item) => (
-                      <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4 hover:border-blue-300 transition-colors">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <h3 className="font-semibold text-slate-900 text-sm">{item.summary ? item.summary.slice(0, 80) : 'Published insight'}</h3>
-                            <p className="text-xs text-slate-500">Published {new Date(item.publishedAt).toLocaleDateString()} by {item.publishedBy || 'consultant'}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {item.evaluationId ? (
-                              <Link
-                                href={`/evaluations/${item.evaluationId}/diagnosis`}
-                                className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-blue-50 transition"
-                              >
-                                View evaluation report
-                              </Link>
-                            ) : null}
-                            <Pill label={item.recipientName ? `For ${item.recipientName}` : 'Shared insight'} />
-                          </div>
-                        </div>
-                        <p className="mt-3 text-sm text-slate-700 line-clamp-3">
-                          {item.analysis?.executiveSummary || item.summary || 'No summary available.'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                  <LatestPublishedReport
+                    published={publishedAnalyses[0]}
+                    evaluation={companyEvaluations.find((evaluation) => evaluation.id === publishedAnalyses[0].evaluationId)}
+                  />
                 )}
               </section>
             </div>
