@@ -10,6 +10,17 @@ import {
   WorkflowDelayChart,
 } from '@/components/charts/BarLineCharts';
 import OrgChart from '@/components/organogram/OrgChart';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  LabelList,
+} from 'recharts';
 
 interface Diagnosis {
   id: string;
@@ -123,6 +134,65 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
   function getChartMaxValue(chart: any) {
     if (!Array.isArray(chart?.data)) return 100;
     return Math.max(100, ...chart.data.map((item: any) => Number(item.value) || 0));
+  }
+
+  function buildChartData(chart: any) {
+    if (!Array.isArray(chart?.data)) {
+      return [];
+    }
+
+    return chart.data
+      .filter((row: any) => row && (typeof row.label === 'string' || typeof row.name === 'string'))
+      .map((row: any) => ({
+        name: String(row.label ?? row.name),
+        value: Number(row.value ?? row.count ?? 0),
+      }));
+  }
+
+  function AnalysisChartCard({ chart }: { chart: any }) {
+    const chartData: { name: string; value: number }[] = buildChartData(chart);
+    const average = chartData.length > 0 ? chartData.reduce((sum: number, point: { name: string; value: number }) => sum + point.value, 0) / chartData.length : 0;
+
+    if (chartData.length === 0) {
+      return (
+        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="font-semibold text-slate-900 mb-4">{chart.title || 'Chart data'}</p>
+          <div className="flex h-48 items-center justify-center rounded-2xl bg-slate-50 border border-slate-200 text-sm text-slate-500">
+            No visual chart data available.
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="font-semibold text-slate-900 mb-4">{chart.title || 'Supporting chart'}</p>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }}
+                interval={0}
+                angle={-30}
+                textAnchor="end"
+                height={70}
+              />
+              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
+                formatter={(value) => [value, chart.title || 'Value']}
+              />
+              <ReferenceLine y={average} stroke="#16a34a" strokeDasharray="5 5" label={{ value: 'Average', position: 'top', fill: '#16a34a', fontSize: 12 }} />
+              <Bar dataKey="value" fill="#2563eb" radius={[10, 10, 0, 0]}>
+                <LabelList dataKey="value" position="top" fill="#0f172a" fontSize={11} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
   }
 
   async function handlePublishAnalysis() {
@@ -479,29 +549,16 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
 
           {Array.isArray(parsedChat.charts) && parsedChat.charts.length > 0 && (
             <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-6 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-5">Supporting charts</h3>
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900">Supporting charts</h3>
+                  <p className="text-sm text-slate-600 mt-1">Rendered visual insights based on the AI analysis output.</p>
+                </div>
+                <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Live graph view</span>
+              </div>
               <div className="grid gap-4 xl:grid-cols-2">
                 {parsedChat.charts.map((chart: any, chartIndex: number) => (
-                  <div key={chartIndex} className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                    <p className="font-semibold text-slate-900 mb-4">{chart.title || `Chart ${chartIndex + 1}`}</p>
-                    <div className="space-y-3">
-                      {Array.isArray(chart.data) && chart.data.map((row: any, rowIndex: number) => {
-                        const value = Number(row.value) || 0;
-                        const width = Math.min(100, Math.round((value / getChartMaxValue(chart)) * 100));
-                        return (
-                          <div key={rowIndex}>
-                            <div className="flex justify-between text-xs text-slate-500 mb-1">
-                              <span>{row.label}</span>
-                              <span>{value}</span>
-                            </div>
-                            <div className="h-3 w-full rounded-full bg-slate-200 overflow-hidden">
-                              <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400" style={{ width: `${width}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <AnalysisChartCard key={chartIndex} chart={chart} />
                 ))}
               </div>
             </div>
