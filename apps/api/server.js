@@ -1314,7 +1314,19 @@ app.get('/responses', async (req, res) => {
 
       return {
         id: response.id,
-        form: { id: response.form.id, title: response.form.title },
+        form: {
+          id: response.form.id,
+          title: response.form.title,
+          evaluation: response.form.evaluation
+            ? {
+                id: response.form.evaluation.id,
+                title: response.form.evaluation.title,
+                organisation: response.form.evaluation.organisation
+                  ? { id: response.form.evaluation.organisation.id, name: response.form.evaluation.organisation.name }
+                  : { id: '', name: '' },
+              }
+            : null,
+        },
         respondent: {
           id: response.respondent.id,
           name: response.respondent.name || response.respondent.email,
@@ -1322,6 +1334,7 @@ app.get('/responses', async (req, res) => {
         },
         status: response.status,
         completionPercentage,
+        questionCount,
         submittedAt: response.submittedAt,
         createdAt: response.createdAt,
       };

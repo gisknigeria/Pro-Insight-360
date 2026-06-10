@@ -67,6 +67,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['SUPER_ADMIN'],
   },
   {
+    label: 'Insights',
+    href: '/insight',
+    icon: '🔎',
+    roles: ['CLIENT_ADMIN'],
+  },
+  {
     label: 'Users',
     href: '/users',
     icon: '👤',
