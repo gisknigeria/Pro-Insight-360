@@ -279,7 +279,7 @@ export default function EvaluationDiagnosisPage() {
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'analysis', label: 'Analysis', icon: '🧠' },
-    { id: 'gaps', label: 'Gap', icon: '🔍' },
+    { id: 'gaps', label: 'Gap Analysis', icon: '🔍' },
     { id: 'responses', label: 'Responses', icon: '💬' },
   ];
 
@@ -490,8 +490,17 @@ export default function EvaluationDiagnosisPage() {
         {activeTab === 'gaps' && (
           <div>
             <h2 className="text-base font-semibold text-slate-900 mb-4">Gap Analysis</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Loaded from the diagnosis backend for this evaluation.
+            </p>
             {gapsLoading ? (
               <p className="text-slate-400 text-sm">Loading gap analysis…</p>
+            ) : gaps === null ? (
+              <EmptyState
+                icon="🔍"
+                title="Gap analysis unavailable"
+                description="Unable to fetch gap details for this evaluation."
+              />
             ) : (
               <GapAnalysisPanel summary={gapSummary} />
             )}

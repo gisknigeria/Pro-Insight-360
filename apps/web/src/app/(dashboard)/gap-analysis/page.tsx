@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { GapAnalysisPanel } from '@/components/diagnosis/gap-analysis-panel';
 import { isClientAdmin } from '@/lib/auth';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -47,7 +48,45 @@ export default function GapAnalysisPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  const filtered = filterSeverity === 'ALL' ? gaps : gaps.filter((g) => g.severity === filterSeverity);
+  const filtered = useMemo(
+    () => (filterSeverity === 'ALL' ? gaps : gaps.filter((g) => g.severity === filterSeverity)),
+    [filterSeverity, gaps],
+  );
+
+  const gapSummary = useMemo(() => {
+    const bySeverity = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    } as Record<'critical' | 'high' | 'medium' | 'low', number>;
+
+    const byCategory: Record<string, Array<any>> = {};
+
+    filtered.forEach((gap) => {
+      const severity = String(gap.severity || 'LOW').toLowerCase() as 'critical' | 'high' | 'medium' | 'low';
+      if (severity in bySeverity) {
+        bySeverity[severity] += 1;
+      }
+
+      const category = gap.category || 'Other';
+      if (!byCategory[category]) {
+        byCategory[category] = [];
+      }
+
+      byCategory[category].push({
+        ...gap,
+        severity,
+      });
+    });
+
+    return {
+      total: filtered.length,
+      bySeverity,
+      byCategory,
+      gaps: filtered.map((gap) => ({ ...gap, severity: String(gap.severity || 'LOW').toLowerCase() })),
+    };
+  }, [filtered]);
 
   return (
     <div>
@@ -100,60 +139,8 @@ export default function GapAnalysisPage() {
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon="🔍"
-          title="No gaps identified"
-          description="Gaps will appear after evaluation analysis is complete."
-          actionLabel="View Evaluations"
-          onAction={() => (window.location.href = '/evaluations')}
-        />
       ) : (
-        <div className="space-y-4">
-          {filtered.map((gap) => (
-            <div key={gap.id} className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow transition">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-semibold text-slate-900 text-lg">{gap.category}</h3>
-                  <p className="text-sm text-slate-600 mt-1">{gap.evaluation.title}</p>
-                </div>
-                <span className={`flex items-center gap-2 text-sm font-medium px-3 py-1 rounded ${SEVERITY_CONFIG[gap.severity].color}`}>
-                  {SEVERITY_CONFIG[gap.severity].icon} {SEVERITY_CONFIG[gap.severity].label}
-                </span>
-              </div>
-              <p className="text-slate-700 mb-4">{gap.description}</p>
-              <div className="bg-slate-50 rounded-lg p-4 mb-4">
-                <p className="text-sm font-medium text-slate-900 mb-2">Recommended Action</p>
-                <p className="text-sm text-slate-700">{gap.recommendedAction}</p>
-                {(gap.who || gap.how || gap.when) && (
-                  <div className="mt-3 space-y-2 text-sm text-slate-700">
-                    {gap.who && (
-                      <p><span className="font-medium">Owner:</span> {gap.who}</p>
-                    )}
-                    {gap.how && (
-                      <p><span className="font-medium">How:</span> {gap.how}</p>
-                    )}
-                    {gap.when && (
-                      <p><span className="font-medium">When:</span> {gap.when}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-              {gap.affectedDepartments.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-slate-900 mb-2">Affected Departments</p>
-                  <div className="flex flex-wrap gap-2">
-                    {gap.affectedDepartments.map((dept) => (
-                      <span key={dept} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
-                        {dept}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <GapAnalysisPanel summary={gapSummary} />
       )}
     </div>
   );

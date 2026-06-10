@@ -577,7 +577,12 @@ export default function DashboardPage() {
     return gapSummaries.filter((gap) => evaluationIds.has(gap.evaluation.id));
   }, [gapSummaries, companyEvaluations]);
 
-  const totalQuestions = companyResponses.reduce((sum, response) => sum + (response.questionCount || 0), 0);
+  const totalResponses = companyResponses.length;
+  const totalAnswers = companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
+  const questionCount = companyResponses.reduce((sum, response) => sum + (response.questionCount || 0), 0);
+  const averageCompletion = companyResponses.length > 0
+    ? Math.round(companyResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / companyResponses.length)
+    : 0;
   const totalRespondents = useMemo(() => new Set(companyResponses.map((response) => response.respondent.id)).size, [companyResponses]);
   const activeEvaluations = companyEvaluations.filter((evaluation) => evaluation.status !== 'ARCHIVED');
   const latestPublished = publishedAnalyses[0] || null;
@@ -651,10 +656,10 @@ export default function DashboardPage() {
         <>
           {/* ── Stat cards ── */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8">
-            <StatCard label="Total evaluations" value={companyEvaluations.length} icon="📋" color="blue" delay={0} />
-            <StatCard label="Total questions asked" value={totalQuestions} icon="❓" color="green" delay={50} />
-            <StatCard label="Total respondents" value={totalRespondents} icon="👥" color="yellow" delay={100} />
-            <StatCard label="Gaps identified" value={companyGaps.length} icon="🔍" color="slate" delay={150} />
+            <StatCard label="Total responses" value={totalResponses} icon="✅" color="blue" delay={0} />
+            <StatCard label="Total answers" value={totalAnswers} icon="✍️" color="green" delay={50} />
+            <StatCard label="Total questions" value={questionCount} icon="❓" color="yellow" delay={100} />
+            <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="slate" delay={150} />
           </div>
 
           {/* ── Main content grid ── */}
