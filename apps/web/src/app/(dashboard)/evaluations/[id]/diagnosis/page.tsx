@@ -322,7 +322,7 @@ export default function EvaluationDiagnosisPage() {
       )}
 
       {/* Quick stats */}
-      {digitalScore && (
+      {/* {digitalScore && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <ScoreCard
             label="Digital Readiness"
@@ -347,7 +347,7 @@ export default function EvaluationDiagnosisPage() {
             />
           )}
         </div>
-      )}
+      )} */}
 
       {/* Tabs */}
       <div className="border-b border-slate-200 mb-6">
@@ -410,7 +410,7 @@ export default function EvaluationDiagnosisPage() {
                 )}
 
                 {/* Category scores */}
-                {categoryScores.length > 0 && (
+                {/* {categoryScores.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-slate-600 mb-3">Digital Readiness Categories</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -424,7 +424,7 @@ export default function EvaluationDiagnosisPage() {
                       ))}
                     </div>
                   </div>
-                )}
+                )} */}
               </div>
             )}
           </div>
