@@ -57,6 +57,8 @@ export default function AIDiagnosisPage() {
   const [selectedAdminId, setSelectedAdminId] = useState<string>('');
   const [evaluations, setEvaluations] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedEvaluationId, setSelectedEvaluationId] = useState<string>('');
+  const selectedEvaluation = evaluations.find((evaluation) => evaluation.id === selectedEvaluationId);
+  const selectedEvaluationTitle = selectedEvaluation?.title || 'Selected evaluation';
   const [publishLoading, setPublishLoading] = useState(false);
   const [publishMessage, setPublishMessage] = useState('');
   const [publishError, setPublishError] = useState('');
@@ -383,9 +385,9 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
         <div className="mb-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div className="space-y-3 max-w-3xl">
-              <h2 className="text-2xl font-semibold text-slate-900">Rendered analysis</h2>
+              <h2 className="text-2xl font-semibold text-slate-900">Rendered analysis for {selectedEvaluationTitle}</h2>
               <p className="text-sm text-slate-600">
-                This analysis view transforms the imported structured output into a polished executive dashboard with charts, scorecards, and business-ready recommendations.
+                This is the client admin view of the analysis for {selectedEvaluationTitle}. It shows the full structured AI diagnosis output including charts, recommendations, and the action plan.
               </p>
             </div>
             <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm w-full xl:w-[340px]">
