@@ -1,8 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch } from '@/lib/api';
+import RadarChart from '@/components/charts/RadarChart';
+import {
+  DepartmentComparisonChart,
+  GapSeverityChart,
+  WorkflowDelayChart,
+} from '@/components/charts/BarLineCharts';
+import OrgChart from '@/components/organogram/OrgChart';
 
 interface Diagnosis {
   id: string;
@@ -132,6 +139,56 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
     }
   }
 
+  const dashboardMetrics = useMemo(() => {
+    return {
+      strengths: Array.isArray(parsedChat?.strengths) ? parsedChat.strengths.length : 0,
+      weaknesses: Array.isArray(parsedChat?.weaknesses) ? parsedChat.weaknesses.length : 0,
+      opportunities: Array.isArray(parsedChat?.opportunities) ? parsedChat.opportunities.length : 0,
+      recommendations: Array.isArray(parsedChat?.recommendations) ? parsedChat.recommendations.length : 0,
+      actionPlan: Array.isArray(parsedChat?.actionPlan) ? parsedChat.actionPlan.length : 0,
+    };
+  }, [parsedChat]);
+
+  const radarData = useMemo(() => {
+    if (!parsedChat) return null;
+    return [
+      { category: 'Strengths', score: Math.min(100, dashboardMetrics.strengths * 18 + 20), fullMark: 100 },
+      { category: 'Weaknesses', score: Math.max(24, 100 - dashboardMetrics.weaknesses * 18), fullMark: 100 },
+      { category: 'Opportunities', score: Math.min(100, dashboardMetrics.opportunities * 14 + 20), fullMark: 100 },
+      { category: 'Recommendations', score: Math.min(100, dashboardMetrics.recommendations * 12 + 24), fullMark: 100 },
+      { category: 'Action Plan', score: Math.min(100, dashboardMetrics.actionPlan * 18 + 20), fullMark: 100 },
+    ];
+  }, [dashboardMetrics, parsedChat]);
+
+  const orgRows = useMemo(() => {
+    if (!parsedChat?.organogram) return [];
+
+    const nodes = Array.isArray(parsedChat.organogram.nodes) ? parsedChat.organogram.nodes : [];
+    const links = Array.isArray(parsedChat.organogram.links) ? parsedChat.organogram.links : [];
+
+    const map = new Map();
+    nodes.forEach((node: any) => {
+      const name = String(node.label || node.id || 'Unknown');
+      map.set(name, {
+        name,
+        title: String(node.group || 'Team'),
+        reportsTo: '',
+      });
+    });
+
+    links.forEach((link: any) => {
+      const sourceName = String(link.source || link.sourceLabel || link.sourceId || '');
+      const targetName = String(link.target || link.targetLabel || link.targetId || '');
+      const sourceNode = map.get(sourceName);
+      const targetNode = map.get(targetName);
+      if (sourceNode && targetNode) {
+        sourceNode.reportsTo = targetNode.name;
+      }
+    });
+
+    return Array.from(map.values());
+  }, [parsedChat]);
+
   return (
     <div>
       <div className="mb-8">
@@ -192,31 +249,17 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
       </div>
 
       {parsedChat && (
-        <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Rendered analysis</h2>
-
-          <div className="grid gap-4 lg:grid-cols-[1fr_300px] mb-6">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm text-slate-600 mb-3">This section renders the structured analysis output as a dashboard-ready report. Use the publish panel to send it to a client admin once you're ready.</p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-white p-4 border border-slate-200">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Strengths</p>
-                  <p className="text-2xl font-semibold text-slate-900 mt-2">{Array.isArray(parsedChat.strengths) ? parsedChat.strengths.length : 0}</p>
-                </div>
-                <div className="rounded-2xl bg-white p-4 border border-slate-200">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Weaknesses</p>
-                  <p className="text-2xl font-semibold text-slate-900 mt-2">{Array.isArray(parsedChat.weaknesses) ? parsedChat.weaknesses.length : 0}</p>
-                </div>
-                <div className="rounded-2xl bg-white p-4 border border-slate-200">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Recommendations</p>
-                  <p className="text-2xl font-semibold text-slate-900 mt-2">{Array.isArray(parsedChat.recommendations) ? parsedChat.recommendations.length : 0}</p>
-                </div>
-              </div>
+        <div className="mb-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+            <div className="space-y-3 max-w-3xl">
+              <h2 className="text-2xl font-semibold text-slate-900">Rendered analysis</h2>
+              <p className="text-sm text-slate-600">
+                This analysis view transforms the imported structured output into a polished executive dashboard with charts, scorecards, and business-ready recommendations.
+              </p>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm w-full xl:w-[340px]">
               <p className="text-sm font-semibold text-slate-900 mb-3">Publish analysis</p>
-              <p className="text-sm text-slate-600 mb-4">Send this rendered analysis to a selected client admin. This helps keep your recommendations visible to the right decision-maker.</p>
+              <p className="text-sm text-slate-600 mb-5">Send this rendered analysis to a selected client admin so that decision-makers receive the final report quickly.</p>
               <label className="block text-sm text-slate-700 mb-3">
                 Recipient
                 <select
@@ -241,7 +284,7 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
                 onClick={handlePublishAnalysis}
                 className="inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {publishLoading ? 'Publishing...' : 'Publish to client admin'}
+                {publishLoading ? 'Publishing...' : 'Publish report'}
               </button>
               {publishMessage && (
                 <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
@@ -256,90 +299,105 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
             </div>
           </div>
 
-          {parsedChat.executiveSummary && (
-            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="font-semibold text-slate-900 mb-2">Executive Summary</h3>
-              <p className="text-slate-700 text-sm whitespace-pre-wrap">{parsedChat.executiveSummary}</p>
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Strengths</p>
+                <p className="mt-3 text-3xl font-semibold text-slate-900">{dashboardMetrics.strengths}</p>
+                <p className="mt-2 text-sm text-slate-600">Core capability themes highlighted in the analysis.</p>
+              </div>
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Weaknesses</p>
+                <p className="mt-3 text-3xl font-semibold text-slate-900">{dashboardMetrics.weaknesses}</p>
+                <p className="mt-2 text-sm text-slate-600">Critical improvement opportunities to address.</p>
+              </div>
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Recommendations</p>
+                <p className="mt-3 text-3xl font-semibold text-slate-900">{dashboardMetrics.recommendations}</p>
+                <p className="mt-2 text-sm text-slate-600">Actionable recommendations for stakeholders.</p>
+              </div>
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Action Plan</p>
+                <p className="mt-3 text-3xl font-semibold text-slate-900">{dashboardMetrics.actionPlan}</p>
+                <p className="mt-2 text-sm text-slate-600">Defined next steps for operational delivery.</p>
+              </div>
             </div>
-          )}
-          <div className="grid gap-6 md:grid-cols-2 mb-6">
-            {Array.isArray(parsedChat.strengths) && parsedChat.strengths.length > 0 && (
-              <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
-                <h3 className="font-semibold text-slate-900 mb-3">Strengths</h3>
-                <div className="grid gap-3">
-                  {parsedChat.strengths.map((item: string, idx: number) => (
-                    <div key={idx} className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
-                      <p className="text-sm text-slate-700">{item}</p>
-                    </div>
-                  ))}
-                </div>
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+              <h3 className="font-semibold text-slate-900 mb-4">Readiness radar</h3>
+              <div className="h-[320px]">
+                <RadarChart data={radarData || undefined} />
               </div>
-            )}
-            {Array.isArray(parsedChat.weaknesses) && parsedChat.weaknesses.length > 0 && (
-              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
-                <h3 className="font-semibold text-slate-900 mb-3">Weaknesses</h3>
-                <div className="grid gap-3">
-                  {parsedChat.weaknesses.map((item: string, idx: number) => (
-                    <div key={idx} className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
-                      <p className="text-sm text-slate-700">{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
 
-          {Array.isArray(parsedChat.opportunities) && parsedChat.opportunities.length > 0 && (
-            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-3">Opportunities</h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                {parsedChat.opportunities.map((item: string, idx: number) => (
-                  <div key={idx} className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+          <div className="mt-8 grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+            <div className="grid gap-4">
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                <h3 className="font-semibold text-slate-900 mb-4">Gap analysis</h3>
+                <GapSeverityChart height={340} />
+              </div>
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                <h3 className="font-semibold text-slate-900 mb-4">Workflow performance</h3>
+                <WorkflowDelayChart height={320} />
+              </div>
+            </div>
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+              <h3 className="font-semibold text-slate-900 mb-4">Analysis snapshot</h3>
+              <div className="space-y-4">
+                {parsedChat.executiveSummary && (
+                  <div className="rounded-[20px] bg-white p-4 shadow-sm border border-slate-200">
+                    <h4 className="text-sm font-semibold text-slate-900 mb-2">Executive summary</h4>
+                    <p className="text-sm leading-6 text-slate-700 whitespace-pre-wrap">{parsedChat.executiveSummary}</p>
+                  </div>
+                )}
+                <div className="rounded-[20px] bg-white p-4 shadow-sm border border-slate-200">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-2">Strategic insight</h4>
+                  <p className="text-sm text-slate-600">This report combines qualitative insights with visual metrics to highlight the organisation’s strongest opportunities and highest priority risks.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-4 xl:grid-cols-3">
+            <div className="rounded-[24px] border border-green-200 bg-green-50 p-5 shadow-sm xl:col-span-1">
+              <h3 className="font-semibold text-slate-900 mb-3">Top strengths</h3>
+              <div className="space-y-3">
+                {Array.isArray(parsedChat.strengths) && parsedChat.strengths.map((item: string, idx: number) => (
+                  <div key={idx} className="rounded-[18px] bg-white p-4 border border-slate-200">
                     <p className="text-sm text-slate-700">{item}</p>
                   </div>
                 ))}
               </div>
             </div>
-          )}
-
-          {Array.isArray(parsedChat.recommendations) && parsedChat.recommendations.length > 0 && (
-            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-3">Recommendations</h3>
-              <div className="grid gap-4">
-                {parsedChat.recommendations.map((item: string, idx: number) => (
-                  <div key={idx} className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+            <div className="rounded-[24px] border border-orange-200 bg-orange-50 p-5 shadow-sm xl:col-span-1">
+              <h3 className="font-semibold text-slate-900 mb-3">Key weaknesses</h3>
+              <div className="space-y-3">
+                {Array.isArray(parsedChat.weaknesses) && parsedChat.weaknesses.map((item: string, idx: number) => (
+                  <div key={idx} className="rounded-[18px] bg-white p-4 border border-slate-200">
                     <p className="text-sm text-slate-700">{item}</p>
                   </div>
                 ))}
               </div>
             </div>
-          )}
-
-          {Array.isArray(parsedChat.actionPlan) && parsedChat.actionPlan.length > 0 && (
-            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-3">Action Plan</h3>
-              <div className="grid gap-4">
-                {parsedChat.actionPlan.map((item: any, idx: number) => (
-                  <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-sm font-semibold text-slate-900">{item.what}</p>
-                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">{item.when}</span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">Who: {item.who}</p>
-                    <p className="text-sm text-slate-700 mt-3">{item.how}</p>
+            <div className="rounded-[24px] border border-blue-200 bg-blue-50 p-5 shadow-sm xl:col-span-1">
+              <h3 className="font-semibold text-slate-900 mb-3">Primary opportunities</h3>
+              <div className="space-y-3">
+                {Array.isArray(parsedChat.opportunities) && parsedChat.opportunities.map((item: string, idx: number) => (
+                  <div key={idx} className="rounded-[18px] bg-white p-4 border border-slate-200">
+                    <p className="text-sm text-slate-700">{item}</p>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+          </div>
 
           {Array.isArray(parsedChat.charts) && parsedChat.charts.length > 0 && (
-            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-3">Charts</h3>
-              <div className="grid gap-4 md:grid-cols-2">
+            <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-6 shadow-sm">
+              <h3 className="font-semibold text-slate-900 mb-5">Supporting charts</h3>
+              <div className="grid gap-4 xl:grid-cols-2">
                 {parsedChat.charts.map((chart: any, chartIndex: number) => (
-                  <div key={chartIndex} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="font-semibold text-slate-900 mb-4">{chart.title}</p>
+                  <div key={chartIndex} className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <p className="font-semibold text-slate-900 mb-4">{chart.title || `Chart ${chartIndex + 1}`}</p>
                     <div className="space-y-3">
                       {Array.isArray(chart.data) && chart.data.map((row: any, rowIndex: number) => {
                         const value = Number(row.value) || 0;
@@ -363,35 +421,17 @@ Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
             </div>
           )}
 
-          {parsedChat.organogram && (
-            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-3">Organogram</h3>
-              <div className="grid gap-4 lg:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500 mb-3">Nodes</p>
-                  <div className="space-y-2">
-                    {Array.isArray(parsedChat.organogram.nodes) && parsedChat.organogram.nodes.map((node: any, idx: number) => (
-                      <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-sm font-semibold text-slate-900">{node.label}</p>
-                        <p className="text-xs text-slate-500">{node.group || 'Group'}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500 mb-3">Reporting lines</p>
-                  <div className="space-y-2 text-sm text-slate-700">
-                    {Array.isArray(parsedChat.organogram.links) && parsedChat.organogram.links.map((link: any, idx: number) => (
-                      <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <p><span className="font-semibold text-slate-900">{link.source}</span> → <span className="font-semibold text-slate-900">{link.target}</span></p>
-                        <p className="text-xs text-slate-500">{link.relation || 'Relationship'}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">Organogram</h3>
+                <p className="text-sm text-slate-600">A structured leadership diagram for rapid organisational context.</p>
               </div>
             </div>
-          )}
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+              <OrgChart rows={orgRows} />
+            </div>
+          </div>
         </div>
       )}
 
