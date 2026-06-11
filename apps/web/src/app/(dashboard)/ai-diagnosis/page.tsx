@@ -60,17 +60,22 @@ Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences
   "strengths": ["..."],
   "weaknesses": ["..."],
   "opportunities": ["..."],
-  "gaps": ["Critical gap 1", "Critical gap 2"],
+  "gaps": [
+    "CRITICAL: Description of a critical gap",
+    "HIGH: Description of a high-severity gap",
+    "MEDIUM: Description of a medium-severity gap",
+    "LOW: Description of a low-severity gap"
+  ],
   "recommendations": ["Prioritised recommendation 1", "Prioritised recommendation 2"],
   "actionPlan": [
     {"who":"Role or team","what":"Specific deliverable","how":"Approach and method","when":"Timeline e.g. Within 30 days"}
   ],
   "charts": [
-    {"title":"GIS Readiness by Domain","data":[{"label":"Infrastructure","value":0},{"label":"Data Management","value":0},{"label":"Staff Skills","value":0},{"label":"Governance","value":0},{"label":"Workflows","value":0}]},
-    {"title":"Digital Readiness Scores","data":[{"label":"Technology","value":0},{"label":"Process","value":0},{"label":"Culture","value":0},{"label":"Data","value":0},{"label":"Leadership","value":0}]},
-    {"title":"Technical Skills Proficiency","data":[{"label":"Technical","value":0},{"label":"Analytical","value":0},{"label":"Communication","value":0},{"label":"Leadership","value":0},{"label":"Change Mgmt","value":0}]},
-    {"title":"Governance Maturity","data":[{"label":"Policy","value":0},{"label":"Risk","value":0},{"label":"Compliance","value":0},{"label":"Accountability","value":0}]},
-    {"title":"Overall Organisational Readiness","data":[{"label":"GIS","value":0},{"label":"Digital","value":0},{"label":"Skills","value":0},{"label":"Governance","value":0},{"label":"Operations","value":0}]}
+    {"title":"GIS Readiness by Domain","data":[{"label":"Infrastructure","value":0},{"label":"Data Management","value":0},{"label":"Staff GIS Skills","value":0},{"label":"Governance","value":0},{"label":"Workflows","value":0},{"label":"Spatial Data Assets","value":0},{"label":"Leadership Buy-in","value":0}]},
+    {"title":"Digital Readiness Scores (0–100)","data":[{"label":"Technology Infra","value":0},{"label":"Process Automation","value":0},{"label":"Digital Culture","value":0},{"label":"Data Quality","value":0},{"label":"Leadership Alignment","value":0},{"label":"Connectivity","value":0},{"label":"Change Readiness","value":0}]},
+    {"title":"Technical Skills Proficiency by Department (0–100)","data":[{"label":"Department 1","value":0},{"label":"Department 2","value":0}]},
+    {"title":"Governance Maturity (0–100)","data":[{"label":"Policy Framework","value":0},{"label":"Risk Management","value":0},{"label":"Compliance Structures","value":0},{"label":"Accountability","value":0},{"label":"Security Policies","value":0},{"label":"Audit Trail","value":0}]},
+    {"title":"Overall Organisational Readiness (0–100)","data":[{"label":"GIS Readiness","value":0},{"label":"Digital Transformation","value":0},{"label":"Technical Skills","value":0},{"label":"Governance","value":0},{"label":"Operations","value":0},{"label":"Change Readiness","value":0},{"label":"Revenue Systems","value":0}]}
   ],
   "organogram": {
     "nodes": [{"id":"1","label":"Role name","group":"Department name"}],
@@ -78,7 +83,12 @@ Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences
   }
 }
 
-Base all scores and findings strictly on the actual form responses provided. Do not invent data. If a dimension is not covered by the responses, set its chart values to 0 and note the gap in the gaps array.`;
+IMPORTANT RULES:
+- gaps MUST be prefixed with severity: "CRITICAL: ...", "HIGH: ...", "MEDIUM: ...", or "LOW: ..."
+- organogram links MUST use the exact label text from nodes (not the id numbers) in the source and target fields
+- chart values for GIS Readiness may be raw scores (not necessarily 0–100); all other charts use 0–100
+- Base all scores and findings strictly on the actual form responses provided. Do not invent data.
+- If a dimension is not covered by the responses, set its chart values to 0 and note the gap in the gaps array.`;
 
 
 const STATUS_CONFIG = {
