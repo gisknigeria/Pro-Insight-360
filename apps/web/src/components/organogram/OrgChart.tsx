@@ -1,19 +1,47 @@
-"use client"
-import React, { useMemo, useState, useRef } from "react";
+"use client";
+import React, { useMemo, useRef, useState } from "react";
 import type { OrgRow } from "./OrgChartUploader";
-import { detectCycle } from "./cycleDetector";
 
-function buildTree(rows: OrgRow[]) {
-  const map = new Map<string, any>();
+// ─── Colour palette (cycles through departments) ──────────────────────────────
+const DEPT_COLOURS = [
+  { bg: '#dbeafe', border: '#3b82f6', text: '#1e3a8a' }, // blue
+  { bg: '#d1fae5', border: '#10b981', text: '#064e3b' }, // emerald
+  { bg: '#fef3c7', border: '#f59e0b', text: '#78350f' }, // amber
+  { bg: '#ede9fe', border: '#8b5cf6', text: '#3b0764' }, // violet
+  { bg: '#fee2e2', border: '#ef4444', text: '#7f1d1d' }, // red
+  { bg: '#ffedd5', border: '#f97316', text: '#7c2d12' }, // orange
+  { bg: '#cffafe', border: '#06b6d4', text: '#164e63' }, // cyan
+  { bg: '#fce7f3', border: '#ec4899', text: '#831843' }, // pink
+  { bg: '#f0fdf4', border: '#22c55e', text: '#14532d' }, // green
+  { bg: '#f5f3ff', border: '#a855f7', text: '#581c87' }, // purple
+];
+
+const NODE_W = 160;
+const NODE_H = 52;
+const H_GAP = 24;  // horizontal gap between siblings
+const V_GAP = 72;  // vertical gap between levels
+
+// ─── Tree node ────────────────────────────────────────────────────────────────
+interface TreeNode {
+  name: string;
+  title: string; // = group/department
+  children: TreeNode[];
+  // computed by layout pass:
+  x: number;
+  y: number;
+  subtreeW: number;
+}
+
+function buildTree(rows: OrgRow[]): TreeNode[] {
+  const map = new Map<string, TreeNode>();
   for (const r of rows) {
-    map.set(r.name, { ...r, children: [], parent: null });
+    map.set(r.name, { name: r.name, title: r.title ?? '', children: [], x: 0, y: 0, subtreeW: 0 });
   }
-  const roots: any[] = [];
-  for (const node of map.values()) {
-    if (node.reportsTo && map.has(node.reportsTo)) {
-      const parent = map.get(node.reportsTo);
-      parent.children.push(node);
-      node.parent = parent;
+  const roots: TreeNode[] = [];
+  for (const r of rows) {
+    const node = map.get(r.name)!;
+    if (r.reportsTo && map.has(r.reportsTo)) {
+      map.get(r.reportsTo)!.children.push(node);
     } else {
       roots.push(node);
     }
@@ -21,88 +49,127 @@ function buildTree(rows: OrgRow[]) {
   return roots;
 }
 
-function renderNode(node: any, x: number, y: number, onToggle: (n: any) => void) {
-  return (
-    <g key={node.name} transform={`translate(${x},${y})`}>
-      <rect x={-60} y={-14} width={120} height={28} rx={6} fill="#fff" stroke="#94a3b8" />
-      <text x={-56} y={4} fontSize={12} fill="#0f172a">{node.name}</text>
-      <rect x={66} y={-12} width={16} height={16} rx={4} fill="#e2e8f0" stroke="#94a3b8" onClick={() => onToggle(node)} />
-    </g>
-  );
+// Compute subtree widths bottom-up
+function measure(node: TreeNode): number {
+  if (node.children.length === 0) {
+    node.subtreeW = NODE_W;
+    return node.subtreeW;
+  }
+  const childrenW = node.children.reduce((sum, c) => sum + measure(c), 0)
+    + H_GAP * (node.children.length - 1);
+  node.subtreeW = Math.max(NODE_W, childrenW);
+  return node.subtreeW;
 }
 
-export default function OrgChart({ rows }: { rows: OrgRow[] }) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const svgRef = useRef<SVGSVGElement | null>(null);
-
-  const cycle = useMemo(() => detectCycle(rows || []), [rows]);
-  const roots = useMemo(() => buildTree(rows || []), [rows]);
-
-  function toggle(node: any) {
-    setCollapsed(s => ({ ...s, [node.name]: !s[node.name] }));
+// Assign x/y coordinates top-down
+function layout(node: TreeNode, x: number, y: number) {
+  node.x = x + node.subtreeW / 2;
+  node.y = y;
+  let childX = x;
+  for (const child of node.children) {
+    layout(child, childX, y + NODE_H + V_GAP);
+    childX += child.subtreeW + H_GAP;
   }
+}
 
-  function flatten(node: any, depth = 0, x = 0, y = 0, acc: any[] = [], visited = new Set<string>()) {
-    if (visited.has(node.name)) {
-      return acc;
+// Flatten tree into a list for rendering
+function flatten(node: TreeNode, acc: TreeNode[] = []): TreeNode[] {
+  acc.push(node);
+  for (const c of node.children) flatten(c, acc);
+  return acc;
+}
+
+// Build all connector line segments
+interface Line { x1: number; y1: number; x2: number; y2: number; }
+function buildLines(node: TreeNode, lines: Line[] = []): Line[] {
+  for (const child of node.children) {
+    // elbow connector: down from parent bottom-centre, across, then down to child top-centre
+    const px = node.x;
+    const py = node.y + NODE_H;
+    const cx = child.x;
+    const cy = child.y;
+    const midY = py + V_GAP / 2;
+    lines.push({ x1: px, y1: py, x2: px, y2: midY });
+    lines.push({ x1: px, y1: midY, x2: cx, y2: midY });
+    lines.push({ x1: cx, y1: midY, x2: cx, y2: cy });
+    buildLines(child, lines);
+  }
+  return lines;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+export default function OrgChart({ rows }: { rows: OrgRow[] }) {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Build department → colour map
+  const deptColourMap = useMemo(() => {
+    const depts = [...new Set((rows ?? []).map(r => r.title).filter(Boolean))];
+    const map = new Map<string, typeof DEPT_COLOURS[0]>();
+    depts.forEach((d, i) => map.set(d, DEPT_COLOURS[i % DEPT_COLOURS.length]));
+    return map;
+  }, [rows]);
+
+  const { allNodes, lines, svgW, svgH } = useMemo(() => {
+    const roots = buildTree(rows ?? []);
+    if (roots.length === 0) return { allNodes: [], lines: [], svgW: 400, svgH: 200 };
+
+    // Measure and layout each root tree side by side
+    let totalW = 0;
+    for (const root of roots) {
+      measure(root);
+      totalW += root.subtreeW;
+    }
+    totalW += H_GAP * (roots.length - 1);
+
+    let startX = 0;
+    for (const root of roots) {
+      layout(root, startX, 40);
+      startX += root.subtreeW + H_GAP;
     }
 
-    visited.add(node.name);
-    node.x = x;
-    node.y = y;
-    acc.push({ node, depth, x, y });
+    const allNodes = roots.flatMap(r => flatten(r));
+    const lines = roots.flatMap(r => buildLines(r));
 
-    if (collapsed[node.name]) return acc;
+    const maxX = Math.max(...allNodes.map(n => n.x + NODE_W / 2));
+    const maxY = Math.max(...allNodes.map(n => n.y + NODE_H));
 
-    let childY = y + 80;
-    let offsetX = x - (node.children.length - 1) * 100 / 2;
-    node.children.forEach((c: any, i: number) => {
-      flatten(c, depth + 1, offsetX + i * 100, childY, acc, new Set(visited));
+    return { allNodes, lines, svgW: maxX + 40, svgH: maxY + 40 };
+  }, [rows, collapsed]);
+
+  function toggleCollapse(name: string) {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
     });
-    return acc;
   }
-
-  const items = useMemo(() => {
-    const list: any[] = [];
-    roots.forEach((r, i) => {
-      flatten(r, 0, i * 240, 40, list);
-    });
-    return list;
-  }, [roots, collapsed]);
 
   function downloadSVG() {
     if (!svgRef.current) return;
-    const svg = svgRef.current;
-    const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(svg);
-    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    const source = new XMLSerializer().serializeToString(svgRef.current);
     const a = document.createElement('a');
-    a.href = url;
+    a.href = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
     a.download = 'organogram.svg';
     a.click();
-    URL.revokeObjectURL(url);
   }
 
   async function downloadPNG() {
     if (!svgRef.current) return;
-    const svg = svgRef.current;
-    const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(svg);
+    const source = new XMLSerializer().serializeToString(svgRef.current);
     const img = new Image();
-    const svgBlob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
+    const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = svg.clientWidth || 800;
-      canvas.height = svg.clientHeight || 600;
+      canvas.width = svgW + 40;
+      canvas.height = svgH + 40;
       const ctx = canvas.getContext('2d')!;
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#f8fafc';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
-      const png = canvas.toDataURL('image/png');
       const a = document.createElement('a');
-      a.href = png;
+      a.href = canvas.toDataURL('image/png');
       a.download = 'organogram.png';
       a.click();
       URL.revokeObjectURL(url);
@@ -110,51 +177,111 @@ export default function OrgChart({ rows }: { rows: OrgRow[] }) {
     img.src = url;
   }
 
-  async function uploadSVG(evaluationId = 'demo-eval') {
-    if (!svgRef.current) return;
-    const svg = svgRef.current;
-    const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(svg);
-    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
-
-    const res = await fetch(`/uploads/evaluation/${evaluationId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'image/svg+xml',
-        'x-file-name': `organogram-${Date.now()}.svg`,
-      },
-      body: blob,
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      alert('Upload failed: ' + text);
-      return;
-    }
-    const json = await res.json();
-    alert('Uploaded: ' + json.id);
+  if (!rows || rows.length === 0) {
+    return <div className="text-slate-400 text-sm p-4">No organogram data.</div>;
   }
-
-  if (!rows || rows.length === 0) return <div>No organogram data</div>;
 
   return (
     <div>
-      <h3>Organogram</h3>
-      {cycle.length > 0 && <div style={{ color: '#b91c1c' }}>Cycle detected: {cycle.join(', ')}</div>}
-      <div style={{ marginBottom: 8 }}>
-        <button onClick={downloadSVG} style={{ marginRight: 8 }}>Download SVG</button>
-        <button onClick={downloadPNG} style={{ marginRight: 8 }}>Download PNG</button>
-        <button onClick={() => uploadSVG()}>Upload SVG to storage</button>
+      {/* Download buttons */}
+      <div className="flex gap-2 mb-4">
+        <button onClick={downloadSVG}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+          ⬇ SVG
+        </button>
+        <button onClick={downloadPNG}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+          ⬇ PNG
+        </button>
       </div>
-      <svg ref={svgRef} width={1000} height={800} style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-        {items.map((it, idx) => (
-          <g key={idx}>
-            {it.node.parent && (
-              <line x1={it.x} y1={it.y + 10} x2={it.node.parent.x || it.x} y2={(it.node.parent.y || it.y) - 20} stroke="#cbd5e1" />
-            )}
-            {renderNode(it.node, it.x, it.y, toggle)}
-          </g>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {[...deptColourMap.entries()].map(([dept, col]) => (
+          <span key={dept} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            style={{ background: col.bg, color: col.text, border: `1px solid ${col.border}` }}>
+            {dept}
+          </span>
         ))}
-      </svg>
+      </div>
+
+      {/* SVG chart */}
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <svg ref={svgRef} width={svgW} height={svgH}
+          style={{ background: '#f8fafc', display: 'block', minWidth: svgW }}>
+
+          {/* Connector lines */}
+          {lines.map((l, i) => (
+            <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+              stroke="#cbd5e1" strokeWidth={1.5} strokeLinecap="round" />
+          ))}
+
+          {/* Nodes */}
+          {allNodes.map(node => {
+            const col = deptColourMap.get(node.title) ?? DEPT_COLOURS[0];
+            const nx = node.x - NODE_W / 2;
+            const ny = node.y;
+            const hasChildren = node.children.length > 0;
+            const isCollapsed = collapsed.has(node.name);
+
+            // Wrap long name into two lines
+            const words = node.name.split(' ');
+            let line1 = '', line2 = '';
+            let curr = '';
+            for (const w of words) {
+              if ((curr + ' ' + w).trim().length <= 20) {
+                curr = (curr + ' ' + w).trim();
+              } else {
+                if (!line1) { line1 = curr; curr = w; }
+                else { line2 = (curr + ' ' + w).trim(); curr = ''; break; }
+              }
+            }
+            if (!line1) { line1 = curr; }
+            else if (curr && !line2) { line2 = curr; }
+
+            return (
+              <g key={node.name} style={{ cursor: hasChildren ? 'pointer' : 'default' }}
+                onClick={hasChildren ? () => toggleCollapse(node.name) : undefined}>
+                {/* Card shadow */}
+                <rect x={nx + 2} y={ny + 2} width={NODE_W} height={NODE_H} rx={8}
+                  fill="rgba(0,0,0,0.06)" />
+                {/* Card background */}
+                <rect x={nx} y={ny} width={NODE_W} height={NODE_H} rx={8}
+                  fill={col.bg} stroke={col.border} strokeWidth={1.5} />
+                {/* Top accent bar */}
+                <rect x={nx} y={ny} width={NODE_W} height={4} rx={4}
+                  fill={col.border} />
+                {/* Name text — line 1 */}
+                <text x={node.x} y={ny + 20} textAnchor="middle"
+                  fontSize={11} fontWeight="700" fill={col.text}
+                  style={{ pointerEvents: 'none' }}>
+                  {line1}
+                </text>
+                {/* Name text — line 2 */}
+                {line2 && (
+                  <text x={node.x} y={ny + 32} textAnchor="middle"
+                    fontSize={11} fontWeight="700" fill={col.text}
+                    style={{ pointerEvents: 'none' }}>
+                    {line2}
+                  </text>
+                )}
+                {/* Department sub-label */}
+                <text x={node.x} y={ny + NODE_H - 7} textAnchor="middle"
+                  fontSize={9} fill={col.text} opacity={0.65}
+                  style={{ pointerEvents: 'none' }}>
+                  {node.title}
+                </text>
+                {/* Collapse toggle dot */}
+                {hasChildren && (
+                  <circle cx={nx + NODE_W - 10} cy={ny + 10} r={6}
+                    fill={isCollapsed ? col.border : '#fff'}
+                    stroke={col.border} strokeWidth={1.5} />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
     </div>
   );
 }
