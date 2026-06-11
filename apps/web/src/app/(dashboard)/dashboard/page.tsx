@@ -37,6 +37,14 @@ interface ResponseItem {
   form: { id: string; title: string; evaluation: { id: string; organisation: Organisation } | null };
 }
 
+interface DiagnosisResponseMetrics {
+  totalResponses: number;
+  totalAnswers: number;
+  averageCompletion: number;
+  questionCount?: number;
+  sampleAnswers?: any[];
+}
+
 interface GapSummary {
   id: string;
   evaluation: { id: string };
@@ -510,6 +518,8 @@ export default function DashboardPage() {
   const [responses, setResponses] = useState<ResponseItem[]>([]);
   const [gapSummaries, setGapSummaries] = useState<GapSummary[]>([]);
   const [publishedAnalyses, setPublishedAnalyses] = useState<PublishedAnalysis[]>([]);
+  const [latestResponseMetrics, setLatestResponseMetrics] = useState<DiagnosisResponseMetrics | null>(null);
+  const [selectedEvaluationForMetrics, setSelectedEvaluationForMetrics] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -551,6 +561,24 @@ export default function DashboardPage() {
         setResponses(allResponses);
         setGapSummaries(allGaps);
         setPublishedAnalyses(allPublishedAnalyses);
+
+        const orgEvaluations = allEvaluations.filter((evaluation) => evaluation.organisation?.id === user.organisation.id);
+        const publishedForOrg = allPublishedAnalyses
+          .filter((analysis) => analysis.evaluationId && orgEvaluations.some((evaluation) => evaluation.id === analysis.evaluationId))
+          .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+        const latestPublished = publishedForOrg[0];
+        const latestOrgEvaluation = orgEvaluations.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+        const selectedEvaluation = latestPublished && latestPublished.evaluationId
+          ? orgEvaluations.find((evaluation) => evaluation.id === latestPublished.evaluationId) || latestOrgEvaluation
+          : latestOrgEvaluation;
+
+        setSelectedEvaluationForMetrics(selectedEvaluation || null);
+
+        if (selectedEvaluation) {
+          const metrics = await apiFetch<DiagnosisResponseMetrics>(`/diagnosis/evaluations/${selectedEvaluation.id}/responses`);
+          setLatestResponseMetrics(metrics);
+        }
       } catch (fetchError: any) {
         setError(fetchError?.message || 'Unable to load dashboard data.');
       } finally {
@@ -571,20 +599,15 @@ export default function DashboardPage() {
     return responses.filter((response) => response.form.evaluation?.organisation?.id === userOrg.id);
   }, [responses, userOrg]);
 
-  const companyGaps = useMemo(() => {
-    if (!userOrg) return [];
-    const evaluationIds = new Set(companyEvaluations.map((evaluation) => evaluation.id));
-    return gapSummaries.filter((gap) => evaluationIds.has(gap.evaluation.id));
-  }, [gapSummaries, companyEvaluations]);
-
-  const totalResponses = companyResponses.length;
-  const totalAnswers = companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
-  const averageCompletion = companyResponses.length > 0
+  const totalResponses = latestResponseMetrics?.totalResponses ?? companyResponses.length;
+  const totalAnswers = latestResponseMetrics?.totalAnswers ?? companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
+  const averageCompletion = latestResponseMetrics?.averageCompletion ?? (companyResponses.length > 0
     ? Math.round(companyResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / companyResponses.length)
-    : 0;
-  const totalRespondents = useMemo(() => new Set(companyResponses.map((response) => response.respondent.id)).size, [companyResponses]);
-  const activeEvaluations = companyEvaluations.filter((evaluation) => evaluation.status !== 'ARCHIVED');
-  const latestPublished = publishedAnalyses[0] || null;
+    : 0);
+  const filteredPublishedAnalyses = publishedAnalyses
+    .filter((analysis) => analysis.evaluationId && companyEvaluations.some((evaluation) => evaluation.id === analysis.evaluationId))
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  const latestPublished = filteredPublishedAnalyses[0] || null;
   const latestPublishedEvaluation = latestPublished ? companyEvaluations.find((evaluation) => evaluation.id === latestPublished.evaluationId) : undefined;
 
   if (!mounted) {
@@ -654,68 +677,20 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* ── Stat cards ── */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mb-8">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mb-4">
             <StatCard label="Submitted responses" value={totalResponses} icon="✅" color="blue" delay={0} />
             <StatCard label="Total answers" value={totalAnswers} icon="✍️" color="green" delay={50} />
             <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="slate" delay={100} />
           </div>
 
-          {/* ── Main content grid ── */}
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] mb-6">
-            {/* Active evaluations */}
-            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="flex items-center justify-between gap-4 mb-5">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">Active evaluations</h2>
-                  <p className="text-sm text-muted mt-0.5">Click into each evaluation for the full diagnosis and form progress.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-primary">{activeEvaluations.length}</span>
-                  <span className="text-[11px] text-muted font-medium uppercase tracking-wider">Active</span>
-                </div>
-              </div>
-              {activeEvaluations.length === 0 ? (
-                <EmptyDashboard message="No active evaluations are available yet. Create one to get started." />
-              ) : (
-                <div className="space-y-3">
-                  {activeEvaluations.map((evaluation, idx) => (
-                    <Link
-                      key={evaluation.id}
-                      href={`/evaluations/${evaluation.id}`}
-                      className="group block rounded-xl border border-border p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-sm hover:-translate-y-0.5"
-                      style={{ animationDelay: `${idx * 50}ms` }}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-sm shadow-sm">
-                            📋
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{evaluation.title}</h3>
-                            <p className="text-xs text-muted mt-0.5">
-                              Started {evaluation.startDate ? new Date(evaluation.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date(evaluation.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-muted bg-surface-muted px-3 py-1.5 rounded-lg border border-border">
-                            {evaluation.status.replace('_', ' ')}
-                          </span>
-                          <span className="text-muted group-hover:text-primary transition-colors text-sm">→</span>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-muted">
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                          {evaluation._count.forms} form{evaluation._count.forms !== 1 ? 's' : ''} linked
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
+          {selectedEvaluationForMetrics ? (
+            <div className="mb-6 rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted">
+              Metrics are sourced from the latest {filteredPublishedAnalyses.length > 0 ? 'published' : 'available'} evaluation: <span className="font-semibold text-foreground">{selectedEvaluationForMetrics.title}</span>.
             </div>
+          ) : null}
 
+          {/* ── Main content grid ── */}
+          <div className="grid gap-6 mb-6">
             {/* Latest published insight */}
             <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between gap-4 mb-5">

@@ -66,18 +66,28 @@ export default function AIDiagnosisPage() {
   const [reviewMessage, setReviewMessage] = useState('');
   const [reviewError, setReviewError] = useState('');
 
-  const chatPromptTemplate = `You are given the submitted form responses for an organisational evaluation. Analyze the responses and return only valid JSON with these properties:
+  const chatPromptTemplate = `You are given the submitted form responses for an organisational evaluation.
+Analyze the responses and the original questions in order to identify:
+- overall executive findings
+- strengths, weaknesses, and opportunities
+- any gaps or missing capabilities revealed by the answers
+- clear recommendations and a practical action plan
+- useful chart data for readiness, completion, or risk analysis
+- an organogram structure if there is enough organisational information
+Return only valid JSON with these properties:
 {
-  "executiveSummary": "...",
-  "strengths": ["..."],
-  "weaknesses": ["..."],
-  "opportunities": ["..."],
-  "recommendations": ["..."],
-  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
-  "charts": [{"title":"...","data":[{"label":"...","value":...}]}],
-  "organogram": {"nodes":[{"id":"...","label":"...","group":"..."}],"links":[{"source":"...","target":"...","relation":"..."}]}
+  "questions": [{"question":"...","answer":"..."}],
+  "executiveSummary":"...",
+  "strengths":["..."],
+  "weaknesses":["..."],
+  "opportunities":["..."],
+  "recommendations":["..."],
+  "gaps":["..."],
+  "actionPlan":[{"who":"...","what":"...","how":"...","when":"..."}],
+  "charts":[{"title":"...","data":[{"label":"...","value":...}]}],
+  "organogram":{"nodes":[{"id":"...","label":"...","group":"..."}],"links":[{"source":"...","target":"...","relation":"..."}]}
 }
-Do not include markdown, code fences, or any extra text. Use plain JSON only.`;
+Do not include markdown, code fences, or any extra text. Respond with plain JSON only.`;
 
   async function loadDiagnoses() {
     setLoading(true);

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { GapAnalysisPanel } from '@/components/diagnosis/gap-analysis-panel';
 import RadarChart from '@/components/charts/RadarChart';
 import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -43,7 +42,7 @@ export default function EvaluationDiagnosisPage() {
   }, [router]);
 
   const shouldFetch = hasAccess === true;
-  const { gapsApi, responsesApi, diagnosisApi } = useEvaluationDiagnosis(id, shouldFetch);
+  const { responsesApi, diagnosisApi } = useEvaluationDiagnosis(id, shouldFetch);
 
   const diagnosis = diagnosisApi.data?.diagnosis ?? null;
   const chartData = Array.isArray(diagnosis?.sections?.charts) ? diagnosis.sections.charts : [];
@@ -113,46 +112,9 @@ export default function EvaluationDiagnosisPage() {
     );
   }
 
-  const gaps = gapsApi.data as any[] | null;
   const responses = responsesApi.data;
-  const gapsLoading = gapsApi.loading;
   const responsesLoading = responsesApi.loading;
-  const pageError = gapsApi.error || responsesApi.error || diagnosisApi.error;
-
-  function buildGapSummary(gapsData: any[] | null) {
-    if (!gapsData) return null;
-
-    const bySeverity = {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0,
-    };
-
-    const byCategory: Record<string, any[]> = {};
-
-    for (const gap of gapsData) {
-      const severity = (gap.severity || 'low').toLowerCase();
-      if (severity in bySeverity) {
-        bySeverity[severity as keyof typeof bySeverity] += 1;
-      }
-
-      const category = gap.category || 'Other';
-      if (!byCategory[category]) {
-        byCategory[category] = [];
-      }
-      byCategory[category].push(gap);
-    }
-
-    return {
-      total: gapsData.length,
-      bySeverity,
-      byCategory,
-      gaps: gapsData,
-    };
-  }
-
-  const gapSummary = buildGapSummary(gaps);
+  const pageError = responsesApi.error || diagnosisApi.error;
 
   async function runDiagnosis() {
     setRunning(true);
@@ -162,7 +124,6 @@ export default function EvaluationDiagnosisPage() {
       await apiFetch<void>(evaluationApiEndpoints.score(id), {
         method: 'POST',
       });
-      gapsApi.refresh();
       responsesApi.refresh();
       diagnosisApi.refresh();
       setRunMsg('Diagnosis complete. Results refreshed.');
@@ -226,7 +187,6 @@ export default function EvaluationDiagnosisPage() {
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'analysis', label: 'Analysis', icon: '🧠' },
-    { id: 'gaps', label: 'Gap Analysis', icon: '🔍' },
     { id: 'responses', label: 'Responses', icon: '💬' },
   ];
 
@@ -434,25 +394,6 @@ export default function EvaluationDiagnosisPage() {
           </div>
         )}
 
-        {activeTab === 'gaps' && (
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 mb-4">Gap Analysis</h2>
-            <p className="text-sm text-slate-500 mb-4">
-              Loaded from the diagnosis backend for this evaluation.
-            </p>
-            {gapsLoading ? (
-              <p className="text-slate-400 text-sm">Loading gap analysis…</p>
-            ) : gaps === null ? (
-              <EmptyState
-                icon="🔍"
-                title="Gap analysis unavailable"
-                description="Unable to fetch gap details for this evaluation."
-              />
-            ) : (
-              <GapAnalysisPanel summary={gapSummary} />
-            )}
-          </div>
-        )}
 
         {activeTab === 'responses' && (
           <div>

@@ -26,28 +26,22 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'HOD', 'RESPONDENT'],
   },
   {
-    label: 'Organisations',
+    label: 'Client Organisations',
     href: '/organisations',
     icon: '🏢',
     roles: ['SUPER_ADMIN'],
   },
   {
-    label: 'Evaluations',
+    label: 'Professional Evaluations',
     href: '/evaluations',
     icon: '📋',
     roles: ['SUPER_ADMIN'],
   },
   {
-    label: 'Forms & Templates',
+    label: 'Questionnaires',
     href: '/forms',
     icon: '📝',
     roles: ['SUPER_ADMIN'],
-  },
-  {
-    label: 'Gap Analysis',
-    href: '/gap-analysis',
-    icon: '🔍',
-    roles: ['CLIENT_ADMIN'],
   },
   {
     label: 'My Forms',
@@ -56,13 +50,13 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['HOD', 'RESPONDENT'],
   },
   {
-    label: 'Organogram',
+    label: 'Structural Organogram',
     href: '/organogram',
     icon: '🌳',
     roles: ['SUPER_ADMIN'],
   },
   {
-    label: 'AI Diagnosis',
+    label: 'Analytics',
     href: '/ai-diagnosis',
     icon: '🤖',
     roles: ['SUPER_ADMIN'],
