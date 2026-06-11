@@ -1988,6 +1988,81 @@ app.get('/published-analyses', authenticate, async (req, res) => {
   }
 });
 
+// ── Super admin: all published analyses across all orgs ──────────────────────
+app.get('/published-analyses/all', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT']), async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      where: { action: 'DIAGNOSIS_PUBLISHED' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const all = logs.map((log) => {
+      const metadata = log.metadata && typeof log.metadata === 'object' ? log.metadata : {};
+      return {
+        id: log.id,
+        publishedAt: log.createdAt,
+        publishedBy: metadata.publishedByEmail || undefined,
+        recipientId: metadata.recipientId,
+        recipientName: metadata.recipientName || metadata.recipientEmail,
+        evaluationId: metadata.evaluationId || null,
+        summary: metadata.summary || '',
+        analysis: metadata.analysis || null,
+      };
+    });
+
+    res.json(all);
+  } catch (error) {
+    console.error('Fetch all published analyses failed:', error);
+    res.status(500).json({ message: 'Unable to fetch analyses.' });
+  }
+});
+
+// ── Super admin: update organogram inside a published analysis (AuditLog) ────
+app.patch('/published-analyses/:id/organogram', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { organogram } = req.body;
+
+    if (!organogram || !Array.isArray(organogram.nodes)) {
+      return res.status(400).json({ message: 'organogram.nodes array is required.' });
+    }
+
+    const log = await prisma.auditLog.findUnique({ where: { id } });
+    if (!log) return res.status(404).json({ message: 'Published analysis not found.' });
+
+    const metadata = (log.metadata && typeof log.metadata === 'object') ? { ...log.metadata } : {};
+    const analysis = (metadata.analysis && typeof metadata.analysis === 'object') ? { ...metadata.analysis } : {};
+    analysis.organogram = organogram;
+    metadata.analysis = analysis;
+
+    const updated = await prisma.auditLog.update({
+      where: { id },
+      data: { metadata },
+    });
+
+    // Also update the Diagnosis record if evaluationId is present
+    const evaluationId = metadata.evaluationId;
+    if (evaluationId) {
+      const diag = await prisma.diagnosis.findFirst({ where: { evaluationId } });
+      if (diag) {
+        const content = (diag.content && typeof diag.content === 'object') ? { ...diag.content } : {};
+        content.organogram = organogram;
+        await prisma.diagnosis.update({ where: { id: diag.id }, data: { content } });
+      }
+    }
+
+    const updatedMetadata = updated.metadata && typeof updated.metadata === 'object' ? updated.metadata : {};
+    res.json({
+      id: updated.id,
+      analysis: updatedMetadata.analysis || null,
+      message: 'Organogram updated successfully.',
+    });
+  } catch (error) {
+    console.error('Update organogram failed:', error);
+    res.status(500).json({ message: 'Unable to update organogram.' });
+  }
+});
+
 app.get('/ai-status', authenticate, async (req, res) => {
   try {
     const providers = [];
