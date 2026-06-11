@@ -42,13 +42,22 @@ export default function OrgChart({ rows }: { rows: OrgRow[] }) {
     setCollapsed(s => ({ ...s, [node.name]: !s[node.name] }));
   }
 
-  function flatten(node: any, depth = 0, x = 0, y = 0, acc: any[] = []) {
+  function flatten(node: any, depth = 0, x = 0, y = 0, acc: any[] = [], visited = new Set<string>()) {
+    if (visited.has(node.name)) {
+      return acc;
+    }
+
+    visited.add(node.name);
+    node.x = x;
+    node.y = y;
     acc.push({ node, depth, x, y });
+
     if (collapsed[node.name]) return acc;
+
     let childY = y + 80;
     let offsetX = x - (node.children.length - 1) * 100 / 2;
     node.children.forEach((c: any, i: number) => {
-      flatten(c, depth + 1, offsetX + i * 100, childY, acc);
+      flatten(c, depth + 1, offsetX + i * 100, childY, acc, new Set(visited));
     });
     return acc;
   }

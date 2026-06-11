@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { GapAnalysisPanel } from '@/components/diagnosis/gap-analysis-panel';
 import RadarChart from '@/components/charts/RadarChart';
@@ -14,10 +14,49 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 type Tab = 'analysis' | 'gaps' | 'responses';
 
+class DiagnosisErrorBoundary extends React.Component<{
+  children: React.ReactNode;
+  onReset: () => void;
+}> {
+  state = { hasError: false, errorMessage: '' };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMessage: error?.message ?? 'Something went wrong while rendering the diagnosis page.' };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('Diagnosis page rendering error:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+          <div className="max-w-xl rounded-3xl border border-red-200 bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-red-600">Rendering error</p>
+            <h1 className="mt-4 text-2xl font-semibold text-slate-900">Unable to display diagnosis</h1>
+            <p className="mt-3 text-sm text-slate-600">{this.state.errorMessage}</p>
+            <button
+              type="button"
+              onClick={this.props.onReset}
+              className="mt-6 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function EvaluationDiagnosisPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>('analysis');
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState('');
@@ -253,7 +292,11 @@ export default function EvaluationDiagnosisPage() {
 
 
   return (
-    <div>
+    <DiagnosisErrorBoundary
+      key={errorBoundaryKey}
+      onReset={() => setErrorBoundaryKey((current) => current + 1)}
+    >
+      <div>
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -685,5 +728,6 @@ export default function EvaluationDiagnosisPage() {
         )}
       </div>
     </div>
+  </DiagnosisErrorBoundary>
   );
 }
