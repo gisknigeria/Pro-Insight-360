@@ -486,61 +486,78 @@ export default function AIDiagnosisPage() {
       <div className="grid gap-6 xl:grid-cols-[1fr_380px] mb-8">
         {/* ── LEFT: Prompt panel + Import ── */}
         <div className="space-y-6">
-          {/* Prompt library */}
+          {/* Prompt library — ALL prompts visible at once */}
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Step 1 — Copy responses & choose a prompt</h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  Go to your evaluation's Responses tab, click <strong>Copy all answers</strong>, then paste into ChatGPT or Claude with one of these prompts.
-                </p>
-              </div>
-            </div>
+            <h2 className="text-lg font-bold text-slate-900 mb-1">Step 1 — Choose a prompt & copy responses</h2>
+            <p className="text-sm text-slate-500 mb-6">
+              Go to your evaluation's Responses tab → <strong>Copy all answers</strong>. Then pick a prompt below, copy it, and paste both into ChatGPT or Claude.
+            </p>
 
-            {/* Prompt selector tabs */}
-            <div className="flex flex-wrap gap-2 mb-5">
-              {PROMPT_TEMPLATES.map((tpl) => (
-                <button
-                  key={tpl.id}
-                  type="button"
-                  onClick={() => setSelectedPrompt(tpl)}
-                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
-                    selectedPrompt.id === tpl.id
-                      ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
-                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white'
-                  }`}
-                >
-                  <span>{tpl.icon}</span>
-                  {tpl.label}
-                </button>
-              ))}
-            </div>
+            <div className="space-y-4">
+              {PROMPT_TEMPLATES.map((tpl) => {
+                const isActive = selectedPrompt.id === tpl.id;
+                const isCopied = promptCopied && isActive;
 
-            {/* Active prompt */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{selectedPrompt.icon}</span>
-                    <p className="text-sm font-bold text-slate-900">{selectedPrompt.label}</p>
+                const PROMPT_GRAD: Record<string, string> = {
+                  'general-org':      'from-blue-500 to-indigo-600',
+                  'gis-readiness':    'from-emerald-500 to-teal-600',
+                  'digital-readiness':'from-violet-500 to-purple-600',
+                  'technical-skills': 'from-amber-500 to-orange-600',
+                  'governance':       'from-rose-500 to-red-600',
+                };
+                const grad = PROMPT_GRAD[tpl.id] ?? 'from-primary to-primary/70';
+
+                return (
+                  <div
+                    key={tpl.id}
+                    className={`rounded-2xl border transition-all ${isActive ? 'border-primary/40 shadow-md' : 'border-slate-200'}`}
+                  >
+                    {/* Header row */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPrompt(tpl)}
+                      className="flex w-full items-center gap-4 p-4 text-left"
+                    >
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${grad} text-lg shadow-md`}>
+                        {tpl.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900">{tpl.label}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{tpl.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPrompt(tpl);
+                            navigator.clipboard.writeText(tpl.prompt);
+                            setPromptCopied(true);
+                            setTimeout(() => setPromptCopied(false), 2500);
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                            isCopied
+                              ? 'bg-emerald-500 text-white'
+                              : `bg-gradient-to-r ${grad} text-white shadow-sm hover:shadow-md hover:opacity-90`
+                          }`}
+                        >
+                          {isCopied ? '✓ Copied!' : '📋 Copy'}
+                        </button>
+                        <span className="text-slate-400 text-xs">{isActive ? '▲' : '▼'}</span>
+                      </div>
+                    </button>
+
+                    {/* Expanded prompt text */}
+                    {isActive && (
+                      <div className="border-t border-slate-100 px-4 pb-4">
+                        <pre className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 leading-relaxed max-h-64 overflow-y-auto">
+                          {tpl.prompt}
+                        </pre>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-500">{selectedPrompt.description}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={copyPrompt}
-                  className={`shrink-0 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                    promptCopied
-                      ? 'bg-emerald-500 text-white shadow-md'
-                      : 'bg-primary text-white hover:bg-primary/90 shadow-sm hover:shadow-md'
-                  }`}
-                >
-                  {promptCopied ? '✓ Copied!' : '📋 Copy prompt'}
-                </button>
-              </div>
-              <pre className="whitespace-pre-wrap rounded-xl bg-white border border-slate-200 p-4 text-xs text-slate-600 leading-relaxed max-h-52 overflow-y-auto">
-                {selectedPrompt.prompt}
-              </pre>
+                );
+              })}
             </div>
           </div>
 

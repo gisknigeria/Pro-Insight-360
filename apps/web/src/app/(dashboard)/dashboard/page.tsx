@@ -520,6 +520,69 @@ function SuperAdminDashboard() {
 }
 
 /* ═══════════════════════════════════════════
+   ✨ Per-evaluation live response stats card
+   ═══════════════════════════════════════════ */
+function EvaluationStatCard({ evaluation }: { evaluation: Evaluation }) {
+  const [metrics, setMetrics] = useState<DiagnosisResponseMetrics | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
+
+  useEffect(() => {
+    apiFetch<DiagnosisResponseMetrics>(`/diagnosis/evaluations/${evaluation.id}/responses`)
+      .then(setMetrics)
+      .catch(() => setMetrics(null))
+      .finally(() => setLoadingMetrics(false));
+  }, [evaluation.id]);
+
+  const completion = metrics?.averageCompletion ?? 0;
+  const barColor = completion >= 75 ? '#10b981' : completion >= 50 ? '#2563eb' : '#f59e0b';
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm hover:shadow-md transition-all">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 text-sm">
+            📋
+          </div>
+          <p className="text-sm font-semibold text-foreground truncate">{evaluation.title}</p>
+        </div>
+        <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+          evaluation.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+        }`}>{evaluation.status}</span>
+      </div>
+
+      {loadingMetrics ? (
+        <div className="grid grid-cols-3 gap-2">
+          {[1,2,3].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-muted" />)}
+        </div>
+      ) : metrics ? (
+        <>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {[
+              { label: 'Responses', value: metrics.totalResponses },
+              { label: 'Answers',   value: metrics.totalAnswers },
+              { label: 'Completion',value: `${metrics.averageCompletion}%` },
+            ].map((s) => (
+              <div key={s.label} className="rounded-lg bg-surface-muted p-2 text-center">
+                <p className="text-base font-bold text-foreground">{s.value}</p>
+                <p className="text-[10px] text-muted">{s.label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${Math.min(100, metrics.averageCompletion)}%`, backgroundColor: barColor }}
+            />
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-muted">No response data yet.</p>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    ✨ Main Dashboard Page
    ═══════════════════════════════════════════ */
 export default function DashboardPage() {
@@ -723,36 +786,39 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* ── Stat cards ── */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mb-4">
-            <StatCard label="Submitted responses" value={totalResponses} icon="✅" color="blue" delay={0} />
+          {/* ── Stat cards — 2 cols on mobile, 4 on xl ── */}
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 mb-6">
+            <StatCard label="Responses" value={totalResponses} icon="✅" color="blue" delay={0} />
             <StatCard label="Total answers" value={totalAnswers} icon="✍️" color="green" delay={50} />
-            <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="slate" delay={100} />
+            <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="yellow" delay={100} />
+            <StatCard label="Reports" value={publishedAnalyses.length} icon="📊" color="slate" delay={150} />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2 mb-6">
+          {/* ── Evaluation response stats per evaluation ── */}
+          {companyEvaluations.length > 0 && (
+            <div className="mb-6 grid gap-3 sm:grid-cols-2">
+              {companyEvaluations.slice(0, 4).map((ev) => (
+                <EvaluationStatCard key={ev.id} evaluation={ev} />
+              ))}
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2 mb-6">
             <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Completion distribution</p>
-                  <p className="text-xs text-muted mt-1">How many responses fall into each completion band.</p>
+                  <p className="text-xs text-muted mt-0.5">How many responses fall into each band.</p>
                 </div>
                 <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
               </div>
-              <div className="h-56 min-h-[14rem]">
+              <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={completionDistribution} margin={{ top: 8, right: 8, left: 0, bottom: 25 }}>
+                  <BarChart data={completionDistribution} margin={{ top: 8, right: 8, left: -10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 10,
-                        fontSize: 12,
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
                     <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -763,24 +829,17 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between gap-4 mb-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Top evaluations</p>
-                  <p className="text-xs text-muted mt-1">Most active evaluations by response count.</p>
+                  <p className="text-xs text-muted mt-0.5">Most active by response count.</p>
                 </div>
                 <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
               </div>
-              <div className="h-56 min-h-[14rem]">
+              <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={evaluationResponseCounts} margin={{ top: 8, right: 8, left: 0, bottom: 35 }}>
+                  <BarChart data={evaluationResponseCounts} margin={{ top: 8, right: 8, left: -10, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={50} />
+                    <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={55} />
                     <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 10,
-                        fontSize: 12,
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
                     <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -790,30 +849,24 @@ export default function DashboardPage() {
 
           {selectedEvaluationForMetrics ? (
             <div className="mb-6 rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted">
-              Metrics are sourced from the latest {filteredPublishedAnalyses.length > 0 ? 'published' : 'available'} evaluation: <span className="font-semibold text-foreground">{selectedEvaluationForMetrics.title}</span>.
+              Overall metrics from <span className="font-semibold text-foreground">{selectedEvaluationForMetrics.title}</span>.
             </div>
           ) : null}
 
-          {/* ── Main content grid ── */}
-          <div className="grid gap-6 mb-6">
-            {/* Latest published insight */}
-            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="flex items-center justify-between gap-4 mb-5">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">Latest published insight</h2>
-                  <p className="text-sm text-muted mt-0.5">Your most recent AI diagnosis report delivered by the superadmin.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-accent">{publishedAnalyses.length}</span>
-                  <span className="text-[11px] text-muted font-medium uppercase tracking-wider">Reports</span>
-                </div>
+          {/* ── Latest published insight ── */}
+          <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Latest published insight</h2>
+                <p className="text-sm text-muted mt-0.5">Your most recent AI diagnosis delivered by the super admin.</p>
               </div>
-              {latestPublished ? (
-                <LatestPublishedAnalysis published={latestPublished} evaluation={latestPublishedEvaluation} />
-              ) : (
-                <EmptyDashboard message="No published AI insights have been shared with your account yet." />
-              )}
+              <span className="text-2xl font-bold text-accent">{publishedAnalyses.length}</span>
             </div>
+            {latestPublished ? (
+              <LatestPublishedAnalysis published={latestPublished} evaluation={latestPublishedEvaluation} />
+            ) : (
+              <EmptyDashboard message="No published AI insights have been shared with your account yet." />
+            )}
           </div>
         </>
       )}
