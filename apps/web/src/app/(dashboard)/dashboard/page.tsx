@@ -579,7 +579,6 @@ export default function DashboardPage() {
 
   const totalResponses = companyResponses.length;
   const totalAnswers = companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
-  const questionCount = companyResponses.reduce((sum, response) => sum + (response.questionCount || 0), 0);
   const averageCompletion = companyResponses.length > 0
     ? Math.round(companyResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / companyResponses.length)
     : 0;
@@ -618,7 +617,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={mounted ? 'animate-fade-in' : ''}>
+    <div className={`w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 ${mounted ? 'animate-fade-in' : ''}`}>
       {/* ── Header ── */}
       <div className="mb-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -655,17 +654,16 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* ── Stat cards ── */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8">
-            <StatCard label="Total responses" value={totalResponses} icon="✅" color="blue" delay={0} />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mb-8">
+            <StatCard label="Submitted responses" value={totalResponses} icon="✅" color="blue" delay={0} />
             <StatCard label="Total answers" value={totalAnswers} icon="✍️" color="green" delay={50} />
-            <StatCard label="Total questions" value={questionCount} icon="❓" color="yellow" delay={100} />
-            <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="slate" delay={150} />
+            <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="slate" delay={100} />
           </div>
 
           {/* ── Main content grid ── */}
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] mb-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] mb-6">
             {/* Active evaluations */}
-            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
+            <div className="min-w-0 rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between gap-4 mb-5">
                 <div>
                   <h2 className="text-lg font-bold text-foreground">Active evaluations</h2>
@@ -719,7 +717,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Latest published insight */}
-            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
+            <div className="min-w-0 rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between gap-4 mb-5">
                 <div>
                   <h2 className="text-lg font-bold text-foreground">Latest published insight</h2>
