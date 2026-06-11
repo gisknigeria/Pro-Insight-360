@@ -38,6 +38,11 @@ interface ResponseItem {
   form: { id: string; title: string; evaluation: { id: string; organisation: Organisation } | null };
 }
 
+interface ChartDataPoint {
+  name: string;
+  value: number;
+}
+
 interface DiagnosisResponseMetrics {
   totalResponses: number;
   totalAnswers: number;
@@ -605,6 +610,42 @@ export default function DashboardPage() {
     return responses.filter((response) => response.form.evaluation?.organisation?.id === userOrg.id);
   }, [responses, userOrg]);
 
+  const completionDistribution = useMemo<ChartDataPoint[]>(() => {
+    const buckets = [
+      { name: '0-25%', min: 0, max: 25, value: 0 },
+      { name: '26-50%', min: 26, max: 50, value: 0 },
+      { name: '51-75%', min: 51, max: 75, value: 0 },
+      { name: '76-100%', min: 76, max: 100, value: 0 },
+    ];
+
+    for (const response of companyResponses) {
+      const bucket = buckets.find((bucketItem) => response.completionPercentage >= bucketItem.min && response.completionPercentage <= bucketItem.max);
+      if (bucket) bucket.value += 1;
+    }
+
+    return buckets.map(({ name, value }) => ({ name, value }));
+  }, [companyResponses]);
+
+  const evaluationResponseCounts = useMemo<ChartDataPoint[]>(() => {
+    const counts: Record<string, number> = {};
+    const titles: Record<string, string> = {};
+    const titleMap = Object.fromEntries(companyEvaluations.map((evaluation) => [evaluation.id, evaluation.title]));
+
+    companyResponses.forEach((response) => {
+      const evaluationId = response.form.evaluation?.id;
+      if (!evaluationId) return;
+      counts[evaluationId] = (counts[evaluationId] || 0) + 1;
+      if (!titles[evaluationId]) {
+        titles[evaluationId] = titleMap[evaluationId] || `Evaluation ${evaluationId.slice(0, 6)}`;
+      }
+    });
+
+    return Object.entries(counts)
+      .map(([id, value]) => ({ name: titles[id] || `Evaluation ${id.slice(0, 6)}`, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 4);
+  }, [companyResponses, companyEvaluations]);
+
   const totalResponses = latestResponseMetrics?.totalResponses ?? companyResponses.length;
   const totalAnswers = latestResponseMetrics?.totalAnswers ?? companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
   const averageCompletion = latestResponseMetrics?.averageCompletion ?? (companyResponses.length > 0
@@ -687,6 +728,64 @@ export default function DashboardPage() {
             <StatCard label="Submitted responses" value={totalResponses} icon="✅" color="blue" delay={0} />
             <StatCard label="Total answers" value={totalAnswers} icon="✍️" color="green" delay={50} />
             <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="slate" delay={100} />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2 mb-6">
+            <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Completion distribution</p>
+                  <p className="text-xs text-muted mt-1">How many responses fall into each completion band.</p>
+                </div>
+                <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
+              </div>
+              <div className="h-56 min-h-[14rem]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={completionDistribution} margin={{ top: 8, right: 8, left: 0, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 10,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Top evaluations</p>
+                  <p className="text-xs text-muted mt-1">Most active evaluations by response count.</p>
+                </div>
+                <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
+              </div>
+              <div className="h-56 min-h-[14rem]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={evaluationResponseCounts} margin={{ top: 8, right: 8, left: 0, bottom: 35 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={50} />
+                    <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 10,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
 
           {selectedEvaluationForMetrics ? (
