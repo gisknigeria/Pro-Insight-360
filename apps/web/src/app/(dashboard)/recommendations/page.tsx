@@ -48,7 +48,7 @@ export default function RecommendationsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Recommendations</h1>
         <p className="text-slate-500 mt-1 text-sm">
-          AI-generated actionable recommendations to improve readiness.
+          GISKonsult-generated actionable recommendations to improve readiness.
         </p>
       </div>
 
@@ -80,7 +80,7 @@ export default function RecommendationsPage() {
         <EmptyState
           icon="💡"
           title="No recommendations yet"
-          description="Recommendations will appear after AI analysis of your evaluation data."
+          description="Recommendations will appear after GISKonsult analysis of your evaluation data."
           actionLabel="View Evaluations"
           onAction={() => (window.location.href = '/evaluations')}
         />

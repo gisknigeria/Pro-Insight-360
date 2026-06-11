@@ -731,7 +731,7 @@ export default function InsightPage() {
                   <div className="flex items-center justify-between gap-4 mb-5">
                     <div>
                       <h2 className="text-base font-bold text-slate-900">Identified gaps</h2>
-                      <p className="text-sm text-slate-500">Improvement areas flagged by scoring and AI analysis.</p>
+                      <p className="text-sm text-slate-500">Improvement areas flagged by scoring and GISKonsult analysis.</p>
                     </div>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
                       {gapItems.length + aiGaps.length} gaps
@@ -762,7 +762,7 @@ export default function InsightPage() {
                       {/* AI-generated gaps */}
                       {aiGaps.length > 0 && (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">AI-identified gaps</p>
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">GISKonsult-identified gaps</p>
                           <div className="grid gap-2 sm:grid-cols-2">
                             {aiGaps.map((gap, i) => (
                               <div key={i} className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-100 p-3">

@@ -113,7 +113,7 @@ export default function EvaluationDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">AI Diagnosis</h1>
+          <h1 className="text-2xl font-bold text-slate-900">GISKonsult Analysis</h1>
           <p className="text-sm text-slate-500 mt-1">
             Review the live diagnosis generated for this evaluation and approve it once it matches the prompt output.
           </p>
@@ -128,9 +128,9 @@ export default function EvaluationDetailPage() {
 
       {!diagnosis ? (
         <EmptyState
-          icon="🤖"
-          title="No AI diagnosis available yet"
-          description="This evaluation does not have an AI diagnosis yet. Generate the analysis from the diagnosis engine and return here to approve it."
+          icon="📊"
+          title="No analysis available yet"
+          description="This evaluation does not have a GISKonsult analysis yet. It will appear here once our team has completed the assessment."
           actionLabel="Open diagnosis engine"
           onAction={() => (window.location.href = `/evaluations/${evaluationId}/diagnosis`)}
         />

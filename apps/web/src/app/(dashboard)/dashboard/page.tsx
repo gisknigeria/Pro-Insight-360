@@ -765,7 +765,7 @@ export default function DashboardPage() {
                 Live
               </span>
             </div>
-            <p className="text-sm text-muted">Live evaluation metrics and your latest published AI insight.</p>
+            <p className="text-sm text-muted">Live evaluation metrics and your latest published GISKonsult insight.</p>
           </div>
           {userOrg && (
             <div className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-3 text-sm text-foreground border border-border shadow-sm">
@@ -859,14 +859,14 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-4 mb-5">
               <div>
                 <h2 className="text-lg font-bold text-foreground">Latest published insight</h2>
-                <p className="text-sm text-muted mt-0.5">Your most recent AI diagnosis delivered by the super admin.</p>
+                <p className="text-sm text-muted mt-0.5">Your most recent GISKonsult analysis delivered by our team.</p>
               </div>
               <span className="text-2xl font-bold text-accent">{publishedAnalyses.length}</span>
             </div>
             {latestPublished ? (
               <LatestPublishedAnalysis published={latestPublished} evaluation={latestPublishedEvaluation} />
             ) : (
-              <EmptyDashboard message="No published AI insights have been shared with your account yet." />
+              <EmptyDashboard message="No published GISKonsult insights have been shared with your account yet." />
             )}
           </div>
         </>
