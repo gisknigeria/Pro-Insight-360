@@ -110,11 +110,14 @@ export default function EvaluationDiagnosisPage() {
 
   const chartData: any[] = Array.isArray(s.charts) ? s.charts : [];
 
-  const parsedGaps = useMemo(() => (Array.isArray(s.gaps) ? s.gaps : []).map(parseGap), [s.gaps]);
+  const parsedGaps = useMemo(
+    () => (Array.isArray(s.gaps) ? (s.gaps as string[]) : []).map(parseGap),
+    [s.gaps],
+  );
 
   const gapSevCounts = useMemo(() => {
     const counts: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
-    parsedGaps.forEach(g => { if (counts[g.sev] !== undefined) counts[g.sev]++; });
+    parsedGaps.forEach((g: { sev: string; text: string }) => { if (counts[g.sev] !== undefined) counts[g.sev]++; });
     return counts;
   }, [parsedGaps]);
 
@@ -130,9 +133,11 @@ export default function EvaluationDiagnosisPage() {
       const src = String(link.source || '');
       const tgt = String(link.target || '');
       // source/target can be label strings or IDs — resolve IDs via nodes
-      const idToLabel = new Map(organogram.nodes.map((n: any) => [String(n.id ?? ''), String(n.label ?? n.id ?? '')]));
-      const srcName = idToLabel.get(src) ?? src;
-      const tgtName = idToLabel.get(tgt) ?? tgt;
+      const idToLabel = new Map<string, string>(
+        organogram.nodes.map((n: any): [string, string] => [String(n.id ?? ''), String(n.label ?? n.id ?? '')])
+      );
+      const srcName: string = idToLabel.get(src) ?? src;
+      const tgtName: string = idToLabel.get(tgt) ?? tgt;
       const row = map.get(srcName);
       if (row) row.reportsTo = tgtName;
     });
@@ -380,7 +385,7 @@ export default function EvaluationDiagnosisPage() {
                   {/* Gap cards by severity */}
                   <div className="space-y-4">
                     {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map(sev => {
-                      const items = parsedGaps.filter(g => g.sev === sev);
+                      const items = parsedGaps.filter((g: { sev: string; text: string }) => g.sev === sev);
                       if (items.length === 0) return null;
                       const st = SEV_STYLES[sev];
                       return (
@@ -389,7 +394,7 @@ export default function EvaluationDiagnosisPage() {
                             <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />{sev} ({items.length})
                           </p>
                           <div className="grid gap-2 sm:grid-cols-2">
-                            {items.map((g, i) => (
+                            {items.map((g: { sev: string; text: string }, i: number) => (
                               <div key={i} className={`flex items-start gap-2.5 rounded-xl border p-3 ${st.bg} ${st.border}`}>
                                 <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${st.badge}`}>{i + 1}</span>
                                 <p className="text-xs text-slate-700 leading-relaxed">{g.text}</p>
