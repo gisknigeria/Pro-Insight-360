@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch } from '@/lib/api';
 import RadarChart from '@/components/charts/RadarChart';
+import OrgChart from '@/components/organogram/OrgChart';
 import {
   BarChart,
   Bar,
@@ -14,6 +15,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   LabelList,
+  Cell,
 } from 'recharts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -106,6 +108,8 @@ function SectionChip({ color, label }: { color: string; label: string }) {
   );
 }
 
+const CHART_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4', '#84cc16'];
+
 function AnalysisChartCard({ chart }: { chart: any }) {
   const chartData = Array.isArray(chart?.data)
     ? chart.data
@@ -114,6 +118,9 @@ function AnalysisChartCard({ chart }: { chart: any }) {
     : [];
 
   const avg = chartData.length > 0 ? chartData.reduce((s: number, p: any) => s + p.value, 0) / chartData.length : 0;
+  const maxVal = chartData.length > 0 ? Math.max(...chartData.map((d: any) => d.value)) : 100;
+  // Use 0–100 scale only when max value clearly fits; otherwise auto-scale
+  const yMax = maxVal <= 100 && avg <= 100 ? 100 : undefined;
 
   if (chartData.length === 0) {
     return (
@@ -134,10 +141,13 @@ function AnalysisChartCard({ chart }: { chart: any }) {
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={60} />
-            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
+            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} domain={yMax ? [0, yMax] : ['auto', 'auto']} />
             <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '12px' }} />
             <ReferenceLine y={avg} stroke="#f59e0b" strokeDasharray="5 5" label={{ value: 'avg', position: 'right', fill: '#f59e0b', fontSize: 11 }} />
-            <Bar dataKey="value" fill="#2563eb" radius={[8, 8, 0, 0]}>
+            <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+              {chartData.map((_: any, i: number) => (
+                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              ))}
               <LabelList dataKey="value" position="top" fill="#1e40af" fontSize={11} fontWeight="600" />
             </Bar>
           </BarChart>
@@ -297,6 +307,8 @@ export default function AIDiagnosisPage() {
     opportunities: Array.isArray(parsedChat?.opportunities) ? parsedChat.opportunities.length : 0,
     recommendations: Array.isArray(parsedChat?.recommendations) ? parsedChat.recommendations.length : 0,
     actionPlan: Array.isArray(parsedChat?.actionPlan) ? parsedChat.actionPlan.length : 0,
+    gaps: Array.isArray(parsedChat?.gaps) ? parsedChat.gaps.length : 0,
+    questions: Array.isArray(parsedChat?.questions) ? parsedChat.questions.length : 0,
   }), [parsedChat]);
 
   const radarData = useMemo(() => {
@@ -517,7 +529,7 @@ export default function AIDiagnosisPage() {
 
           {parsedChat ? (
             <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800">
-              ✓ Analysis ready to publish — {metrics.strengths} strengths, {metrics.weaknesses} weaknesses, {metrics.actionPlan} action items
+              ✓ Analysis ready to publish — {metrics.strengths} strengths, {metrics.weaknesses} weaknesses, {metrics.gaps} gaps, {metrics.actionPlan} action items
             </div>
           ) : (
             <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-500">
@@ -575,18 +587,22 @@ export default function AIDiagnosisPage() {
                 <SectionChip color="bg-emerald-50 text-emerald-700 ring-emerald-200" label={`${metrics.strengths} strengths`} />
                 <SectionChip color="bg-red-50 text-red-700 ring-red-200" label={`${metrics.weaknesses} weaknesses`} />
                 <SectionChip color="bg-amber-50 text-amber-700 ring-amber-200" label={`${metrics.opportunities} opportunities`} />
+                {metrics.gaps > 0 && <SectionChip color="bg-rose-50 text-rose-700 ring-rose-200" label={`${metrics.gaps} gaps`} />}
+                {metrics.questions > 0 && <SectionChip color="bg-slate-100 text-slate-600 ring-slate-200" label={`${metrics.questions} Q&As`} />}
               </div>
             </div>
           </div>
 
           {/* Metric cards + radar */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
             {[
               { label: 'Strengths', value: metrics.strengths, color: 'from-emerald-400 to-green-600' },
               { label: 'Weaknesses', value: metrics.weaknesses, color: 'from-red-400 to-rose-600' },
               { label: 'Opportunities', value: metrics.opportunities, color: 'from-amber-400 to-orange-500' },
+              { label: 'Gaps', value: metrics.gaps, color: 'from-rose-400 to-red-600' },
               { label: 'Recommendations', value: metrics.recommendations, color: 'from-blue-400 to-indigo-600' },
               { label: 'Action items', value: metrics.actionPlan, color: 'from-violet-400 to-purple-600' },
+              { label: 'Q&As', value: metrics.questions, color: 'from-slate-400 to-slate-600' },
             ].map((m) => (
               <div key={m.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className={`mb-3 h-1.5 w-12 rounded-full bg-gradient-to-r ${m.color}`} />
@@ -713,6 +729,122 @@ export default function AIDiagnosisPage() {
               <div className="grid gap-4 xl:grid-cols-2">
                 {parsedChat.charts.map((chart: any, i: number) => (
                   <AnalysisChartCard key={i} chart={chart} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Gaps */}
+          {Array.isArray(parsedChat.gaps) && parsedChat.gaps.length > 0 && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-4 mb-5">
+                <h3 className="text-base font-bold text-slate-900">Identified Gaps</h3>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200">
+                  {parsedChat.gaps.length} gap{parsedChat.gaps.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              {(() => {
+                type GapSev = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+                const SEV_STYLES: Record<GapSev, { bg: string; border: string; badge: string; dot: string; text: string }> = {
+                  CRITICAL: { bg: 'bg-red-50',     border: 'border-red-200',     badge: 'bg-red-600 text-white',     dot: 'bg-red-500',     text: 'text-red-800' },
+                  HIGH:     { bg: 'bg-orange-50',  border: 'border-orange-200',  badge: 'bg-orange-500 text-white',  dot: 'bg-orange-500',  text: 'text-orange-800' },
+                  MEDIUM:   { bg: 'bg-amber-50',   border: 'border-amber-200',   badge: 'bg-amber-400 text-white',   dot: 'bg-amber-400',   text: 'text-amber-800' },
+                  LOW:      { bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-500 text-white', dot: 'bg-emerald-500', text: 'text-emerald-800' },
+                };
+                const parsed = (parsedChat.gaps as string[]).map((g) => {
+                  const u = g.toUpperCase();
+                  let sev: GapSev = 'MEDIUM';
+                  if (u.startsWith('CRITICAL')) sev = 'CRITICAL';
+                  else if (u.startsWith('HIGH')) sev = 'HIGH';
+                  else if (u.startsWith('LOW')) sev = 'LOW';
+                  return { sev, text: g.replace(/^(CRITICAL|HIGH|MEDIUM|LOW)[:\s—\-]+/i, '').trim() };
+                });
+                const order: GapSev[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+                return (
+                  <div className="space-y-5">
+                    {order.map((sev) => {
+                      const items = parsed.filter(g => g.sev === sev);
+                      if (items.length === 0) return null;
+                      const s = SEV_STYLES[sev];
+                      return (
+                        <div key={sev}>
+                          <div className={`flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider ${s.text}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+                            {sev} ({items.length})
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {items.map((g, i) => (
+                              <div key={i} className={`flex items-start gap-2.5 rounded-xl border p-3 ${s.bg} ${s.border}`}>
+                                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${s.badge}`}>{i + 1}</span>
+                                <p className="text-xs text-slate-700 leading-relaxed">{g.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Organogram */}
+          {parsedChat.organogram?.nodes?.length > 0 && (() => {
+            const nodes: Array<{ id?: string; label?: string; group?: string }> = parsedChat.organogram.nodes;
+            const links: Array<{ source?: string; target?: string; relation?: string }> = parsedChat.organogram.links ?? [];
+            const idToLabel = new Map(nodes.map((n) => [n.id ?? '', n.label ?? n.id ?? 'Unknown']));
+            const orgRows = nodes.map((n) => ({
+              name: n.label ?? n.id ?? 'Unknown',
+              title: n.group ?? 'Department',
+              reportsTo: '',
+            }));
+            links.forEach((link) => {
+              const srcName = idToLabel.get(link.source ?? '') ?? link.source ?? '';
+              const row = orgRows.find((r) => r.name === srcName);
+              if (row) row.reportsTo = idToLabel.get(link.target ?? '') ?? link.target ?? '';
+            });
+            const departments = [...new Set(nodes.map((n) => n.group).filter(Boolean))];
+            return (
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <h3 className="text-base font-bold text-slate-900">Organogram</h3>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 ring-1 ring-violet-200">
+                    {nodes.length} roles · {departments.length} departments
+                  </span>
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="min-w-[900px]">
+                    <OrgChart rows={orgRows as any} />
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {departments.map((dept, i) => (
+                    <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                      🏢 {dept}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Survey responses */}
+          {Array.isArray(parsedChat.questions) && parsedChat.questions.length > 0 && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-4 mb-5">
+                <h3 className="text-base font-bold text-slate-900">Survey Responses</h3>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                  {parsedChat.questions.length} Q&amp;As
+                </span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {parsedChat.questions.map((q: { question: string; answer: string }, i: number) => (
+                  <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Q{i + 1}</p>
+                    <p className="text-sm font-semibold text-slate-900 mb-2">{q.question}</p>
+                    <p className="text-sm text-slate-600 leading-relaxed">{q.answer}</p>
+                  </div>
                 ))}
               </div>
             </div>

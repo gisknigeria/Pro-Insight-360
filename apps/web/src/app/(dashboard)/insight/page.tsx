@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch } from '@/lib/api';
+import OrgChart from '@/components/organogram/OrgChart';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, RadarChart as RechartRadar, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -33,12 +34,17 @@ interface PublishedAnalysis {
   recipientId: string; recipientName?: string;
   evaluationId?: string | null; summary: string;
   analysis: {
+    questions?: Array<{ question: string; answer: string }>;
     executiveSummary?: string;
     strengths?: string[]; weaknesses?: string[];
     opportunities?: string[]; recommendations?: string[];
     gaps?: string[];
     actionPlan?: Array<{ who?: string; what?: string; how?: string; when?: string }>;
     charts?: Array<{ title?: string; data?: Array<{ label?: string; value?: number }> }>;
+    organogram?: {
+      nodes?: Array<{ id?: string; label?: string; group?: string }>;
+      links?: Array<{ source?: string; target?: string; relation?: string }>;
+    };
   } | null;
 }
 
@@ -87,16 +93,75 @@ function CompletionBar({ pct }: { pct: number }) {
   );
 }
 
+// ─── Gap severity parser ──────────────────────────────────────────────────────
+
+function parseGapSeverity(gapText: string): { severity: string; text: string } {
+  const upper = gapText.toUpperCase();
+  if (upper.startsWith('CRITICAL:') || upper.startsWith('CRITICAL —') || upper.startsWith('CRITICAL -')) {
+    return { severity: 'CRITICAL', text: gapText.replace(/^CRITICAL[:\s—-]+/i, '').trim() };
+  }
+  if (upper.startsWith('HIGH:') || upper.startsWith('HIGH —') || upper.startsWith('HIGH -')) {
+    return { severity: 'HIGH', text: gapText.replace(/^HIGH[:\s—-]+/i, '').trim() };
+  }
+  if (upper.startsWith('MEDIUM:') || upper.startsWith('MEDIUM —') || upper.startsWith('MEDIUM -')) {
+    return { severity: 'MEDIUM', text: gapText.replace(/^MEDIUM[:\s—-]+/i, '').trim() };
+  }
+  if (upper.startsWith('LOW:') || upper.startsWith('LOW —') || upper.startsWith('LOW -')) {
+    return { severity: 'LOW', text: gapText.replace(/^LOW[:\s—-]+/i, '').trim() };
+  }
+  return { severity: 'MEDIUM', text: gapText };
+}
+
+function buildOrgRows(nodes?: Array<{ id?: string; label?: string; group?: string }>, links?: Array<{ source?: string; target?: string; relation?: string }>) {
+  if (!nodes || nodes.length === 0) return [];
+  const idToLabel = new Map<string, string>(nodes.map(n => [n.id ?? '', n.label ?? n.id ?? 'Unknown']));
+  const rows = nodes.map(n => ({
+    name: n.label ?? n.id ?? 'Unknown',
+    title: n.group ?? 'Department',
+    reportsTo: '',
+  }));
+  (links ?? []).forEach(link => {
+    const sourceName = idToLabel.get(link.source ?? '') ?? link.source ?? '';
+    const targetName = idToLabel.get(link.target ?? '') ?? link.target ?? '';
+    const row = rows.find(r => r.name === sourceName);
+    if (row) row.reportsTo = targetName;
+  });
+  return rows;
+}
+
 // ─── Analysis card ────────────────────────────────────────────────────────────
 
 function AnalysisCard({ published, evaluation }: { published: PublishedAnalysis; evaluation?: Evaluation }) {
   const [expanded, setExpanded] = useState(false);
+  const [activeSection, setActiveSection] = useState<'overview' | 'gaps' | 'recommendations' | 'action' | 'charts' | 'org' | 'questions'>('overview');
   const a = published.analysis;
 
+  const parsedGaps = useMemo(() => (a?.gaps ?? []).map(parseGapSeverity), [a]);
+  const orgRows = useMemo(() => buildOrgRows(a?.organogram?.nodes, a?.organogram?.links), [a]);
+
+  const gapSevCounts = useMemo(() => {
+    const counts: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    parsedGaps.forEach(g => { if (counts[g.severity] !== undefined) counts[g.severity]++; });
+    return counts;
+  }, [parsedGaps]);
+
+  if (!a) return null;
+
+  const sectionTabs = [
+    { id: 'overview' as const,        label: 'Overview',         emoji: '📋' },
+    { id: 'gaps' as const,            label: `Gaps (${parsedGaps.length})`, emoji: '⚠️' },
+    { id: 'recommendations' as const, label: 'Recommendations',  emoji: '💡' },
+    { id: 'action' as const,          label: `Action Plan (${a.actionPlan?.length ?? 0})`, emoji: '🗂' },
+    { id: 'charts' as const,          label: `Charts (${a.charts?.length ?? 0})`, emoji: '📊' },
+    ...(orgRows.length > 0 ? [{ id: 'org' as const, label: 'Organogram', emoji: '🏢' }] : []),
+    ...(a.questions && a.questions.length > 0 ? [{ id: 'questions' as const, label: `Responses (${a.questions.length})`, emoji: '💬' }] : []),
+  ];
+
   return (
-    <div className={`rounded-3xl border transition-all overflow-hidden bg-white ${expanded ? 'border-blue-300 shadow-lg' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+    <div className={`rounded-3xl border transition-all overflow-hidden bg-white ${expanded ? 'border-blue-300 shadow-xl' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+      {/* Header */}
       <button type="button" className="flex w-full items-start gap-4 p-5 text-left" onClick={() => setExpanded(v => !v)}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 text-lg">📊</div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-xl shadow-md">📊</div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <p className="text-sm font-bold text-slate-900 truncate">{evaluation?.title ?? published.summary ?? 'Published analysis'}</p>
@@ -106,117 +171,226 @@ function AnalysisCard({ published, evaluation }: { published: PublishedAnalysis;
             {new Date(published.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
             {published.publishedBy ? ` · ${published.publishedBy}` : ''}
           </p>
-          {a?.executiveSummary && !expanded && (
+          {a.executiveSummary && !expanded && (
             <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{a.executiveSummary}</p>
+          )}
+          {!expanded && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {gapSevCounts.CRITICAL > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">{gapSevCounts.CRITICAL} Critical</span>}
+              {gapSevCounts.HIGH > 0 && <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">{gapSevCounts.HIGH} High</span>}
+              {a.strengths && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{a.strengths.length} Strengths</span>}
+              {a.charts && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">{a.charts.length} Charts</span>}
+              {orgRows.length > 0 && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">Organogram</span>}
+            </div>
           )}
         </div>
         <span className="text-slate-400 text-sm shrink-0 mt-1">{expanded ? '▲' : '▼'}</span>
       </button>
 
-      {expanded && a && (
-        <div className="border-t border-slate-100 p-5 space-y-5">
-          {a.executiveSummary && (
-            <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">Executive summary</p>
-              <p className="text-sm leading-relaxed text-slate-700">{a.executiveSummary}</p>
-            </div>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            {a.strengths && a.strengths.length > 0 && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-3">Strengths</p>
-                <ul className="space-y-2">{a.strengths.map((s, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-slate-700"><span className="text-emerald-500 shrink-0 mt-0.5">✓</span>{s}</li>
-                ))}</ul>
-              </div>
-            )}
-            {a.weaknesses && a.weaknesses.length > 0 && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-3">Weaknesses</p>
-                <ul className="space-y-2">{a.weaknesses.map((s, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-slate-700"><span className="text-red-400 shrink-0 mt-0.5">!</span>{s}</li>
-                ))}</ul>
-              </div>
-            )}
-            {a.opportunities && a.opportunities.length > 0 && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-3">Opportunities</p>
-                <ul className="space-y-2">{a.opportunities.map((s, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-slate-700"><span className="text-amber-500 shrink-0 mt-0.5">→</span>{s}</li>
-                ))}</ul>
-              </div>
-            )}
+      {expanded && (
+        <div className="border-t border-slate-100">
+          {/* Section tab nav */}
+          <div className="flex overflow-x-auto gap-1 px-5 pt-4 pb-0 border-b border-slate-100">
+            {sectionTabs.map(tab => (
+              <button key={tab.id} type="button" onClick={() => setActiveSection(tab.id)}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                  activeSection === tab.id ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span>{tab.emoji}</span>{tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Gaps from AI */}
-          {a.gaps && a.gaps.length > 0 && (
-            <div className="rounded-2xl border border-red-200 bg-red-50/60 p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-3">Identified gaps</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {a.gaps.map((gap, i) => (
-                  <div key={i} className="flex items-start gap-2.5 rounded-xl bg-white border border-red-100 p-3">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-600">{i + 1}</span>
-                    <p className="text-xs text-slate-700">{gap}</p>
+          <div className="p-5">
+            {/* ── OVERVIEW ── */}
+            {activeSection === 'overview' && (
+              <div className="space-y-5">
+                {a.executiveSummary && (
+                  <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">Executive Summary</p>
+                    <p className="text-sm leading-relaxed text-slate-700">{a.executiveSummary}</p>
                   </div>
-                ))}
+                )}
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {a.strengths && a.strengths.length > 0 && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-3 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Strengths ({a.strengths.length})
+                      </p>
+                      <ul className="space-y-2">
+                        {a.strengths.map((s, i) => (
+                          <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
+                            <span className="text-emerald-500 shrink-0 mt-0.5 font-bold">✓</span>{s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {a.weaknesses && a.weaknesses.length > 0 && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-3 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />Weaknesses ({a.weaknesses.length})
+                      </p>
+                      <ul className="space-y-2">
+                        {a.weaknesses.map((s, i) => (
+                          <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
+                            <span className="text-red-400 shrink-0 mt-0.5 font-bold">✕</span>{s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {a.opportunities && a.opportunities.length > 0 && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-3 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Opportunities ({a.opportunities.length})
+                      </p>
+                      <ul className="space-y-2">
+                        {a.opportunities.map((s, i) => (
+                          <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
+                            <span className="text-amber-500 shrink-0 mt-0.5 font-bold">→</span>{s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                {evaluation && (
+                  <div className="flex justify-end pt-2">
+                    <Link href={`/evaluations/${evaluation.id}/diagnosis`}
+                      className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-sm">
+                      View full diagnosis →
+                    </Link>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {a.recommendations && a.recommendations.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Recommendations</p>
-              <div className="grid gap-2 sm:grid-cols-2">
+            {/* ── GAPS ── */}
+            {activeSection === 'gaps' && (
+              <div className="space-y-4">
+                {/* Severity summary badges */}
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(gapSevCounts).filter(([,v]) => v > 0).map(([sev, count]) => {
+                    const cfg = SEV_CFG[sev] ?? SEV_CFG.MEDIUM;
+                    return (
+                      <span key={sev} className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold ${cfg.bg} ${cfg.text}`}>
+                        <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
+                        {cfg.label}: {count}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                {/* Severity chart */}
+                {parsedGaps.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Gap severity distribution</p>
+                    <div className="h-32">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={Object.entries(gapSevCounts).map(([name, value]) => ({ name, value, fill: SEV_CFG[name]?.bar ?? '#94a3b8' }))} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                          <XAxis type="number" allowDecimals={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                          <YAxis type="category" dataKey="name" tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} width={65} />
+                          <Tooltip formatter={(v) => [v, 'Gaps']} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '11px' }} />
+                          <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                            {Object.entries(gapSevCounts).map(([name]) => <Cell key={name} fill={SEV_CFG[name]?.bar ?? '#94a3b8'} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gap cards grouped by severity */}
+                {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map(sev => {
+                  const items = parsedGaps.filter(g => g.severity === sev);
+                  if (items.length === 0) return null;
+                  const cfg = SEV_CFG[sev];
+                  return (
+                    <div key={sev}>
+                      <p className={`text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${cfg.text}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                        {cfg.label} priority ({items.length})
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {items.map((gap, i) => (
+                          <div key={i} className={`rounded-xl border p-3 ${cfg.bg}`} style={{ borderColor: cfg.dot.replace('bg-', '') }}>
+                            <div className="flex items-start gap-2">
+                              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${cfg.dot}`}>{i + 1}</span>
+                              <p className="text-xs text-slate-700 leading-relaxed">{gap.text}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── RECOMMENDATIONS ── */}
+            {activeSection === 'recommendations' && a.recommendations && (
+              <div className="space-y-3">
                 {a.recommendations.map((r, i) => (
-                  <div key={i} className="flex items-start gap-2.5 rounded-xl bg-white border border-slate-200 p-3">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">{i + 1}</span>
-                    <p className="text-xs text-slate-700">{r}</p>
+                  <div key={i} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 hover:border-blue-200 transition-colors">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white shadow-sm">{i + 1}</span>
+                    <p className="text-sm text-slate-700 leading-relaxed">{r}</p>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
 
-          {a.actionPlan && a.actionPlan.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Action plan</p>
+            {/* ── ACTION PLAN ── */}
+            {activeSection === 'action' && a.actionPlan && (
               <div className="space-y-3">
                 {a.actionPlan.map((item, i) => (
-                  <div key={i} className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                    <p className="text-sm font-semibold text-slate-900 mb-1.5">{item.what}</p>
-                    <div className="grid gap-1 text-xs text-slate-600 sm:grid-cols-3">
-                      <span><strong className="text-slate-800">Who:</strong> {item.who || 'TBD'}</span>
-                      <span><strong className="text-slate-800">When:</strong> {item.when || 'TBD'}</span>
-                      <span><strong className="text-slate-800">How:</strong> {item.how || '—'}</span>
+                  <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-200 hover:shadow-sm transition-all">
+                    <div className="flex items-start gap-3 mb-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{i + 1}</span>
+                      <p className="text-sm font-bold text-slate-900 leading-snug">{item.what}</p>
+                    </div>
+                    <div className="ml-10 grid gap-2 text-xs sm:grid-cols-3">
+                      <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
+                        <p className="font-bold text-blue-700 mb-0.5">Who</p>
+                        <p className="text-slate-600">{item.who || 'TBD'}</p>
+                      </div>
+                      <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
+                        <p className="font-bold text-amber-700 mb-0.5">When</p>
+                        <p className="text-slate-600">{item.when || 'TBD'}</p>
+                      </div>
+                      <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 sm:col-span-1 col-span-full">
+                        <p className="font-bold text-slate-600 mb-0.5">How</p>
+                        <p className="text-slate-600 leading-relaxed">{item.how || '—'}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Charts from AI */}
-          {a.charts && a.charts.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Analysis charts</p>
-              <div className="grid gap-4 sm:grid-cols-2">
+            {/* ── CHARTS ── */}
+            {activeSection === 'charts' && a.charts && (
+              <div className="grid gap-5 sm:grid-cols-2">
                 {a.charts.map((chart, ci) => {
                   const data = Array.isArray(chart.data)
                     ? chart.data.filter(Boolean).map(r => ({ name: String(r.label ?? ''), value: Number(r.value ?? 0) }))
                     : [];
                   if (data.length === 0) return null;
+                  const maxVal = Math.max(...data.map(d => d.value));
+                  const yMax = maxVal <= 100 ? 100 : undefined;
                   return (
-                    <div key={ci} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-xs font-semibold text-slate-700 mb-3">{chart.title}</p>
-                      <div className="h-44">
+                    <div key={ci} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <p className="text-xs font-bold text-slate-700 mb-3 uppercase tracking-wider">{chart.title}</p>
+                      <div className="h-52">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 35 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 9 }} interval={0} angle={-20} textAnchor="end" height={45} />
-                            <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} />
-                            <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                            <Bar dataKey="value" radius={[5, 5, 0, 0]}>
+                          <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 40 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 9 }} interval={0} angle={-25} textAnchor="end" height={55} />
+                            <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} domain={yMax ? [0, yMax] : ['auto', 'auto']} />
+                            <Tooltip formatter={(v) => [`${v}`, 'Score']} contentStyle={{ fontSize: '11px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                               {data.map((_, di) => <Cell key={di} fill={CHART_COLORS[di % CHART_COLORS.length]} />)}
                             </Bar>
                           </BarChart>
@@ -226,17 +400,44 @@ function AnalysisCard({ published, evaluation }: { published: PublishedAnalysis;
                   );
                 })}
               </div>
-            </div>
-          )}
+            )}
 
-          {evaluation && (
-            <div className="flex justify-end">
-              <Link href={`/evaluations/${evaluation.id}/diagnosis`}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-sm">
-                View full diagnosis →
-              </Link>
-            </div>
-          )}
+            {/* ── ORGANOGRAM ── */}
+            {activeSection === 'org' && orgRows.length > 0 && (
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
+                  {a.organogram?.nodes?.length ?? 0} roles across {[...new Set(a.organogram?.nodes?.map(n => n.group).filter(Boolean))].length} departments
+                </p>
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="min-w-[900px]">
+                    <OrgChart rows={orgRows as any} />
+                  </div>
+                </div>
+                {/* Department list */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {[...new Set(a.organogram?.nodes?.map(n => n.group).filter(Boolean))].map((dept, i) => (
+                    <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                      🏢 {dept}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── QUESTIONS / RESPONSES ── */}
+            {activeSection === 'questions' && a.questions && (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500 font-medium">{a.questions.length} questions answered by respondents.</p>
+                {a.questions.map((q, i) => (
+                  <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-bold text-slate-500 mb-1">Q{i + 1}</p>
+                    <p className="text-sm font-semibold text-slate-900 mb-2">{q.question}</p>
+                    <p className="text-sm text-slate-600 leading-relaxed">{q.answer}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
