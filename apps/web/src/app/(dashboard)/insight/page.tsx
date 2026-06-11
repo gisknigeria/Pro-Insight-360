@@ -3,8 +3,19 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
-import OrgChart from '@/components/organogram/OrgChart';
 import { apiFetch } from '@/lib/api';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Organisation {
   id: string;
@@ -48,33 +59,6 @@ interface ResponseItem {
   createdAt: string;
 }
 
-interface Diagnosis {
-  id: string;
-  evaluation: { id: string; title: string };
-  status: string;
-  isAiGenerated: boolean;
-  sections: {
-    executiveSummary: string;
-    strengths: string[];
-    weaknesses: string[];
-    opportunities: string[];
-    recommendations: string[];
-    actionPlan: Array<{ who: string; what: string; how: string; when: string }>;
-  };
-  createdAt: string;
-}
-
-interface GapSummary {
-  id: string;
-  category: string;
-  severity: string;
-  evaluation: { id: string; title: string };
-  recommendedAction: string;
-  who: string;
-  how: string;
-  when: string;
-}
-
 interface PublishedAnalysis {
   id: string;
   publishedAt: string;
@@ -91,527 +75,657 @@ interface PublishedAnalysis {
     recommendations?: string[];
     actionPlan?: Array<{ who?: string; what?: string; how?: string; when?: string }>;
     charts?: Array<{ title?: string; data?: Array<{ label?: string; value?: number }> }>;
-    organogram?: { nodes?: Array<{ id?: string; label?: string; group?: string }>; links?: Array<{ source?: string; target?: string; relation?: string }> };
   } | null;
 }
 
-function StatCard({ label, value, icon, color = 'blue' }: { label: string; value: string | number; icon: string; color?: string }) {
-  const colorClasses: Record<string, string> = {
-    blue: 'bg-amber-50 text-primary',
-    green: 'bg-green-50 text-green-600',
-    yellow: 'bg-amber-50 text-amber-600',
-    red: 'bg-red-50 text-red-600',
-    slate: 'bg-slate-50 text-slate-700',
-  };
+interface GapSummary {
+  id: string;
+  category: string;
+  severity: string;
+  evaluation: { id: string; title: string };
+  recommendedAction: string;
+  who: string;
+  when: string;
+}
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const SEVERITY_CONFIG: Record<string, { label: string; bg: string; text: string; ring: string; dot: string }> = {
+  CRITICAL: { label: 'Critical', bg: 'bg-red-50', text: 'text-red-700', ring: 'ring-red-200', dot: 'bg-red-500' },
+  HIGH: { label: 'High', bg: 'bg-orange-50', text: 'text-orange-700', ring: 'ring-orange-200', dot: 'bg-orange-500' },
+  MEDIUM: { label: 'Medium', bg: 'bg-amber-50', text: 'text-amber-700', ring: 'ring-amber-200', dot: 'bg-amber-400' },
+  LOW: { label: 'Low', bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', dot: 'bg-emerald-500' },
+};
+
+function SeverityBadge({ severity }: { severity: string }) {
+  const cfg = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG.MEDIUM;
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-4 mb-3">
-        <span className="text-sm font-medium text-slate-500">{label}</span>
-        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${colorClasses[color] || colorClasses.blue}`}>
-          {icon}
-        </span>
-      </div>
-      <p className="text-3xl font-semibold text-slate-900">{value}</p>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${cfg.bg} ${cfg.text} ${cfg.ring}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
+  );
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  DRAFT: { label: 'Draft', color: 'bg-slate-100 text-slate-600' },
+  ACTIVE: { label: 'Active', color: 'bg-emerald-100 text-emerald-700' },
+  CLOSED: { label: 'Closed', color: 'bg-orange-100 text-orange-700' },
+  ARCHIVED: { label: 'Archived', color: 'bg-slate-100 text-slate-400' },
+};
+
+function CompletionBar({ pct, color = '#2563eb' }: { pct: number; color?: string }) {
+  return (
+    <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, pct)}%`, backgroundColor: color }} />
     </div>
   );
 }
 
-function Pill({ label }: { label: string }) {
-  return <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{label}</span>;
-}
+// ─── Chart colours ────────────────────────────────────────────────────────────
 
-function buildOrgRows(organogram: PublishedAnalysis['analysis'] | null) {
-  if (!organogram?.organogram?.nodes) return [];
-  const nodes = Array.isArray(organogram.organogram.nodes) ? organogram.organogram.nodes : [];
-  const links = Array.isArray(organogram.organogram.links) ? organogram.organogram.links : [];
-  const rows: Array<{ name: string; title: string; reportsTo: string }> = [];
+const CHART_COLORS = ['#2563eb', '#f59e0b', '#10b981', '#6366f1', '#ec4899', '#f97316'];
 
-  nodes.forEach((node) => {
-    const name = node.label || node.id || 'Unknown';
-    rows.push({
-      name,
-      title: node.group || 'Team member',
-      reportsTo: '',
-    });
-  });
+// ─── Analysis card ────────────────────────────────────────────────────────────
 
-  links.forEach((link) => {
-    const sourceName = link.source || '';
-    const targetName = link.target || '';
-    const row = rows.find((r) => r.name === sourceName || r.name === targetName);
-    if (row && targetName) {
-      row.reportsTo = targetName;
-    }
-  });
-
-  return rows;
-}
-
-function LatestPublishedReport({ published, evaluation }: { published: PublishedAnalysis; evaluation?: Evaluation }) {
+function AnalysisCard({ published, evaluation }: { published: PublishedAnalysis; evaluation?: Evaluation }) {
+  const [expanded, setExpanded] = useState(false);
   const analysis = published.analysis;
-  const orgRows = buildOrgRows(analysis);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">{published.summary || 'Published evaluation insight'}</p>
-            <p className="text-xs text-slate-500">Published {new Date(published.publishedAt).toLocaleDateString()} by {published.publishedBy || 'Superadmin'}</p>
-            {evaluation ? (
-              <Link href={`/evaluations/${evaluation.id}/diagnosis`} className="text-xs text-primary hover:underline">
-                View {evaluation.title} diagnosis
-              </Link>
-            ) : null}
+    <div className={`rounded-3xl border transition-all ${expanded ? 'border-primary/30 shadow-lg' : 'border-slate-200 shadow-sm'} bg-white overflow-hidden`}>
+      {/* Header */}
+      <button
+        type="button"
+        className="flex w-full items-start gap-4 p-5 text-left"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 text-lg">
+          📊
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <p className="text-sm font-bold text-slate-900 truncate">
+              {evaluation?.title ?? published.summary ?? 'Published analysis'}
+            </p>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+              ✓ Published
+            </span>
           </div>
-          <Pill label={published.recipientName ? `For ${published.recipientName}` : 'Shared insight'} />
+          <p className="text-xs text-slate-500">
+            {new Date(published.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {published.publishedBy ? ` · By ${published.publishedBy}` : ''}
+          </p>
+          {analysis?.executiveSummary && !expanded && (
+            <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{analysis.executiveSummary}</p>
+          )}
         </div>
-      </div>
+        <span className="text-slate-400 text-sm shrink-0 mt-1">{expanded ? '▲' : '▼'}</span>
+      </button>
 
-      {analysis?.executiveSummary ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h3 className="text-sm font-semibold text-slate-900 mb-3">Executive summary</h3>
-          <p className="text-sm text-slate-700 whitespace-pre-wrap">{analysis.executiveSummary}</p>
-        </div>
-      ) : null}
+      {/* Expanded body */}
+      {expanded && analysis && (
+        <div className="border-t border-slate-100 p-5 space-y-5">
+          {analysis.executiveSummary && (
+            <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Executive summary</p>
+              <p className="text-sm leading-relaxed text-slate-700">{analysis.executiveSummary}</p>
+            </div>
+          )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {analysis?.strengths ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h4 className="text-sm font-semibold text-slate-900 mb-3">Strengths</h4>
-            <ul className="space-y-2 text-sm text-slate-700">
-              {analysis.strengths.map((item, idx) => (
-                <li key={idx} className="flex gap-2">
-                  <span className="text-green-600">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        {analysis?.weaknesses ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h4 className="text-sm font-semibold text-slate-900 mb-3">Weaknesses</h4>
-            <ul className="space-y-2 text-sm text-slate-700">
-              {analysis.weaknesses.map((item, idx) => (
-                <li key={idx} className="flex gap-2">
-                  <span className="text-orange-600">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-
-      {analysis?.opportunities ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h4 className="text-sm font-semibold text-slate-900 mb-3">Opportunities</h4>
-          <ul className="space-y-2 text-sm text-slate-700">
-            {analysis.opportunities.map((item, idx) => (
-              <li key={idx} className="flex gap-2">
-                <span className="text-primary">•</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {analysis?.recommendations ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h4 className="text-sm font-semibold text-slate-900 mb-3">Recommendations</h4>
-          <ul className="space-y-2 text-sm text-slate-700">
-            {analysis.recommendations.map((item, idx) => (
-              <li key={idx} className="flex gap-2">
-                <span className="text-slate-600">•</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {analysis?.actionPlan?.length ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h4 className="text-sm font-semibold text-slate-900 mb-3">Action plan</h4>
-          <div className="space-y-3 text-sm text-slate-700">
-            {analysis.actionPlan.map((item, idx) => (
-              <div key={idx} className="rounded-2xl bg-slate-50 p-4">
-                <p className="font-semibold text-slate-900">{item.what}</p>
-                <p className="text-slate-600 mt-1">Who: {item.who || 'TBD'} • When: {item.when || 'TBD'}</p>
-                <p className="text-slate-700 mt-2">{item.how}</p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {analysis.strengths && analysis.strengths.length > 0 && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-3">Strengths</p>
+                <ul className="space-y-2">
+                  {analysis.strengths.map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                      <span className="text-emerald-500 shrink-0">✓</span>{s}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ))}
+            )}
+            {analysis.weaknesses && analysis.weaknesses.length > 0 && (
+              <div className="rounded-2xl border border-red-200 bg-red-50/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-3">Weaknesses</p>
+                <ul className="space-y-2">
+                  {analysis.weaknesses.map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                      <span className="text-red-400 shrink-0">!</span>{s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {analysis.opportunities && analysis.opportunities.length > 0 && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-3">Opportunities</p>
+                <ul className="space-y-2">
+                  {analysis.opportunities.map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                      <span className="text-amber-500 shrink-0">→</span>{s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-        </div>
-      ) : null}
 
-      {analysis?.charts?.length ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h4 className="text-sm font-semibold text-slate-900 mb-4">Generated charts</h4>
-          <div className="grid gap-4">
-            {analysis.charts.map((chart, chartIndex) => (
-              <div key={chartIndex} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <p className="font-semibold text-slate-900 mb-3">{chart.title || `Chart ${chartIndex + 1}`}</p>
-                {chart.data?.map((row, rowIndex) => {
-                  const value = Number(row.value || 0);
-                  const width = Math.min(100, Math.round(value));
-                  return (
-                    <div key={rowIndex} className="mb-3">
-                      <div className="flex justify-between text-xs text-slate-500 mb-1">
-                        <span>{row.label}</span>
-                        <span>{value}</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} />
+          {analysis.recommendations && analysis.recommendations.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Recommendations</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {analysis.recommendations.map((r, i) => (
+                  <div key={i} className="flex items-start gap-2.5 rounded-xl bg-slate-50 border border-slate-200 p-3">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                      {i + 1}
+                    </span>
+                    <p className="text-xs text-slate-700">{r}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {analysis.actionPlan && analysis.actionPlan.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Action plan</p>
+              <div className="space-y-3">
+                {analysis.actionPlan.map((item, i) => (
+                  <div key={i} className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                    <p className="text-sm font-semibold text-slate-900 mb-1.5">{item.what}</p>
+                    <div className="grid gap-1 text-xs text-slate-600 sm:grid-cols-3">
+                      <span><strong>Who:</strong> {item.who || 'TBD'}</span>
+                      <span><strong>When:</strong> {item.when || 'TBD'}</span>
+                      <span><strong>How:</strong> {item.how || '—'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {analysis.charts && analysis.charts.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Charts</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {analysis.charts.map((chart, ci) => {
+                  const data = Array.isArray(chart.data)
+                    ? chart.data.filter((r) => r).map((r) => ({ name: String(r.label ?? ''), value: Number(r.value ?? 0) }))
+                    : [];
+                  return data.length === 0 ? null : (
+                    <div key={ci} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs font-semibold text-slate-700 mb-3">{chart.title}</p>
+                      <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={data}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={45} />
+                            <YAxis tick={{ fill: '#64748b', fontSize: 10 }} />
+                            <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                              {data.map((_, di) => <Cell key={di} fill={CHART_COLORS[di % CHART_COLORS.length]} />)}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+            </div>
+          )}
 
-      {orgRows.length > 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <h4 className="text-sm font-semibold text-slate-900">Generated organogram</h4>
-            <span className="text-xs text-slate-500">Interactive structure preview</span>
-          </div>
-          <div className="overflow-auto rounded-3xl border border-slate-200 bg-slate-50 p-3">
-            <OrgChart rows={orgRows} />
-          </div>
+          {evaluation && (
+            <div className="flex justify-end">
+              <Link
+                href={`/evaluations/${evaluation.id}/diagnosis`}
+                className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-xs font-bold text-primary hover:bg-primary/10 transition-colors"
+              >
+                View full diagnosis →
+              </Link>
+            </div>
+          )}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function InsightPage() {
   const [userOrg, setUserOrg] = useState<Organisation | null>(null);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [responses, setResponses] = useState<ResponseItem[]>([]);
-  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
-  const [gapSummaries, setGapSummaries] = useState<GapSummary[]>([]);
   const [publishedAnalyses, setPublishedAnalyses] = useState<PublishedAnalysis[]>([]);
+  const [gapSummaries, setGapSummaries] = useState<GapSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'evaluations'>('overview');
 
   useEffect(() => {
-    async function loadData() {
+    async function load() {
       const token = localStorage.getItem('accessToken');
-      if (!token) {
-        setError('Unable to load insight data. Please sign in and try again.');
-        setLoading(false);
-        return;
-      }
+      if (!token) { setError('Please sign in.'); setLoading(false); return; }
 
       let userId = '';
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        userId = payload.sub;
+        userId = JSON.parse(atob(token.split('.')[1])).sub;
       } catch {
-        setError('Unable to read current user session. Please sign in again.');
+        setError('Session error. Please sign in again.');
         setLoading(false);
         return;
       }
 
       try {
-        const [user, allEvaluations, allResponses, allDiagnoses, allGaps, allPublishedAnalyses] = await Promise.all([
+        const [user, allEvals, allResponses, allPublished, allGaps] = await Promise.all([
           apiFetch<UserSummary>(`/users/${userId}`),
           apiFetch<Evaluation[]>('/evaluations'),
           apiFetch<ResponseItem[]>('/responses'),
-          apiFetch<Diagnosis[]>('/diagnoses'),
-          apiFetch<GapSummary[]>('/gap-analysis'),
           apiFetch<PublishedAnalysis[]>('/published-analyses'),
+          apiFetch<GapSummary[]>('/gap-analysis').catch(() => [] as GapSummary[]),
         ]);
 
         setUserOrg(user.organisation);
-        setEvaluations(allEvaluations);
+        setEvaluations(allEvals);
         setResponses(allResponses);
-        setDiagnoses(allDiagnoses);
+        setPublishedAnalyses(allPublished);
         setGapSummaries(allGaps);
-        setPublishedAnalyses(allPublishedAnalyses);
-      } catch (fetchError: any) {
-        setError(fetchError?.message || 'Unable to load insights at this time.');
+      } catch (err: any) {
+        setError(err?.message || 'Unable to load insights.');
       } finally {
         setLoading(false);
       }
     }
-
-    loadData();
+    load();
   }, []);
 
-  const companyEvaluations = useMemo(() => {
-    if (!userOrg) return [];
-    return evaluations.filter((evaluation) => evaluation.organisation?.id === userOrg.id);
-  }, [evaluations, userOrg]);
+  // ── Filtered data ─────────────────────────────────────────────────────────
 
-  const companyResponses = useMemo(() => {
-    if (!userOrg) return [];
-    return responses.filter(
-      (response) => response.form.evaluation?.organisation?.id === userOrg.id,
-    );
-  }, [responses, userOrg]);
+  const orgEvals = useMemo(() =>
+    userOrg ? evaluations.filter((e) => e.organisation?.id === userOrg.id) : [],
+    [evaluations, userOrg],
+  );
 
-  const companyDiagnoses = useMemo(() => {
-    if (!userOrg) return [];
-    const evaluationIds = new Set(companyEvaluations.map((evaluation) => evaluation.id));
-    return diagnoses.filter((diagnosis) => evaluationIds.has(diagnosis.evaluation.id));
-  }, [diagnoses, companyEvaluations, userOrg]);
+  const orgEvalIds = useMemo(() => new Set(orgEvals.map((e) => e.id)), [orgEvals]);
 
-  const companyGaps = useMemo(() => {
-    if (!userOrg) return [];
-    const evaluationIds = new Set(companyEvaluations.map((evaluation) => evaluation.id));
-    return gapSummaries.filter((gap) => evaluationIds.has(gap.evaluation.id));
-  }, [gapSummaries, companyEvaluations, userOrg]);
+  const orgResponses = useMemo(() =>
+    responses.filter((r) => r.form.evaluation?.organisation?.id === userOrg?.id),
+    [responses, userOrg],
+  );
 
-  const totalRespondents = useMemo(() => new Set(companyResponses.map((response) => response.respondent.id)).size, [companyResponses]);
-  const totalResponses = companyResponses.length;
-  const totalQuestions = companyResponses.reduce((sum, response) => sum + (response.questionCount || 0), 0);
-  const averageCompletion = totalResponses > 0
-    ? Math.round(companyResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / totalResponses)
-    : 0;
+  const orgGaps = useMemo(() =>
+    gapSummaries.filter((g) => orgEvalIds.has(g.evaluation.id)),
+    [gapSummaries, orgEvalIds],
+  );
 
-  const formSummaries = useMemo(() => {
-    const summaryMap = new Map<string, { title: string; totalResponses: number; totalCompletion: number; uniqueRespondents: Set<string> }>();
+  // ── Stats ─────────────────────────────────────────────────────────────────
 
-    companyResponses.forEach((response) => {
-      const existing = summaryMap.get(response.form.id) ?? {
-        title: response.form.title,
-        totalResponses: 0,
-        totalCompletion: 0,
-        uniqueRespondents: new Set<string>(),
-      };
-      existing.totalResponses += 1;
-      existing.totalCompletion += response.completionPercentage;
-      existing.uniqueRespondents.add(response.respondent.id);
-      summaryMap.set(response.form.id, existing);
+  const totalRespondents = useMemo(() =>
+    new Set(orgResponses.map((r) => r.respondent.id)).size,
+    [orgResponses],
+  );
+  const totalAnswers = useMemo(() =>
+    orgResponses.reduce((sum, r) => sum + (r.questionCount || 0), 0),
+    [orgResponses],
+  );
+  const avgCompletion = useMemo(() => {
+    const submitted = orgResponses.filter((r) => r.status === 'SUBMITTED');
+    return submitted.length > 0
+      ? Math.round(submitted.reduce((s, r) => s + r.completionPercentage, 0) / submitted.length)
+      : 0;
+  }, [orgResponses]);
+
+  const submittedCount = useMemo(() =>
+    orgResponses.filter((r) => r.status === 'SUBMITTED').length,
+    [orgResponses],
+  );
+
+  // Form-level summary for chart
+  const formCompletionData = useMemo(() => {
+    const map = new Map<string, { title: string; total: number; sum: number; respondents: Set<string> }>();
+    orgResponses.forEach((r) => {
+      const existing = map.get(r.form.id) ?? { title: r.form.title, total: 0, sum: 0, respondents: new Set() };
+      existing.total++;
+      existing.sum += r.completionPercentage;
+      existing.respondents.add(r.respondent.id);
+      map.set(r.form.id, existing);
     });
+    return Array.from(map.values()).map((f) => ({
+      name: f.title.length > 22 ? f.title.slice(0, 22) + '…' : f.title,
+      completion: f.total > 0 ? Math.round(f.sum / f.total) : 0,
+      respondents: f.respondents.size,
+    }));
+  }, [orgResponses]);
 
-    return Array.from(summaryMap.entries()).map(([formId, summary]) => ({
-      formId,
-      title: summary.title,
-      averageCompletion: summary.totalResponses > 0 ? Math.round(summary.totalCompletion / summary.totalResponses) : 0,
-      totalResponses: summary.totalResponses,
-      respondentCount: summary.uniqueRespondents.size,
-    })).sort((a, b) => a.averageCompletion - b.averageCompletion);
-  }, [companyResponses]);
-
-  const lowCompletionForms = formSummaries.filter((form) => form.averageCompletion < 70).slice(0, 4);
-  const topDiagnoses = companyDiagnoses.slice(0, 3);
-  const topPublishedAnalyses = publishedAnalyses.slice(0, 3);
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="text-center py-20">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-        <p className="mt-4 text-sm text-slate-600">Loading company insights…</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <div className="h-10 w-10 rounded-full border-2 border-primary/30 border-t-primary animate-spin mb-4" />
+        <p className="text-sm text-slate-500">Loading your insights…</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50/50">
+      {/* ── Header ── */}
       <div className="mb-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Company insights</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              High-level evaluation, respondent, question and gap metrics for your organisation.
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Client Admin · Insights</p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Company insights</h1>
+            <p className="mt-1.5 text-sm text-slate-500">
+              Response stats, published analyses, and evaluation progress for your organisation.
             </p>
           </div>
           {userOrg && (
-            <div className="rounded-3xl bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
-              <span className="font-semibold">Organisation:</span> {userOrg.name}
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="text-sm font-semibold text-slate-800">{userOrg.name}</span>
             </div>
           )}
         </div>
       </div>
 
       {error ? (
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>
       ) : (
         <>
-          <div className="grid gap-4 xl:grid-cols-4 mb-6">
-            <StatCard label="Total evaluations" value={companyEvaluations.length} icon="📋" color="blue" />
-            <StatCard label="Total questions asked" value={totalQuestions} icon="❓" color="green" />
-            <StatCard label="Total respondents" value={totalRespondents} icon="👥" color="yellow" />
-            <StatCard label="Gaps identified" value={companyGaps.length} icon="🔍" color="slate" />
+          {/* ── KPI cards ── */}
+          <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              { label: 'Evaluations', value: orgEvals.length, icon: '📋', sub: `${orgEvals.filter((e) => e.status === 'ACTIVE').length} active`, gradient: 'from-blue-500 to-indigo-600' },
+              { label: 'Respondents', value: totalRespondents, icon: '👥', sub: `${submittedCount} submissions`, gradient: 'from-emerald-400 to-green-600' },
+              { label: 'Total answers', value: totalAnswers, icon: '✏️', sub: 'across all forms', gradient: 'from-amber-400 to-orange-500' },
+              { label: 'Published reports', value: publishedAnalyses.length, icon: '📊', sub: 'from super admin', gradient: 'from-violet-500 to-purple-600' },
+            ].map((kpi) => (
+              <div key={kpi.label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${kpi.gradient} text-lg shadow-md`}>
+                  {kpi.icon}
+                </div>
+                <p className="text-2xl font-bold text-slate-900">{kpi.value}</p>
+                <p className="text-xs font-semibold text-slate-500 mt-0.5">{kpi.label}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{kpi.sub}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr] mb-6">
-            <div className="space-y-6">
-              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center justify-between gap-4 mb-5">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Question and response summary</h2>
-                    <p className="text-sm text-slate-500">Track how many questions were answered and where completion gaps exist.</p>
-                  </div>
-                  <Pill label={`${totalQuestions} questions captured`} />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-3xl bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Average completion</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">{averageCompletion}%</p>
-                  </div>
-                  <div className="rounded-3xl bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Unique respondents</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">{totalRespondents}</p>
-                  </div>
-                  <div className="rounded-3xl bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Responses</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">{totalResponses}</p>
-                  </div>
-                </div>
-              </section>
+          {/* ── Tabs ── */}
+          <div className="mb-6 border-b border-slate-200">
+            <nav className="flex gap-1">
+              {([
+                { id: 'overview', label: 'Overview', icon: '📈' },
+                { id: 'reports', label: 'Published reports', icon: '📋', badge: publishedAnalyses.length },
+                { id: 'evaluations', label: 'Evaluations', icon: '🏢', badge: orgEvals.length },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  {tab.label}
+                  {'badge' in tab && tab.badge > 0 && (
+                    <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full px-1 text-xs font-bold ${
+                      activeTab === tab.id ? 'bg-primary text-white' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          </div>
 
-              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center justify-between gap-4 mb-5">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Company evaluations</h2>
-                    <p className="text-sm text-slate-500">All evaluations linked to your organisation.</p>
-                  </div>
-                  <span className="text-sm font-medium text-slate-500">{companyEvaluations.length} total</span>
-                </div>
-                {companyEvaluations.length === 0 ? (
-                  <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No evaluations have been created for your organisation yet.</div>
-                ) : (
-                  <div className="grid gap-4">
-                    {companyEvaluations.map((evaluation) => (
-                      <div key={evaluation.id} className="rounded-3xl border border-slate-200 p-4 hover:border-blue-300 transition-colors">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <Link href={`/evaluations/${evaluation.id}`} className="font-semibold text-slate-900 hover:text-primary transition-colors text-sm block">
-                              {evaluation.title}
-                            </Link>
-                            <p className="text-sm text-slate-500">Started {evaluation.startDate ? new Date(evaluation.startDate).toLocaleDateString() : new Date(evaluation.createdAt).toLocaleDateString()}</p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Pill label={evaluation.status.replace('_', ' ')} />
-                            <Pill label={`${evaluation._count.forms} form${evaluation._count.forms !== 1 ? 's' : ''}`} />
-                            <Link
-                              href={`/evaluations/${evaluation.id}/diagnosis`}
-                              className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-amber-50 transition"
-                            >
-                              View diagnosis
-                            </Link>
-                          </div>
-                        </div>
+          {/* ── Overview tab ── */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Response summary + chart */}
+              <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-900 mb-5">Response summary</h2>
+                  <div className="grid gap-4 sm:grid-cols-3 mb-6">
+                    {[
+                      { label: 'Submitted responses', value: submittedCount, color: 'bg-emerald-50 text-emerald-700' },
+                      { label: 'Avg completion', value: `${avgCompletion}%`, color: 'bg-amber-50 text-amber-700' },
+                      { label: 'Unique respondents', value: totalRespondents, color: 'bg-blue-50 text-blue-700' },
+                    ].map((s) => (
+                      <div key={s.label} className={`rounded-2xl p-4 ${s.color}`}>
+                        <p className="text-2xl font-bold">{s.value}</p>
+                        <p className="text-xs font-medium mt-1 opacity-80">{s.label}</p>
                       </div>
                     ))}
                   </div>
-                )}
-              </section>
+
+                  {/* Completion bars per form */}
+                  {formCompletionData.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Form completion rates</p>
+                      {formCompletionData.map((f, i) => (
+                        <div key={i}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-700 font-medium truncate max-w-[70%]">{f.name}</span>
+                            <span className="text-slate-500">{f.respondents} resp · {f.completion}%</span>
+                          </div>
+                          <CompletionBar pct={f.completion} color={f.completion < 50 ? '#f59e0b' : f.completion < 75 ? '#3b82f6' : '#10b981'} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400">No response data yet.</p>
+                  )}
+                </div>
+
+                {/* Completion chart */}
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-900 mb-5">Completion by form</h2>
+                  {formCompletionData.length > 0 ? (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={formCompletionData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={55} />
+                          <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[0, 100]} />
+                          <Tooltip
+                            formatter={(v) => [`${v}%`, 'Completion']}
+                            contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                          />
+                          <Bar dataKey="completion" radius={[8, 8, 0, 0]}>
+                            {formCompletionData.map((entry, i) => (
+                              <Cell key={i} fill={entry.completion < 50 ? '#f59e0b' : entry.completion < 75 ? '#3b82f6' : '#10b981'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="flex h-64 items-center justify-center rounded-2xl bg-slate-50 text-sm text-slate-400">
+                      No form data available yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Gap summary */}
+              {orgGaps.length > 0 && (
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between gap-4 mb-5">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900">Identified gaps</h2>
+                      <p className="text-sm text-slate-500">Areas flagged for improvement in your evaluations.</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200">
+                      {orgGaps.length} gaps
+                    </span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {orgGaps.slice(0, 6).map((gap) => (
+                      <div key={gap.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-sm font-semibold text-slate-900">{gap.category}</p>
+                          <SeverityBadge severity={gap.severity} />
+                        </div>
+                        <p className="text-xs text-slate-600 mb-1">{gap.recommendedAction}</p>
+                        <p className="text-xs text-slate-400">Owner: {gap.who} · {gap.when}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Latest published report preview */}
+              {publishedAnalyses.length > 0 && (
+                <div className="rounded-3xl border border-primary/20 bg-primary/5 p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-base">📊</span>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Latest published analysis</p>
+                      <p className="text-xs text-slate-500">
+                        Received {new Date(publishedAnalyses[0].publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('reports')}
+                      className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-white px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors"
+                    >
+                      See all reports →
+                    </button>
+                  </div>
+                  {publishedAnalyses[0].analysis?.executiveSummary && (
+                    <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
+                      {publishedAnalyses[0].analysis.executiveSummary}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="space-y-6">
-              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-semibold text-slate-900 mb-4">Gap summary</h2>
-                <p className="text-sm text-slate-500 mb-5">
-                  Identifies the most important areas where response completion and evaluation readiness are under target.
-                </p>
-                {lowCompletionForms.length === 0 ? (
-                  <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No major question completion gaps detected yet.</div>
-                ) : (
-                  <div className="space-y-4">
-                    {lowCompletionForms.map((form) => (
-                      <div key={form.formId} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <p className="font-semibold text-slate-900">{form.title}</p>
-                            <p className="text-sm text-slate-500">{form.respondentCount} respondents</p>
-                          </div>
-                          <span className="text-sm font-semibold text-amber-700">{form.averageCompletion}%</span>
-                        </div>
-                        <div className="mt-3 h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                          <div className="h-full rounded-full bg-amber-500" style={{ width: `${form.averageCompletion}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-semibold text-slate-900 mb-4">AI-generated insights</h2>
-                <p className="text-sm text-slate-500 mb-5">Latest diagnoses and recommendations generated for your organisation.</p>
-                {topDiagnoses.length === 0 ? (
-                  <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No AI insights have been generated yet.</div>
-                ) : (
-                  <div className="space-y-4">
-                    {topDiagnoses.map((diagnosis) => (
-                      <div key={diagnosis.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <h3 className="font-semibold text-slate-900">{diagnosis.evaluation.title}</h3>
-                            <p className="text-xs text-slate-500">Generated {new Date(diagnosis.createdAt).toLocaleDateString()}</p>
-                          </div>
-                          <Pill label={diagnosis.isAiGenerated ? 'AI insight' : diagnosis.status} />
-                        </div>
-                        <p className="mt-3 text-sm text-slate-700 line-clamp-3">{diagnosis.sections.executiveSummary || 'Summary not available.'}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center justify-between gap-4 mb-5">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Latest published evaluation</h2>
-                    <p className="text-sm text-slate-500">See the most recent report delivered to your account by the superadmin.</p>
-                  </div>
-                  <span className="text-sm font-medium text-slate-500">{publishedAnalyses.length} reports delivered</span>
+          {/* ── Reports tab ── */}
+          {activeTab === 'reports' && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Published analyses</h2>
+                  <p className="text-sm text-slate-500">Reports published to your account by the super admin.</p>
                 </div>
-                {publishedAnalyses.length === 0 ? (
-                  <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No published insights have been shared with your account yet.</div>
-                ) : (
-                  <LatestPublishedReport
-                    published={publishedAnalyses[0]}
-                    evaluation={companyEvaluations.find((evaluation) => evaluation.id === publishedAnalyses[0].evaluationId)}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                  {publishedAnalyses.length} report{publishedAnalyses.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {publishedAnalyses.length === 0 ? (
+                <EmptyState
+                  icon="📊"
+                  title="No published reports yet"
+                  description="When the super admin publishes an analysis to your account, it will appear here."
+                />
+              ) : (
+                publishedAnalyses.map((pa) => (
+                  <AnalysisCard
+                    key={pa.id}
+                    published={pa}
+                    evaluation={orgEvals.find((e) => e.id === pa.evaluationId)}
                   />
-                )}
-              </section>
+                ))
+              )}
             </div>
-          </div>
+          )}
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-4 mb-5">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Question detail overview</h2>
-                <p className="text-sm text-slate-500">Drill into the forms and question completion progress for your organisation.</p>
+          {/* ── Evaluations tab ── */}
+          {activeTab === 'evaluations' && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Your evaluations</h2>
+                  <p className="text-sm text-slate-500">All evaluations linked to {userOrg?.name ?? 'your organisation'}.</p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                  {orgEvals.length} evaluation{orgEvals.length !== 1 ? 's' : ''}
+                </span>
               </div>
-              <span className="text-sm text-slate-500">{formSummaries.length} tracked forms</span>
-            </div>
-            {formSummaries.length === 0 ? (
-              <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">No question-level response data is available yet.</div>
-            ) : (
-              <div className="grid gap-4 lg:grid-cols-2">
-                {formSummaries.map((form) => (
-                  <div key={form.formId} className="rounded-3xl border border-slate-200 p-4">
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <div>
-                        <h3 className="font-semibold text-slate-900">{form.title}</h3>
-                        <p className="text-xs text-slate-500">{form.respondentCount} respondents • {form.totalResponses} submissions</p>
+
+              {orgEvals.length === 0 ? (
+                <EmptyState
+                  icon="📋"
+                  title="No evaluations yet"
+                  description="Once an evaluation is created for your organisation, it will appear here."
+                />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {orgEvals.map((ev) => {
+                    const statusCfg = STATUS_CONFIG[ev.status] ?? STATUS_CONFIG.DRAFT;
+                    const evResponses = orgResponses.filter((r) => r.form.evaluation?.id === ev.id);
+                    const evSubmitted = evResponses.filter((r) => r.status === 'SUBMITTED').length;
+                    const evRespondents = new Set(evResponses.map((r) => r.respondent.id)).size;
+
+                    return (
+                      <div key={ev.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:border-primary/30 hover:shadow-md transition-all">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex-1 min-w-0">
+                            <Link
+                              href={`/evaluations/${ev.id}`}
+                              className="text-sm font-bold text-slate-900 hover:text-primary transition-colors truncate block"
+                            >
+                              {ev.title}
+                            </Link>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {ev.startDate
+                                ? `Started ${new Date(ev.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                                : `Created ${new Date(ev.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+                              }
+                            </p>
+                          </div>
+                          <span className={`shrink-0 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusCfg.color}`}>
+                            {statusCfg.label}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                          {[
+                            { label: 'Forms', value: ev._count.forms },
+                            { label: 'Respondents', value: evRespondents },
+                            { label: 'Submitted', value: evSubmitted },
+                          ].map((stat) => (
+                            <div key={stat.label} className="rounded-2xl bg-slate-50 p-3 text-center">
+                              <p className="text-lg font-bold text-slate-900">{stat.value}</p>
+                              <p className="text-xs text-slate-500">{stat.label}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/evaluations/${ev.id}/diagnosis`}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10 transition-colors"
+                          >
+                            🔍 View diagnosis
+                          </Link>
+                          <Link
+                            href={`/evaluations/${ev.id}`}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-3 py-2 text-xs font-bold text-white shadow-sm hover:shadow-md transition-all"
+                          >
+                            View →
+                          </Link>
+                        </div>
                       </div>
-                      <span className="text-sm font-semibold text-slate-700">{form.averageCompletion}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${form.averageCompletion}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

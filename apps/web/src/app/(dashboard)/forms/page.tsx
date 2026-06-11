@@ -16,6 +16,42 @@ interface Form {
   updatedAt: string;
 }
 
+const STATUS_CFG: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  DRAFT:     { label: 'Draft',     bg: 'bg-slate-100',   text: 'text-slate-600',   dot: 'bg-slate-400' },
+  PUBLISHED: { label: 'Published', bg: 'bg-emerald-50',  text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  CLOSED:    { label: 'Closed',    bg: 'bg-orange-50',   text: 'text-orange-700',  dot: 'bg-orange-500' },
+};
+
+function StatusDot({ status }: { status: string }) {
+  const cfg = STATUS_CFG[status] ?? STATUS_CFG.DRAFT;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.text}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4 animate-pulse">
+      <div className="flex items-start justify-between">
+        <div className="space-y-2 flex-1">
+          <div className="h-4 w-3/4 rounded-lg bg-slate-200" />
+          <div className="h-3 w-1/2 rounded-lg bg-slate-100" />
+        </div>
+        <div className="h-6 w-16 rounded-full bg-slate-100 ml-4" />
+      </div>
+      <div className="h-3 w-full rounded-lg bg-slate-100" />
+      <div className="h-3 w-2/3 rounded-lg bg-slate-100" />
+      <div className="flex gap-2 pt-2">
+        <div className="h-8 w-20 rounded-xl bg-slate-100" />
+        <div className="h-8 w-20 rounded-xl bg-slate-100" />
+      </div>
+    </div>
+  );
+}
+
 export default function FormsPage() {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,22 +63,15 @@ export default function FormsPage() {
   function handleCopyLink(formId: string, accessMode: Form['accessMode']) {
     const route = accessMode === 'PUBLIC' ? 'public/forms' : 'my-forms';
     const shareUrl = `${window.location.origin}/${route}/${formId}`;
-
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareUrl).catch(() => {});
-    }
-
-    setCopyMessage('Share link copied to clipboard.');
-    window.setTimeout(() => setCopyMessage(''), 3000);
+    if (navigator.clipboard) navigator.clipboard.writeText(shareUrl).catch(() => {});
+    setCopyMessage('Share link copied!');
+    setTimeout(() => setCopyMessage(''), 3000);
   }
 
   async function loadForms() {
-    setLoading(true);
-    setError('');
-
+    setLoading(true); setError('');
     try {
-      const data = await apiFetch<Form[]>('/forms');
-      setForms(data);
+      setForms(await apiFetch<Form[]>('/forms'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load forms.');
     } finally {
@@ -50,212 +79,197 @@ export default function FormsPage() {
     }
   }
 
-  useEffect(() => {
-    loadForms();
-  }, []);
+  useEffect(() => { loadForms(); }, []);
 
   async function handleUpdate(formId: string, update: Record<string, unknown>) {
-    setActionFormId(formId);
-    setError('');
-
+    setActionFormId(formId); setError('');
     try {
-      const updated = await apiFetch(`/forms/${formId}`, {
-        method: 'PUT',
-        body: JSON.stringify(update),
-      });
-
-      setForms((current) =>
-        current.map((form) => {
-          if (form.id !== formId) return form;
-          return {
-            ...form,
-            ...(update as Partial<Form>),
-            status: (update as Partial<Form>).status ?? form.status,
-            accessMode: (update as Partial<Form>).accessMode ?? form.accessMode,
-          };
-        }),
-      );
-
-      return updated;
+      await apiFetch(`/forms/${formId}`, { method: 'PUT', body: JSON.stringify(update) });
+      setForms((prev) => prev.map((f) => f.id !== formId ? f : { ...f, ...(update as Partial<Form>) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to update form.');
-      throw err;
-    } finally {
-      setActionFormId(null);
-    }
-  }
-
-  async function handleTogglePublish(form: Form) {
-    await handleUpdate(form.id, {
-      status: form.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED',
-    });
-  }
-
-  async function handleToggleAccessMode(form: Form) {
-    await handleUpdate(form.id, {
-      accessMode: form.accessMode === 'PUBLIC' ? 'REGISTERED' : 'PUBLIC',
-    });
+    } finally { setActionFormId(null); }
   }
 
   async function handleDelete(formId: string) {
-    if (!window.confirm('Delete this form? This cannot be undone.')) {
-      return;
-    }
-
-    setActionFormId(formId);
-    setError('');
+    if (!window.confirm('Delete this form? This cannot be undone.')) return;
+    setActionFormId(formId); setError('');
     try {
       await apiFetch(`/forms/${formId}`, { method: 'DELETE' });
-      setForms((current) => current.filter((form) => form.id !== formId));
-      setCopyMessage('Form deleted successfully.');
-      window.setTimeout(() => setCopyMessage(''), 3000);
+      setForms((prev) => prev.filter((f) => f.id !== formId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to delete form.');
-    } finally {
-      setActionFormId(null);
-    }
+    } finally { setActionFormId(null); }
   }
 
+  const published = forms.filter((f) => f.status === 'PUBLISHED').length;
+  const draft = forms.filter((f) => f.status === 'DRAFT').length;
+
   return (
-    <div>
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Forms & Templates</h1>
-            <p className="text-slate-500 mt-1 text-sm">
-              Create surveys, manage templates, and build custom forms.
-            </p>
-          </div>
-          <Link
-            href="/forms/new"
-            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark"
-          >
-            + Create Form
-          </Link>
+    <div className="min-h-screen bg-slate-50/50">
+      {/* ── Header ── */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Questionnaires</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Forms & Templates</h1>
+          <p className="mt-1.5 text-sm text-slate-500">Create and manage questionnaires for your evaluation programmes.</p>
         </div>
+        <Link
+          href="/forms/new"
+          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all"
+        >
+          <span className="text-base">+</span>
+          Create Form
+        </Link>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-slate-200 mb-6">
-        <div className="flex gap-8">
-          <button
-            onClick={() => setActiveTab('forms')}
-            className={`py-3 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'forms'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            My Forms
-          </button>
-          <button
-            onClick={() => setActiveTab('templates')}
-            className={`py-3 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'templates'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Templates
-          </button>
-        </div>
-      </div>
-
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 mb-4">
-          {error}
-        </div>
-      ) : null}
-
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : forms.length === 0 ? (
-        <EmptyState
-          icon="📋"
-          title="No forms yet"
-          description="Create your first form to start collecting data from respondents."
-          actionLabel="Create Form"
-          onAction={() => (window.location.href = '/forms/new')}
-        />
-      ) : (
-        <div className="space-y-3">
-          {copyMessage ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              {copyMessage}
+      {/* ── Stats ── */}
+      <div className="mb-8 grid grid-cols-3 gap-4">
+        {[
+          { label: 'Total forms', value: forms.length, icon: '📋', grad: 'from-blue-500 to-indigo-600' },
+          { label: 'Published',   value: published,    icon: '✅', grad: 'from-emerald-400 to-green-600' },
+          { label: 'Draft',       value: draft,        icon: '📝', grad: 'from-amber-400 to-orange-500' },
+        ].map((s) => (
+          <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>
+              {s.icon}
             </div>
-          ) : null}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {forms.map((form) => {
-              const isBusy = actionFormId === form.id;
-              return (
-                <div key={form.id} className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition">
-                  <div className="flex justify-between items-start mb-3 gap-3">
-                    <div>
-                      <h3 className="font-semibold text-slate-900">{form.title}</h3>
-                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.2em] text-slate-500">
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
-                          {form.status}
-                        </span>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
-                          {form.accessMode === 'PUBLIC' ? 'Public' : 'Registered only'}
-                        </span>
+            <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Tabs ── */}
+      <div className="mb-6 border-b border-slate-200">
+        <nav className="flex gap-1">
+          {(['forms', 'templates'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors capitalize ${
+                activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* ── Feedback ── */}
+      {error && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>⚠</span>{error}
+        </div>
+      )}
+      {copyMessage && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          <span>✓</span>{copyMessage}
+        </div>
+      )}
+
+      {/* ── Content ── */}
+      {activeTab === 'forms' && (
+        <>
+          {loading ? (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {[1,2,3,4,5,6].map((i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : forms.length === 0 ? (
+            <EmptyState icon="📋" title="No forms yet" description="Create your first form to start collecting data." actionLabel="Create Form" onAction={() => (window.location.href = '/forms/new')} />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {forms.map((form) => {
+                const isBusy = actionFormId === form.id;
+                return (
+                  <div key={form.id} className="group relative flex flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm hover:border-primary/30 hover:shadow-md transition-all">
+                    {/* Top accent */}
+                    <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm">📋</div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 truncate">{form.title}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {form.questionCount} question{form.questionCount !== 1 ? 's' : ''} · Updated {new Date(form.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                          </p>
+                        </div>
                       </div>
+                      <StatusDot status={form.status} />
                     </div>
-                  </div>
-                  <p className="text-sm text-slate-600 mb-4">{form.description}</p>
-                  <div className="flex justify-between gap-2 text-xs text-slate-500 mb-4">
-                    <span>{form.questionCount} questions</span>
-                    <span>{new Date(form.updatedAt).toLocaleDateString()}</span>
-                  </div>
-                  <div className="grid gap-2">
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/forms/${form.id}`}
-                        className="rounded-2xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                      >
-                        Edit form
-                      </Link>
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => handleTogglePublish(form)}
-                        className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {form.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
-                      </button>
+
+                    {form.description && (
+                      <p className="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed">{form.description}</p>
+                    )}
+
+                    <div className="flex items-center gap-2 mb-5">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        form.accessMode === 'PUBLIC' ? 'bg-violet-50 text-violet-700' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {form.accessMode === 'PUBLIC' ? '🌐 Public' : '🔒 Registered'}
+                      </span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => handleToggleAccessMode(form)}
-                        className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Set {form.accessMode === 'PUBLIC' ? 'Registered' : 'Public'}
-                      </button>
+
+                    <div className="mt-auto space-y-2">
+                      <div className="flex gap-2">
+                        <Link href={`/forms/${form.id}`} className="flex-1 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
+                          ✏️ Edit
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => handleUpdate(form.id, { status: form.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED' })}
+                          className={`flex-1 inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:opacity-50 ${
+                            form.status === 'PUBLISHED'
+                              ? 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {form.status === 'PUBLISHED' ? '⏸ Unpublish' : '▶ Publish'}
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => handleUpdate(form.id, { accessMode: form.accessMode === 'PUBLIC' ? 'REGISTERED' : 'PUBLIC' })}
+                          className="flex-1 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition disabled:opacity-50"
+                        >
+                          {form.accessMode === 'PUBLIC' ? '🔒 Set Registered' : '🌐 Set Public'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => handleCopyLink(form.id, form.accessMode)}
+                          className="flex-1 inline-flex items-center justify-center rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 transition disabled:opacity-50"
+                        >
+                          🔗 Copy link
+                        </button>
+                      </div>
                       <button
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleDelete(form.id)}
-                        className="rounded-2xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="w-full inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 transition disabled:opacity-50"
                       >
-                        Delete form
+                        🗑️ Delete form
                       </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyLink(form.id, form.accessMode)}
-                      className="rounded-2xl bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark"
-                    >
-                      Copy share link
-                    </button>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'templates' && (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+          <span className="text-4xl mb-4">📐</span>
+          <p className="text-sm font-medium">Template library coming soon.</p>
         </div>
       )}
     </div>

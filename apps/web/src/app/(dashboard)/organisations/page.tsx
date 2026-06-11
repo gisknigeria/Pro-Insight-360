@@ -16,41 +16,42 @@ interface Organisation {
   _count: { users: number; evaluations: number };
 }
 
-function StatCard({ label, value, icon, delay = 0 }: { label: string; value: number; icon: string; delay?: number }) {
+function SkeletonCard() {
   return (
-    <div
-      className="rounded-xl border border-border bg-surface p-4 shadow-sm animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
-    >
-      <div className="flex items-center gap-3 mb-2">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 text-base shadow-sm">
-          {icon}
-        </span>
-        <p className="text-sm font-semibold text-muted">{label}</p>
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4 animate-pulse">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-slate-200" />
+          <div className="space-y-2">
+            <div className="h-4 w-32 rounded-lg bg-slate-200" />
+            <div className="h-3 w-16 rounded-full bg-slate-100" />
+          </div>
+        </div>
+        <div className="h-5 w-8 rounded bg-slate-100" />
       </div>
-      <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
+      <div className="h-3 w-full rounded-lg bg-slate-100" />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="h-14 rounded-xl bg-slate-100" />
+        <div className="h-14 rounded-xl bg-slate-100" />
+      </div>
+      <div className="h-3 w-2/3 rounded-lg bg-slate-100" />
     </div>
   );
 }
 
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="skeleton h-8 w-48 mb-2" />
-          <div className="skeleton h-4 w-64" />
-        </div>
-        <div className="skeleton h-10 w-44 rounded-xl" />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        {[1, 2].map((i) => <div key={i} className="skeleton h-24 rounded-xl" />)}
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => <div key={i} className="skeleton h-48 rounded-xl" />)}
-      </div>
-    </div>
-  );
+const SECTOR_COLORS: Record<string, string> = {
+  'Government':  'from-blue-500 to-indigo-600',
+  'Finance':     'from-emerald-500 to-teal-600',
+  'Healthcare':  'from-pink-500 to-rose-600',
+  'Education':   'from-violet-500 to-purple-600',
+  'Technology':  'from-cyan-500 to-sky-600',
+  'default':     'from-primary to-primary/70',
+};
+
+function sectorGradient(sector?: string) {
+  if (!sector) return SECTOR_COLORS.default;
+  const key = Object.keys(SECTOR_COLORS).find((k) => sector.toLowerCase().includes(k.toLowerCase()));
+  return key ? SECTOR_COLORS[key] : SECTOR_COLORS.default;
 }
 
 export default function OrganisationsPage() {
@@ -73,123 +74,127 @@ export default function OrganisationsPage() {
   async function deleteOrganisation(id: string) {
     if (!window.confirm('Delete this organisation? This cannot be undone.')) return;
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/organisations/${id}`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/organisations/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      window.alert(payload?.message || 'Unable to delete organisation.');
-      return;
-    }
-    setOrganisations((current) => current.filter((org) => org.id !== id));
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) { window.alert(payload?.message || 'Unable to delete.'); return; }
+    setOrganisations((prev) => prev.filter((o) => o.id !== id));
   }
 
-  if (loading) return <LoadingSkeleton />;
-
-  const activeCount = organisations.filter((o) => o.status === 'ACTIVE').length;
+  const active = organisations.filter((o) => o.status === 'ACTIVE');
 
   return (
-    <div className={mounted ? 'animate-fade-in' : ''}>
+    <div className="min-h-screen bg-slate-50/50">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">Organisations</h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary ring-1 ring-primary/20">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Clients</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Organisations</h1>
+            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">
               {organisations.length}
             </span>
           </div>
-          <p className="text-sm text-muted">Manage client organisations and their evaluations.</p>
+          <p className="mt-1.5 text-sm text-slate-500">Manage client organisations and their evaluation memberships.</p>
         </div>
         <Link
           href="/organisations/new"
-          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0"
+          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all"
         >
-          <span className="text-lg leading-none">+</span>
-          <span>Create Organisation</span>
+          <span className="text-base">+</span>
+          Create Organisation
         </Link>
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <StatCard label="Total Organisations" value={organisations.length} icon="🏢" delay={0} />
-        <StatCard label="Active" value={activeCount} icon="✅" delay={50} />
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[
+          { label: 'Total',        value: organisations.length, icon: '🏢', grad: 'from-blue-500 to-indigo-600' },
+          { label: 'Active',       value: active.length,        icon: '✅', grad: 'from-emerald-400 to-green-600' },
+          { label: 'Total users',  value: organisations.reduce((s, o) => s + o._count.users, 0), icon: '👥', grad: 'from-violet-500 to-purple-600' },
+          { label: 'Evaluations',  value: organisations.reduce((s, o) => s + o._count.evaluations, 0), icon: '📋', grad: 'from-amber-400 to-orange-500' },
+        ].map((s) => (
+          <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>
+              {s.icon}
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
+          </div>
+        ))}
       </div>
 
-      {/* ── Organisations Grid ── */}
-      {organisations.length === 0 ? (
-        <EmptyState
-          icon="🏢"
-          title="No organisations yet"
-          description="Create your first client organization to start evaluations."
-          actionLabel="Create Organisation"
-          onAction={() => router.push('/organisations/new')}
-        />
+      {/* ── Grid ── */}
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1,2,3,4,5,6].map((i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : organisations.length === 0 ? (
+        <EmptyState icon="🏢" title="No organisations yet" description="Create your first client organisation to start evaluations." actionLabel="Create Organisation" onAction={() => router.push('/organisations/new')} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {organisations.map((org, idx) => (
-            <div
-              key={org.id}
-              className="group relative rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 card-hover animate-fade-in-up"
-              style={{ animationDelay: `${idx * 60}ms`, animationFillMode: 'both' }}
-            >
-              {/* Decorative top gradient */}
-              <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary via-accent to-primary opacity-60" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {organisations.map((org) => (
+            <div key={org.id} className="group relative flex flex-col rounded-3xl border border-slate-200 bg-white shadow-sm hover:border-primary/30 hover:shadow-lg transition-all overflow-hidden">
+              {/* Gradient top strip */}
+              <div className={`h-1.5 bg-gradient-to-r ${sectorGradient(org.sector)}`} />
 
-              <div className="flex justify-between items-start mb-4 gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-lg shadow-sm">
-                    🏢
+              <div className="p-6 flex flex-col flex-1">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${sectorGradient(org.sector)} text-white text-base shadow-md`}>
+                      🏢
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-slate-900 truncate group-hover:text-primary transition-colors">{org.name}</h3>
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold mt-0.5 ${
+                        org.status === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-400'
+                      }`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${org.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        {org.status}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{org.name}</h3>
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-lg mt-1 ${
-                      org.status === 'ACTIVE'
-                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20'
-                        : 'bg-slate-50 text-slate-500 ring-1 ring-slate-500/20'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${org.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                      {org.status}
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => deleteOrganisation(org.id)}
+                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                    aria-label={`Delete ${org.name}`}
+                  >
+                    🗑️
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => deleteOrganisation(org.id)}
-                  className="opacity-0 group-hover:opacity-100 px-2.5 py-1.5 text-xs font-medium text-muted hover:text-danger rounded-lg transition-all hover:bg-red-50"
-                  aria-label={`Delete ${org.name}`}
-                >
-                  🗑️
-                </button>
-              </div>
 
-              <p className="text-sm text-muted mb-4 line-clamp-2 leading-relaxed">
-                {org.description || (
-                  <span className="italic text-muted/60">No description provided</span>
-                )}
-              </p>
+                <p className="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed flex-1">
+                  {org.description || <span className="italic opacity-60">No description provided.</span>}
+                </p>
 
-              <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-                <div className="rounded-lg bg-surface-muted p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Sector</p>
-                  <p className="text-sm font-medium text-foreground">{org.sector || '—'}</p>
+                <div className="grid grid-cols-2 gap-2.5 mb-4">
+                  {[
+                    { label: 'Sector',  value: org.sector || '—' },
+                    { label: 'Country', value: org.country || '—' },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{item.label}</p>
+                      <p className="text-xs font-semibold text-slate-700 truncate">{item.value}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="rounded-lg bg-surface-muted p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Country</p>
-                  <p className="text-sm font-medium text-foreground">{org.country || '—'}</p>
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between text-xs text-muted border-t border-border pt-4 mt-2">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                  {org._count.users} users
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                  {org._count.evaluations} evaluations
-                </span>
+                <div className="flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                    {org._count.users} user{org._count.users !== 1 ? 's' : ''}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
+                    {org._count.evaluations} evaluation{org._count.evaluations !== 1 ? 's' : ''}
+                  </span>
+                  <span className="text-slate-400">
+                    {new Date(org.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
               </div>
             </div>
           ))}

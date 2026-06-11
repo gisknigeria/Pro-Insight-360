@@ -5,12 +5,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch } from '@/lib/api';
 import RadarChart from '@/components/charts/RadarChart';
 import {
-  DepartmentComparisonChart,
-  GapSeverityChart,
-  WorkflowDelayChart,
-} from '@/components/charts/BarLineCharts';
-import OrgChart from '@/components/organogram/OrgChart';
-import {
   BarChart,
   Bar,
   XAxis,
@@ -21,6 +15,8 @@ import {
   ReferenceLine,
   LabelList,
 } from 'recharts';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Diagnosis {
   id: string;
@@ -39,56 +35,256 @@ interface Diagnosis {
   createdAt: string;
 }
 
+interface PromptTemplate {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  prompt: string;
+}
+
+// ─── Prompt library ──────────────────────────────────────────────────────────
+
+const PROMPT_TEMPLATES: PromptTemplate[] = [
+  {
+    id: 'general-org',
+    label: 'General Organisational',
+    icon: '🏢',
+    description: 'Full SWOT analysis with executive summary and action plan.',
+    prompt: `You are given submitted form responses from an organisational evaluation.
+Analyse the questions and responses to identify:
+- An executive summary of the organisation's current state
+- Key strengths, weaknesses, and growth opportunities
+- Missing capabilities or critical gaps revealed by the answers
+- Prioritised recommendations and a practical action plan
+- Chart data for readiness, capability, or risk visualisation
+- Organogram structure if there is sufficient organisational data
+
+Return ONLY valid JSON in this exact shape:
+{
+  "questions": [{"question":"...","answer":"..."}],
+  "executiveSummary": "...",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "opportunities": ["..."],
+  "recommendations": ["..."],
+  "gaps": ["..."],
+  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
+  "charts": [{"title":"...","data":[{"label":"...","value":0}]}],
+  "organogram": {"nodes":[{"id":"...","label":"...","group":"..."}],"links":[{"source":"...","target":"...","relation":"..."}]}
+}
+Do not include markdown, code fences, or any extra text. Respond with plain JSON only.`,
+  },
+  {
+    id: 'gis-readiness',
+    label: 'GIS Readiness',
+    icon: '🗺️',
+    description: 'Assess GIS capability maturity, infrastructure and skills gaps.',
+    prompt: `You are analysing form responses from a GIS readiness evaluation.
+Focus on geospatial capability, infrastructure, data management, and staff competency.
+Identify the organisation's GIS maturity level (Nascent / Emerging / Developing / Advanced).
+
+Return ONLY valid JSON:
+{
+  "questions": [{"question":"...","answer":"..."}],
+  "executiveSummary": "...",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "opportunities": ["..."],
+  "recommendations": ["..."],
+  "gaps": ["..."],
+  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
+  "charts": [{"title":"GIS Readiness by Domain","data":[{"label":"Infrastructure","value":0},{"label":"Data Management","value":0},{"label":"Skills","value":0},{"label":"Governance","value":0}]}],
+  "organogram": {"nodes":[],"links":[]}
+}
+Plain JSON only. No markdown or extra text.`,
+  },
+  {
+    id: 'digital-readiness',
+    label: 'Digital Transformation',
+    icon: '💻',
+    description: 'Evaluate digital maturity, technology adoption, and change readiness.',
+    prompt: `You are analysing form responses from a digital transformation readiness assessment.
+Evaluate technology adoption, process automation maturity, digital culture, and change readiness.
+Score each domain 0–100 and identify the top priorities for transformation.
+
+Return ONLY valid JSON:
+{
+  "questions": [{"question":"...","answer":"..."}],
+  "executiveSummary": "...",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "opportunities": ["..."],
+  "recommendations": ["..."],
+  "gaps": ["..."],
+  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
+  "charts": [{"title":"Digital Readiness Scores","data":[{"label":"Technology","value":0},{"label":"Process","value":0},{"label":"Culture","value":0},{"label":"Data","value":0},{"label":"Leadership","value":0}]}],
+  "organogram": {"nodes":[],"links":[]}
+}
+Plain JSON only.`,
+  },
+  {
+    id: 'technical-skills',
+    label: 'Technical Skills Audit',
+    icon: '🔧',
+    description: 'Map skills gaps, training needs, and competency levels across teams.',
+    prompt: `You are analysing form responses from a technical skills and competency assessment.
+Map identified skills against required capabilities. Highlight critical gaps, training needs, and career development opportunities.
+
+Return ONLY valid JSON:
+{
+  "questions": [{"question":"...","answer":"..."}],
+  "executiveSummary": "...",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "opportunities": ["..."],
+  "recommendations": ["..."],
+  "gaps": ["..."],
+  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
+  "charts": [{"title":"Skill Proficiency by Area","data":[{"label":"Technical","value":0},{"label":"Analytical","value":0},{"label":"Communication","value":0},{"label":"Leadership","value":0}]}],
+  "organogram": {"nodes":[],"links":[]}
+}
+Plain JSON only.`,
+  },
+  {
+    id: 'governance',
+    label: 'Governance & Compliance',
+    icon: '⚖️',
+    description: 'Assess policy adherence, risk management, and governance maturity.',
+    prompt: `You are analysing form responses from a governance and compliance evaluation.
+Assess policy adherence, risk management maturity, accountability structures, and regulatory compliance gaps.
+
+Return ONLY valid JSON:
+{
+  "questions": [{"question":"...","answer":"..."}],
+  "executiveSummary": "...",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "opportunities": ["..."],
+  "recommendations": ["..."],
+  "gaps": ["..."],
+  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
+  "charts": [{"title":"Governance Maturity by Domain","data":[{"label":"Policy","value":0},{"label":"Risk","value":0},{"label":"Compliance","value":0},{"label":"Accountability","value":0}]}],
+  "organogram": {"nodes":[],"links":[]}
+}
+Plain JSON only.`,
+  },
+];
+
 const STATUS_CONFIG = {
-  PENDING_REVIEW: { label: 'Pending Review', color: 'bg-yellow-100 text-yellow-700', icon: '⏳' },
-  IN_REVIEW: { label: 'In Review', color: 'bg-amber-100 text-amber-800', icon: '👀' },
-  APPROVED: { label: 'Approved', color: 'bg-green-100 text-green-700', icon: '✅' },
-  REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: '❌' },
+  PENDING_REVIEW: { label: 'Pending Review', bg: 'bg-amber-50', text: 'text-amber-700', ring: 'ring-amber-200', dot: 'bg-amber-400' },
+  IN_REVIEW: { label: 'In Review', bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-200', dot: 'bg-blue-500' },
+  APPROVED: { label: 'Approved', bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', dot: 'bg-emerald-500' },
+  REJECTED: { label: 'Rejected', bg: 'bg-red-50', text: 'text-red-700', ring: 'ring-red-200', dot: 'bg-red-500' },
 };
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StepBadge({ n, active, done }: { n: number; active: boolean; done: boolean }) {
+  return (
+    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors ${
+      done ? 'bg-emerald-500 text-white' : active ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
+    }`}>
+      {done ? '✓' : n}
+    </div>
+  );
+}
+
+function SectionChip({ color, label }: { color: string; label: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${color}`}>
+      {label}
+    </span>
+  );
+}
+
+function AnalysisChartCard({ chart }: { chart: any }) {
+  const chartData = Array.isArray(chart?.data)
+    ? chart.data
+        .filter((row: any) => row && (typeof row.label === 'string' || typeof row.name === 'string'))
+        .map((row: any) => ({ name: String(row.label ?? row.name), value: Number(row.value ?? row.count ?? 0) }))
+    : [];
+
+  const avg = chartData.length > 0 ? chartData.reduce((s: number, p: any) => s + p.value, 0) / chartData.length : 0;
+
+  if (chartData.length === 0) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <p className="font-semibold text-slate-800 mb-4 text-sm">{chart.title || 'Chart'}</p>
+        <div className="flex h-44 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-400">
+          No chart data available.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <p className="font-semibold text-slate-800 mb-4 text-sm">{chart.title || 'Supporting chart'}</p>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={60} />
+            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
+            <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '12px' }} />
+            <ReferenceLine y={avg} stroke="#f59e0b" strokeDasharray="5 5" label={{ value: 'avg', position: 'right', fill: '#f59e0b', fontSize: 11 }} />
+            <Bar dataKey="value" fill="#2563eb" radius={[8, 8, 0, 0]}>
+              <LabelList dataKey="value" position="top" fill="#1e40af" fontSize={11} fontWeight="600" />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: keyof typeof STATUS_CONFIG }) {
+  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING_REVIEW;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${cfg.bg} ${cfg.text} ${cfg.ring}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AIDiagnosisPage() {
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [loading, setLoading] = useState(true);
   const [diagnosisError, setDiagnosisError] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Step 2 — paste & parse
   const [chatOutput, setChatOutput] = useState('');
   const [parsedChat, setParsedChat] = useState<any | null>(null);
   const [parseError, setParseError] = useState('');
+
+  // Publish
   const [clientAdmins, setClientAdmins] = useState<Array<{ id: string; name: string; email: string }>>([]);
-  const [selectedAdminId, setSelectedAdminId] = useState<string>('');
+  const [selectedAdminId, setSelectedAdminId] = useState('');
   const [evaluations, setEvaluations] = useState<Array<{ id: string; title: string }>>([]);
-  const [selectedEvaluationId, setSelectedEvaluationId] = useState<string>('');
-  const selectedEvaluation = evaluations.find((evaluation) => evaluation.id === selectedEvaluationId);
-  const selectedEvaluationTitle = selectedEvaluation?.title || 'Selected evaluation';
+  const [selectedEvaluationId, setSelectedEvaluationId] = useState('');
   const [publishLoading, setPublishLoading] = useState(false);
   const [publishMessage, setPublishMessage] = useState('');
   const [publishError, setPublishError] = useState('');
+
+  // Review
   const [reviewLoadingId, setReviewLoadingId] = useState<string | null>(null);
   const [reviewMessage, setReviewMessage] = useState('');
   const [reviewError, setReviewError] = useState('');
 
-  const chatPromptTemplate = `You are given the submitted form responses for an organisational evaluation.
-Analyze the responses and the original questions in order to identify:
-- overall executive findings
-- strengths, weaknesses, and opportunities
-- any gaps or missing capabilities revealed by the answers
-- clear recommendations and a practical action plan
-- useful chart data for readiness, completion, or risk analysis
-- an organogram structure if there is enough organisational information
-Return only valid JSON with these properties:
-{
-  "questions": [{"question":"...","answer":"..."}],
-  "executiveSummary":"...",
-  "strengths":["..."],
-  "weaknesses":["..."],
-  "opportunities":["..."],
-  "recommendations":["..."],
-  "gaps":["..."],
-  "actionPlan":[{"who":"...","what":"...","how":"...","when":"..."}],
-  "charts":[{"title":"...","data":[{"label":"...","value":...}]}],
-  "organogram":{"nodes":[{"id":"...","label":"...","group":"..."}],"links":[{"source":"...","target":"...","relation":"..."}]}
-}
-Do not include markdown, code fences, or any extra text. Respond with plain JSON only.`;
+  // Prompt panel
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate>(PROMPT_TEMPLATES[0]);
+  const [promptCopied, setPromptCopied] = useState(false);
+
+  // Expand diagnosis history
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const selectedEvaluationTitle = evaluations.find((e) => e.id === selectedEvaluationId)?.title ?? 'Selected evaluation';
+
+  // ── Data loading ──────────────────────────────────────────────────────────
 
   async function loadDiagnoses() {
     setLoading(true);
@@ -96,41 +292,9 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
     try {
       const data = await apiFetch<Diagnosis[]>('/diagnoses');
       setDiagnoses(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      try {
-        const published = await apiFetch<Array<{
-          id: string;
-          publishedAt: string;
-          evaluationId?: string | null;
-          analysis?: Diagnosis['sections'] | null;
-        }>>('/published-analyses');
-
-        setDiagnoses(
-          published
-            .filter((item) => item.analysis)
-            .map((item) => ({
-              id: item.id,
-              evaluation: {
-                id: item.evaluationId || item.id,
-                title: 'Published analysis',
-              },
-              status: 'APPROVED',
-              isAiGenerated: true,
-              sections: {
-                executiveSummary: item.analysis?.executiveSummary || 'No summary available.',
-                strengths: Array.isArray(item.analysis?.strengths) ? item.analysis.strengths : [],
-                weaknesses: Array.isArray(item.analysis?.weaknesses) ? item.analysis.weaknesses : [],
-                opportunities: Array.isArray(item.analysis?.opportunities) ? item.analysis.opportunities : [],
-                recommendations: Array.isArray(item.analysis?.recommendations) ? item.analysis.recommendations : [],
-                actionPlan: Array.isArray(item.analysis?.actionPlan) ? item.analysis.actionPlan : [],
-              },
-              createdAt: item.publishedAt,
-            })),
-        );
-      } catch {
-        setDiagnoses([]);
-        setDiagnosisError(error?.message || 'Unable to load diagnosis history.');
-      }
+    } catch (err: any) {
+      setDiagnoses([]);
+      setDiagnosisError(err?.message || 'Unable to load diagnosis history.');
     } finally {
       setLoading(false);
     }
@@ -141,449 +305,459 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
 
     apiFetch<{ id: string; name: string; email: string; role: string }[]>('/users')
       .then((users) => {
-        const admins = users.filter((user) => user.role === 'CLIENT_ADMIN');
-        setClientAdmins(admins.map((user) => ({ id: user.id, name: user.name || user.email, email: user.email })));
-        if (admins.length > 0) {
-          setSelectedAdminId(admins[0].id);
-        }
+        const admins = users.filter((u) => u.role === 'CLIENT_ADMIN');
+        setClientAdmins(admins.map((u) => ({ id: u.id, name: u.name || u.email, email: u.email })));
+        if (admins.length > 0) setSelectedAdminId(admins[0].id);
       })
       .catch(() => setClientAdmins([]));
 
     apiFetch<Array<{ id: string; title: string }>>('/evaluations')
       .then((items) => {
         setEvaluations(items);
-        if (items.length > 0) {
-          setSelectedEvaluationId(items[0].id);
-        }
+        if (items.length > 0) setSelectedEvaluationId(items[0].id);
       })
       .catch(() => setEvaluations([]));
   }, []);
 
-  function extractJsonObject(text: string) {
-    try {
-      const jsonStart = text.indexOf('{');
-      const jsonText = jsonStart >= 0 ? text.slice(jsonStart) : text;
-      return JSON.parse(jsonText);
-    } catch (error) {
-      throw new Error('Unable to parse JSON from analysis output. Please paste only valid JSON or remove any surrounding text/code fences.');
-    }
-  }
+  // ── Parse ─────────────────────────────────────────────────────────────────
 
   function handleParseChatOutput() {
     setParseError('');
     setPublishMessage('');
     setPublishError('');
     try {
-      const parsed = extractJsonObject(chatOutput.trim());
+      const text = chatOutput.trim();
+      const start = text.indexOf('{');
+      const parsed = JSON.parse(start >= 0 ? text.slice(start) : text);
       setParsedChat(parsed);
-    } catch (error: any) {
+    } catch {
       setParsedChat(null);
-      setParseError(error.message);
+      setParseError('Could not parse JSON. Make sure you paste only the AI JSON output — no markdown fences or surrounding text.');
     }
   }
 
-  function getChartMaxValue(chart: any) {
-    if (!Array.isArray(chart?.data)) return 100;
-    return Math.max(100, ...chart.data.map((item: any) => Number(item.value) || 0));
+  // ── Prompt copy ───────────────────────────────────────────────────────────
+
+  async function copyPrompt() {
+    await navigator.clipboard.writeText(selectedPrompt.prompt);
+    setPromptCopied(true);
+    setTimeout(() => setPromptCopied(false), 2500);
   }
 
-  function buildChartData(chart: any) {
-    if (!Array.isArray(chart?.data)) {
-      return [];
-    }
-
-    return chart.data
-      .filter((row: any) => row && (typeof row.label === 'string' || typeof row.name === 'string'))
-      .map((row: any) => ({
-        name: String(row.label ?? row.name),
-        value: Number(row.value ?? row.count ?? 0),
-      }));
-  }
-
-  function AnalysisChartCard({ chart }: { chart: any }) {
-    const chartData: { name: string; value: number }[] = buildChartData(chart);
-    const average = chartData.length > 0 ? chartData.reduce((sum: number, point: { name: string; value: number }) => sum + point.value, 0) / chartData.length : 0;
-
-    if (chartData.length === 0) {
-      return (
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="font-semibold text-slate-900 mb-4">{chart.title || 'Chart data'}</p>
-          <div className="flex h-48 items-center justify-center rounded-2xl bg-slate-50 border border-slate-200 text-sm text-slate-500">
-            No visual chart data available.
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="font-semibold text-slate-900 mb-4">{chart.title || 'Supporting chart'}</p>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }}
-                interval={0}
-                angle={-30}
-                textAnchor="end"
-                height={70}
-              />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
-                formatter={(value) => [value, chart.title || 'Value']}
-              />
-              <ReferenceLine y={average} stroke="#16a34a" strokeDasharray="5 5" label={{ value: 'Average', position: 'top', fill: '#16a34a', fontSize: 12 }} />
-              <Bar dataKey="value" fill="#2563eb" radius={[10, 10, 0, 0]}>
-                <LabelList dataKey="value" position="top" fill="#0f172a" fontSize={11} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    );
-  }
+  // ── Publish ───────────────────────────────────────────────────────────────
 
   async function handlePublishAnalysis() {
     setPublishMessage('');
     setPublishError('');
-    if (!parsedChat) {
-      setPublishError('Please parse valid analysis output before publishing.');
-      return;
-    }
-    if (!selectedAdminId) {
-      setPublishError('Select a client admin to publish this analysis.');
-      return;
-    }
-    if (!selectedEvaluationId) {
-      setPublishError('Select an evaluation to attach this analysis to.');
-      return;
-    }
+    if (!parsedChat) { setPublishError('Parse a valid analysis before publishing.'); return; }
+    if (!selectedAdminId) { setPublishError('Select a client admin recipient.'); return; }
+    if (!selectedEvaluationId) { setPublishError('Select an evaluation to attach this analysis to.'); return; }
 
     setPublishLoading(true);
     try {
       const result = await apiFetch<{ message: string }>('/diagnoses/publish', {
         method: 'POST',
-        body: JSON.stringify({
-          recipientId: selectedAdminId,
-          evaluationId: selectedEvaluationId,
-          analysis: parsedChat,
-        }),
+        body: JSON.stringify({ recipientId: selectedAdminId, evaluationId: selectedEvaluationId, analysis: parsedChat }),
       });
-      setPublishMessage(`${result.message || 'Analysis published successfully.'} Your client admin can review it in Insights and it is now linked to the selected evaluation.`);
-      setPublishError('');
+      setPublishMessage(result.message || 'Analysis published successfully.');
       await loadDiagnoses();
-    } catch (error: any) {
-      setPublishError(error?.message || 'Unable to publish analysis.');
-      setPublishMessage('');
+    } catch (err: any) {
+      setPublishError(err?.message || 'Unable to publish analysis.');
     } finally {
       setPublishLoading(false);
     }
   }
 
-  async function updateDiagnosisStatus(diagnosisId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string) {
-    setReviewMessage('');
-    setReviewError('');
-    setReviewLoadingId(diagnosisId);
+  // ── Review ────────────────────────────────────────────────────────────────
 
+  async function updateDiagnosisStatus(id: string, status: 'APPROVED' | 'REJECTED', reason?: string) {
+    setReviewMessage(''); setReviewError('');
+    setReviewLoadingId(id);
     try {
-      const result = await apiFetch<{ id: string; status: string; reviewedBy?: { name: string } }>(`/diagnoses/${diagnosisId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status, rejectionReason }),
-      });
-
-      const updatedDiagnoses = await apiFetch<Diagnosis[]>('/diagnoses');
-      setDiagnoses(updatedDiagnoses);
+      await apiFetch(`/diagnoses/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, rejectionReason: reason }) });
+      await loadDiagnoses();
       setReviewMessage(`Diagnosis ${status.toLowerCase()} successfully.`);
-    } catch (error: any) {
-      setReviewError(error?.message || `Unable to ${status.toLowerCase()} diagnosis.`);
+    } catch (err: any) {
+      setReviewError(err?.message || `Unable to ${status.toLowerCase()} diagnosis.`);
     } finally {
       setReviewLoadingId(null);
     }
   }
 
-  function handleApproveDiagnosis(diagnosisId: string) {
-    updateDiagnosisStatus(diagnosisId, 'APPROVED');
-  }
+  // ── Derived ───────────────────────────────────────────────────────────────
 
-  function handleRejectDiagnosis(diagnosisId: string) {
-    setReviewError('');
-    const reason = window.prompt('Please provide a reason for rejection:');
-    if (!reason || !reason.trim()) {
-      setReviewError('Rejection reason is required.');
-      return;
-    }
-    updateDiagnosisStatus(diagnosisId, 'REJECTED', reason.trim());
-  }
-
-  const dashboardMetrics = useMemo(() => {
-    return {
-      strengths: Array.isArray(parsedChat?.strengths) ? parsedChat.strengths.length : 0,
-      weaknesses: Array.isArray(parsedChat?.weaknesses) ? parsedChat.weaknesses.length : 0,
-      opportunities: Array.isArray(parsedChat?.opportunities) ? parsedChat.opportunities.length : 0,
-      recommendations: Array.isArray(parsedChat?.recommendations) ? parsedChat.recommendations.length : 0,
-      actionPlan: Array.isArray(parsedChat?.actionPlan) ? parsedChat.actionPlan.length : 0,
-    };
-  }, [parsedChat]);
+  const metrics = useMemo(() => ({
+    strengths: Array.isArray(parsedChat?.strengths) ? parsedChat.strengths.length : 0,
+    weaknesses: Array.isArray(parsedChat?.weaknesses) ? parsedChat.weaknesses.length : 0,
+    opportunities: Array.isArray(parsedChat?.opportunities) ? parsedChat.opportunities.length : 0,
+    recommendations: Array.isArray(parsedChat?.recommendations) ? parsedChat.recommendations.length : 0,
+    actionPlan: Array.isArray(parsedChat?.actionPlan) ? parsedChat.actionPlan.length : 0,
+  }), [parsedChat]);
 
   const radarData = useMemo(() => {
     if (!parsedChat) return null;
     return [
-      { category: 'Strengths', score: Math.min(100, dashboardMetrics.strengths * 18 + 20), fullMark: 100 },
-      { category: 'Weaknesses', score: Math.max(24, 100 - dashboardMetrics.weaknesses * 18), fullMark: 100 },
-      { category: 'Opportunities', score: Math.min(100, dashboardMetrics.opportunities * 14 + 20), fullMark: 100 },
-      { category: 'Recommendations', score: Math.min(100, dashboardMetrics.recommendations * 12 + 24), fullMark: 100 },
-      { category: 'Action Plan', score: Math.min(100, dashboardMetrics.actionPlan * 18 + 20), fullMark: 100 },
+      { category: 'Strengths', score: Math.min(100, metrics.strengths * 18 + 20), fullMark: 100 },
+      { category: 'Weaknesses', score: Math.max(24, 100 - metrics.weaknesses * 18), fullMark: 100 },
+      { category: 'Opportunities', score: Math.min(100, metrics.opportunities * 14 + 20), fullMark: 100 },
+      { category: 'Recommendations', score: Math.min(100, metrics.recommendations * 12 + 24), fullMark: 100 },
+      { category: 'Action Plan', score: Math.min(100, metrics.actionPlan * 18 + 20), fullMark: 100 },
     ];
-  }, [dashboardMetrics, parsedChat]);
+  }, [metrics, parsedChat]);
 
-  const orgRows = useMemo(() => {
-    if (!parsedChat?.organogram) return [];
+  // ── Steps progress ────────────────────────────────────────────────────────
 
-    const nodes = Array.isArray(parsedChat.organogram.nodes) ? parsedChat.organogram.nodes : [];
-    const links = Array.isArray(parsedChat.organogram.links) ? parsedChat.organogram.links : [];
+  const step1Done = false; // always available — user did this externally
+  const step2Done = chatOutput.trim().length > 0;
+  const step3Done = parsedChat !== null;
+  const step4Done = publishMessage.length > 0;
 
-    const map = new Map();
-    nodes.forEach((node: any) => {
-      const name = String(node.label || node.id || 'Unknown');
-      map.set(name, {
-        name,
-        title: String(node.group || 'Team'),
-        reportsTo: '',
-      });
-    });
-
-    links.forEach((link: any) => {
-      const sourceName = String(link.source || link.sourceLabel || link.sourceId || '');
-      const targetName = String(link.target || link.targetLabel || link.targetId || '');
-      const sourceNode = map.get(sourceName);
-      const targetNode = map.get(targetName);
-      if (sourceNode && targetNode) {
-        sourceNode.reportsTo = targetNode.name;
-      }
-    });
-
-    return Array.from(map.values());
-  }, [parsedChat]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50/50">
+      {/* ── Page header ── */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">AI Diagnosis & Analysis</h1>
-        <p className="text-slate-500 mt-1 text-sm">
-          Review AI-generated organizational insights and consultant analysis.
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Analytics</p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">AI Diagnosis & Analysis</h1>
+            <p className="mt-1.5 text-sm text-slate-500">
+              Copy form responses → paste to ChatGPT or Claude → import the result here → approve and publish to your client.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm text-sm">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="font-medium text-slate-700">{diagnoses.filter((d) => d.status === 'APPROVED').length} approved</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm text-sm">
+              <span className="h-2 w-2 rounded-full bg-amber-400" />
+              <span className="font-medium text-slate-700">{diagnoses.filter((d) => d.status === 'PENDING_REVIEW').length} pending</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+      {/* ── Workflow steps ── */}
+      <div className="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-5">Analysis workflow</h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { n: 1, title: 'Copy responses', desc: 'Go to Evaluations → Diagnosis → Responses tab → Copy all answers', done: false, active: true },
+            { n: 2, title: 'Paste into AI', desc: 'Open ChatGPT or Claude, paste the responses with your chosen prompt', done: step2Done, active: !step2Done },
+            { n: 3, title: 'Import result', desc: 'Paste the AI JSON output into the import panel below', done: step3Done, active: step2Done && !step3Done },
+            { n: 4, title: 'Publish', desc: 'Review the rendered analysis, approve, and send to client admin', done: step4Done, active: step3Done && !step4Done },
+          ].map((step) => (
+            <div key={step.n} className={`flex gap-3 rounded-2xl border p-4 transition-colors ${
+              step.done ? 'border-emerald-200 bg-emerald-50' : step.active ? 'border-primary/30 bg-primary/5' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <StepBadge n={step.n} active={step.active} done={step.done} />
+              <div>
+                <p className={`text-sm font-semibold ${step.done ? 'text-emerald-800' : step.active ? 'text-slate-900' : 'text-slate-500'}`}>
+                  {step.title}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Stats bar ── */}
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: 'Total Diagnoses', value: diagnoses.length, icon: '📊' },
-          { label: 'Pending Review', value: diagnoses.filter((d) => d.status === 'PENDING_REVIEW').length, icon: '⏳' },
-          { label: 'Approved', value: diagnoses.filter((d) => d.status === 'APPROVED').length, icon: '✅' },
-          { label: 'AI Generated', value: diagnoses.filter((d) => d.isAiGenerated).length, icon: '🤖' },
+          { label: 'Total analyses', value: diagnoses.length, icon: '📊', color: 'from-blue-500 to-indigo-600' },
+          { label: 'Pending review', value: diagnoses.filter((d) => d.status === 'PENDING_REVIEW').length, icon: '⏳', color: 'from-amber-400 to-orange-500' },
+          { label: 'Approved', value: diagnoses.filter((d) => d.status === 'APPROVED').length, icon: '✅', color: 'from-emerald-400 to-green-600' },
+          { label: 'AI generated', value: diagnoses.filter((d) => d.isAiGenerated).length, icon: '🤖', color: 'from-violet-500 to-purple-600' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl">{stat.icon}</span>
-              <p className="text-sm font-medium text-slate-600">{stat.label}</p>
+          <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.color} text-lg shadow-md`}>
+              {stat.icon}
             </div>
             <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">{stat.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="mb-8 rounded-2xl border border-slate-200 bg-slate-50 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">Manual analysis import</h2>
-        <p className="text-sm text-slate-600 mb-4">
-          Copy the response output from the evaluation page, paste it into an external analysis tool, and ask for structured JSON. Then paste the resulting JSON here to render it in the app.
-        </p>
-        <div className="grid gap-4">
-          <textarea
-            value={chatOutput}
-            onChange={(event) => setChatOutput(event.target.value)}
-            rows={10}
-            placeholder="Paste JSON analysis output here"
-            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-sm focus:border-primary focus:ring-primary"
-          />
-          <button
-            type="button"
-            onClick={handleParseChatOutput}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition"
-          >
-            Parse and render analysis output
-          </button>
-          {parseError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {parseError}
+      {/* ── Main 2-column layout ── */}
+      <div className="grid gap-6 xl:grid-cols-[1fr_380px] mb-8">
+        {/* ── LEFT: Prompt panel + Import ── */}
+        <div className="space-y-6">
+          {/* Prompt library */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Step 1 — Copy responses & choose a prompt</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Go to your evaluation's Responses tab, click <strong>Copy all answers</strong>, then paste into ChatGPT or Claude with one of these prompts.
+                </p>
+              </div>
+            </div>
+
+            {/* Prompt selector tabs */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              {PROMPT_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  onClick={() => setSelectedPrompt(tpl)}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                    selectedPrompt.id === tpl.id
+                      ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white'
+                  }`}
+                >
+                  <span>{tpl.icon}</span>
+                  {tpl.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Active prompt */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{selectedPrompt.icon}</span>
+                    <p className="text-sm font-bold text-slate-900">{selectedPrompt.label}</p>
+                  </div>
+                  <p className="text-xs text-slate-500">{selectedPrompt.description}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={copyPrompt}
+                  className={`shrink-0 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                    promptCopied
+                      ? 'bg-emerald-500 text-white shadow-md'
+                      : 'bg-primary text-white hover:bg-primary/90 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  {promptCopied ? '✓ Copied!' : '📋 Copy prompt'}
+                </button>
+              </div>
+              <pre className="whitespace-pre-wrap rounded-xl bg-white border border-slate-200 p-4 text-xs text-slate-600 leading-relaxed max-h-52 overflow-y-auto">
+                {selectedPrompt.prompt}
+              </pre>
+            </div>
+          </div>
+
+          {/* Import panel */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-900 mb-1">Step 2 — Paste AI output</h2>
+            <p className="text-sm text-slate-500 mb-5">
+              After getting the result from ChatGPT or Claude, paste the JSON response here and click <strong>Parse & render</strong>.
+            </p>
+            <textarea
+              value={chatOutput}
+              onChange={(e) => setChatOutput(e.target.value)}
+              rows={9}
+              placeholder={'Paste JSON analysis output here...\n\n{\n  "executiveSummary": "...",\n  "strengths": [...],\n  ...\n}'}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-mono text-slate-800 placeholder-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all resize-none"
+            />
+            {parseError && (
+              <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5">
+                <span className="text-red-500 text-base shrink-0">⚠</span>
+                <p className="text-sm text-red-700">{parseError}</p>
+              </div>
+            )}
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleParseChatOutput}
+                disabled={!chatOutput.trim()}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-primary/90 hover:shadow-md disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+              >
+                Parse & render analysis
+              </button>
+              {parsedChat && (
+                <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                  ✓ Parsed successfully
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── RIGHT: Publish panel ── */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm h-fit sticky top-6">
+          <h2 className="text-lg font-bold text-slate-900 mb-1">Step 4 — Publish</h2>
+          <p className="text-sm text-slate-500 mb-5">Send the approved analysis to a client admin, linked to an evaluation.</p>
+
+          <label className="block mb-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Recipient (Client Admin)</span>
+            <select
+              value={selectedAdminId}
+              onChange={(e) => setSelectedAdminId(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            >
+              {clientAdmins.length === 0 ? (
+                <option value="">No client admins found</option>
+              ) : (
+                clientAdmins.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name} — {a.email}</option>
+                ))
+              )}
+            </select>
+          </label>
+
+          <label className="block mb-5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Evaluation</span>
+            <select
+              value={selectedEvaluationId}
+              onChange={(e) => setSelectedEvaluationId(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            >
+              {evaluations.length === 0 ? (
+                <option value="">No evaluations found</option>
+              ) : (
+                evaluations.map((ev) => (
+                  <option key={ev.id} value={ev.id}>{ev.title}</option>
+                ))
+              )}
+            </select>
+          </label>
+
+          {parsedChat ? (
+            <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800">
+              ✓ Analysis ready to publish — {metrics.strengths} strengths, {metrics.weaknesses} weaknesses, {metrics.actionPlan} action items
+            </div>
+          ) : (
+            <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-500">
+              Parse the analysis in Step 2 before publishing.
             </div>
           )}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-            <p className="font-semibold text-slate-900 mb-2">Recommended analysis prompt</p>
-            <pre className="whitespace-pre-wrap text-xs text-slate-600">{chatPromptTemplate}</pre>
-          </div>
+
+          <button
+            type="button"
+            disabled={publishLoading || !parsedChat || clientAdmins.length === 0}
+            onClick={handlePublishAnalysis}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-4 py-3 text-sm font-bold text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed disabled:shadow-none disabled:-translate-y-0 transition-all"
+          >
+            {publishLoading ? (
+              <>
+                <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                Publishing…
+              </>
+            ) : (
+              '🚀 Publish to client admin'
+            )}
+          </button>
+
+          {publishMessage && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5">
+              <span className="text-emerald-600 shrink-0">✓</span>
+              <p className="text-sm text-emerald-800">{publishMessage}</p>
+            </div>
+          )}
+          {publishError && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5">
+              <span className="text-red-500 shrink-0">⚠</span>
+              <p className="text-sm text-red-700">{publishError}</p>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* ── Step 3 rendered analysis ── */}
       {parsedChat && (
-        <div className="mb-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-            <div className="space-y-3 max-w-3xl">
-              <h2 className="text-2xl font-semibold text-slate-900">Rendered analysis for {selectedEvaluationTitle}</h2>
-              <p className="text-sm text-slate-600">
-                This is the client admin view of the analysis for {selectedEvaluationTitle}. It shows the full structured AI diagnosis output including charts, recommendations, and the action plan.
+        <div className="mb-8 space-y-6">
+          {/* Header */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">
+                    Step 3 · Review analysis
+                  </span>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">Rendered report: {selectedEvaluationTitle}</h2>
+                <p className="text-sm text-slate-500 mt-1">This is what your client admin will see once you publish.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <SectionChip color="bg-emerald-50 text-emerald-700 ring-emerald-200" label={`${metrics.strengths} strengths`} />
+                <SectionChip color="bg-red-50 text-red-700 ring-red-200" label={`${metrics.weaknesses} weaknesses`} />
+                <SectionChip color="bg-amber-50 text-amber-700 ring-amber-200" label={`${metrics.opportunities} opportunities`} />
+              </div>
+            </div>
+          </div>
+
+          {/* Metric cards + radar */}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              { label: 'Strengths', value: metrics.strengths, color: 'from-emerald-400 to-green-600' },
+              { label: 'Weaknesses', value: metrics.weaknesses, color: 'from-red-400 to-rose-600' },
+              { label: 'Opportunities', value: metrics.opportunities, color: 'from-amber-400 to-orange-500' },
+              { label: 'Recommendations', value: metrics.recommendations, color: 'from-blue-400 to-indigo-600' },
+              { label: 'Action items', value: metrics.actionPlan, color: 'from-violet-400 to-purple-600' },
+            ].map((m) => (
+              <div key={m.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className={`mb-3 h-1.5 w-12 rounded-full bg-gradient-to-r ${m.color}`} />
+                <p className="text-3xl font-bold text-slate-900">{m.value}</p>
+                <p className="text-xs font-medium text-slate-500 mt-1">{m.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Executive summary + radar */}
+          <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Executive Summary
+              </h3>
+              <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
+                {parsedChat.executiveSummary || 'No executive summary provided.'}
               </p>
             </div>
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm w-full xl:w-[340px]">
-              <p className="text-sm font-semibold text-slate-900 mb-3">Publish analysis</p>
-              <p className="text-sm text-slate-600 mb-5">Send this rendered analysis to a selected client admin so that decision-makers receive the final report quickly.</p>
-              <label className="block text-sm text-slate-700 mb-3">
-                Recipient
-                <select
-                  value={selectedAdminId}
-                  onChange={(event) => setSelectedAdminId(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-amber-200"
-                >
-                  {clientAdmins.length === 0 ? (
-                    <option value="">No client admins available</option>
-                  ) : (
-                    clientAdmins.map((admin) => (
-                      <option key={admin.id} value={admin.id}>
-                        {admin.name} ({admin.email})
-                      </option>
-                    ))
-                  )}
-                </select>
-              </label>
-              <label className="block text-sm text-slate-700 mb-5">
-                Evaluation
-                <select
-                  value={selectedEvaluationId}
-                  onChange={(event) => setSelectedEvaluationId(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-amber-200"
-                >
-                  {evaluations.length === 0 ? (
-                    <option value="">No evaluations available</option>
-                  ) : (
-                    evaluations.map((evaluation) => (
-                      <option key={evaluation.id} value={evaluation.id}>
-                        {evaluation.title}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </label>
-              <div className="mb-4 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
-                This will attach the published analysis to the selected evaluation and make it visible as the evaluation diagnosis result for your organisation.
-              </div>
-              <button
-                type="button"
-                disabled={publishLoading || clientAdmins.length === 0}
-                onClick={handlePublishAnalysis}
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {publishLoading ? 'Publishing...' : 'Publish report'}
-              </button>
-              {publishMessage && (
-                <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                  {publishMessage}
-                </div>
-              )}
-              {publishError && (
-                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {publishError}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Strengths</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-900">{dashboardMetrics.strengths}</p>
-                <p className="mt-2 text-sm text-slate-600">Core capability themes highlighted in the analysis.</p>
-              </div>
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Weaknesses</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-900">{dashboardMetrics.weaknesses}</p>
-                <p className="mt-2 text-sm text-slate-600">Critical improvement opportunities to address.</p>
-              </div>
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Recommendations</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-900">{dashboardMetrics.recommendations}</p>
-                <p className="mt-2 text-sm text-slate-600">Actionable recommendations for stakeholders.</p>
-              </div>
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Action Plan</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-900">{dashboardMetrics.actionPlan}</p>
-                <p className="mt-2 text-sm text-slate-600">Defined next steps for operational delivery.</p>
-              </div>
-            </div>
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-4">Readiness radar</h3>
-              <div className="h-[320px]">
-                <RadarChart data={radarData || undefined} />
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-900 mb-4">Readiness radar</h3>
+              <div className="h-[280px]">
+                <RadarChart data={radarData ?? undefined} />
               </div>
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
-            <div className="grid gap-4">
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
-                <h3 className="font-semibold text-slate-900 mb-4">Gap analysis</h3>
-                <GapSeverityChart height={340} />
-              </div>
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
-                <h3 className="font-semibold text-slate-900 mb-4">Workflow performance</h3>
-                <WorkflowDelayChart height={320} />
-              </div>
-            </div>
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-4">Analysis snapshot</h3>
-              <div className="space-y-4">
-                {parsedChat.executiveSummary && (
-                  <div className="rounded-[20px] bg-white p-4 shadow-sm border border-slate-200">
-                    <h4 className="text-sm font-semibold text-slate-900 mb-2">Executive summary</h4>
-                    <p className="text-sm leading-6 text-slate-700 whitespace-pre-wrap">{parsedChat.executiveSummary}</p>
-                  </div>
-                )}
-                <div className="rounded-[20px] bg-white p-4 shadow-sm border border-slate-200">
-                  <h4 className="text-sm font-semibold text-slate-900 mb-2">Strategic insight</h4>
-                  <p className="text-sm text-slate-600">This report combines qualitative insights with visual metrics to highlight the organisation’s strongest opportunities and highest priority risks.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-4 xl:grid-cols-3">
-            <div className="rounded-[24px] border border-green-200 bg-green-50 p-5 shadow-sm xl:col-span-1">
-              <h3 className="font-semibold text-slate-900 mb-3">Top strengths</h3>
-              <div className="space-y-3">
-                {Array.isArray(parsedChat.strengths) && parsedChat.strengths.map((item: string, idx: number) => (
-                  <div key={idx} className="rounded-[18px] bg-white p-4 border border-slate-200">
+          {/* S / W / O cards */}
+          <div className="grid gap-4 xl:grid-cols-3">
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-emerald-800 mb-4 flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs text-white">✓</span>
+                Strengths
+              </h3>
+              <div className="space-y-2.5">
+                {Array.isArray(parsedChat.strengths) && parsedChat.strengths.map((item: string, i: number) => (
+                  <div key={i} className="rounded-xl bg-white border border-emerald-100 px-4 py-3">
                     <p className="text-sm text-slate-700">{item}</p>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="rounded-[24px] border border-orange-200 bg-orange-50 p-5 shadow-sm xl:col-span-1">
-              <h3 className="font-semibold text-slate-900 mb-3">Key weaknesses</h3>
-              <div className="space-y-3">
-                {Array.isArray(parsedChat.weaknesses) && parsedChat.weaknesses.map((item: string, idx: number) => (
-                  <div key={idx} className="rounded-[18px] bg-white p-4 border border-slate-200">
+
+            <div className="rounded-3xl border border-red-200 bg-red-50/60 p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-red-800 mb-4 flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white">!</span>
+                Weaknesses
+              </h3>
+              <div className="space-y-2.5">
+                {Array.isArray(parsedChat.weaknesses) && parsedChat.weaknesses.map((item: string, i: number) => (
+                  <div key={i} className="rounded-xl bg-white border border-red-100 px-4 py-3">
                     <p className="text-sm text-slate-700">{item}</p>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm xl:col-span-1">
-              <h3 className="font-semibold text-slate-900 mb-3">Primary opportunities</h3>
-              <div className="space-y-3">
-                {Array.isArray(parsedChat.opportunities) && parsedChat.opportunities.map((item: string, idx: number) => (
-                  <div key={idx} className="rounded-[18px] bg-white p-4 border border-slate-200">
+
+            <div className="rounded-3xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-amber-800 mb-4 flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs text-white">→</span>
+                Opportunities
+              </h3>
+              <div className="space-y-2.5">
+                {Array.isArray(parsedChat.opportunities) && parsedChat.opportunities.map((item: string, i: number) => (
+                  <div key={i} className="rounded-xl bg-white border border-amber-100 px-4 py-3">
                     <p className="text-sm text-slate-700">{item}</p>
                   </div>
                 ))}
@@ -591,197 +765,195 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
             </div>
           </div>
 
-          {Array.isArray(parsedChat.charts) && parsedChat.charts.length > 0 && (
-            <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-6 shadow-sm">
-              <div className="flex items-start justify-between gap-4 mb-5">
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900">Supporting charts</h3>
-                  <p className="text-sm text-slate-600 mt-1">Rendered visual insights based on the AI analysis output.</p>
-                </div>
-                <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Live graph view</span>
-              </div>
-              <div className="grid gap-4 xl:grid-cols-2">
-                {parsedChat.charts.map((chart: any, chartIndex: number) => (
-                  <AnalysisChartCard key={chartIndex} chart={chart} />
+          {/* Recommendations */}
+          {Array.isArray(parsedChat.recommendations) && parsedChat.recommendations.length > 0 && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-900 mb-4">Recommendations</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {parsedChat.recommendations.map((item: string, i: number) => (
+                  <div key={i} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary ring-1 ring-primary/20">
+                      {i + 1}
+                    </span>
+                    <p className="text-sm text-slate-700">{item}</p>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-4 mb-5">
-              <div>
-                <h3 className="text-xl font-semibold text-slate-900">Organogram</h3>
-                <p className="text-sm text-slate-600">A structured leadership diagram for rapid organisational context.</p>
-              </div>
-            </div>
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-              <OrgChart rows={orgRows} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {reviewMessage && (
-        <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-          {reviewMessage}
-        </div>
-      )}
-      {reviewError && (
-        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {reviewError}
-        </div>
-      )}
-      {diagnosisError && (
-        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          <p className="font-semibold">Unable to load diagnosis history</p>
-          <p>{diagnosisError}</p>
-        </div>
-      )}
-
-      {/* Diagnoses */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : diagnoses.length === 0 ? (
-        <EmptyState
-          icon="🔍"
-          title="No diagnoses yet"
-          description="AI diagnoses will be generated once evaluation responses are collected and analyzed."
-          actionLabel="View Evaluations"
-          onAction={() => (window.location.href = '/evaluations')}
-        />
-      ) : (
-        <div className="space-y-4">
-          {diagnoses.map((diagnosis) => (
-            <div key={diagnosis.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-              <div
-                className="p-6 cursor-pointer hover:bg-slate-50 transition flex justify-between items-start"
-                onClick={() => setExpandedId(expandedId === diagnosis.id ? null : diagnosis.id)}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold text-slate-900 text-lg">{diagnosis.evaluation.title}</h3>
-                    {diagnosis.isAiGenerated && (
-                      <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded font-medium">
-                        🤖 AI Generated
+          {/* Action plan */}
+          {Array.isArray(parsedChat.actionPlan) && parsedChat.actionPlan.length > 0 && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-900 mb-5">Action Plan</h3>
+              <div className="space-y-4">
+                {parsedChat.actionPlan.map((item: any, i: number) => (
+                  <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex items-start gap-3 mb-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary text-xs font-bold text-white">
+                        {i + 1}
                       </span>
-                    )}
+                      <p className="text-sm font-bold text-slate-900">{item.what}</p>
+                    </div>
+                    <div className="ml-10 grid gap-1.5 text-xs text-slate-600 sm:grid-cols-3">
+                      <span><strong className="text-slate-800">Who:</strong> {item.who || 'TBD'}</span>
+                      <span><strong className="text-slate-800">When:</strong> {item.when || 'TBD'}</span>
+                      <span><strong className="text-slate-800">How:</strong> {item.how || '—'}</span>
+                    </div>
                   </div>
-                  <p className="text-sm text-slate-600">Created {new Date(diagnosis.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm font-medium px-3 py-1 rounded flex items-center gap-2 ${STATUS_CONFIG[diagnosis.status].color}`}>
-                    {STATUS_CONFIG[diagnosis.status].icon} {STATUS_CONFIG[diagnosis.status].label}
-                  </span>
-                  <button className="text-slate-400 hover:text-slate-600">
-                    {expandedId === diagnosis.id ? '▼' : '▶'}
-                  </button>
-                </div>
+                ))}
               </div>
+            </div>
+          )}
 
-              {/* Expanded Content */}
-              {expandedId === diagnosis.id && (
-                <div className="border-t border-slate-200 bg-slate-50 p-6 space-y-6">
-                  <div>
-                    <h4 className="font-semibold text-slate-900 mb-2">Executive Summary</h4>
-                    <p className="text-slate-700 text-sm">{diagnosis.sections.executiveSummary}</p>
-                  </div>
+          {/* Charts */}
+          {Array.isArray(parsedChat.charts) && parsedChat.charts.length > 0 && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-4 mb-5">
+                <h3 className="text-base font-bold text-slate-900">Supporting Charts</h3>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+                  {parsedChat.charts.length} chart{parsedChat.charts.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="grid gap-4 xl:grid-cols-2">
+                {parsedChat.charts.map((chart: any, i: number) => (
+                  <AnalysisChartCard key={i} chart={chart} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-semibold text-green-700 mb-2">💪 Strengths</h4>
-                      <ul className="space-y-2">
-                        {diagnosis.sections.strengths.map((item, idx) => (
-                          <li key={idx} className="text-sm text-slate-700 flex gap-2">
-                            <span className="text-green-600">✓</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-orange-700 mb-2">⚠️ Weaknesses</h4>
-                      <ul className="space-y-2">
-                        {diagnosis.sections.weaknesses.map((item, idx) => (
-                          <li key={idx} className="text-sm text-slate-700 flex gap-2">
-                            <span className="text-orange-600">!</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
+      {/* ── Diagnosis history ── */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Diagnosis history</h2>
+            <p className="text-sm text-slate-500">All analyses — pending review, approved, and rejected.</p>
+          </div>
+          <button
+            type="button"
+            onClick={loadDiagnoses}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+          >
+            ↻ Refresh
+          </button>
+        </div>
 
-                  <div>
-                    <h4 className="font-semibold text-slate-900 mb-2">💡 Opportunities</h4>
-                    <ul className="space-y-2">
-                      {diagnosis.sections.opportunities.map((item, idx) => (
-                        <li key={idx} className="text-sm text-slate-700 flex gap-2">
-                          <span className="text-primary">→</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+        {reviewMessage && (
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5">
+            <span className="text-emerald-600 shrink-0">✓</span>
+            <p className="text-sm text-emerald-800">{reviewMessage}</p>
+          </div>
+        )}
+        {reviewError && (
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5">
+            <span className="text-red-500 shrink-0">⚠</span>
+            <p className="text-sm text-red-700">{reviewError}</p>
+          </div>
+        )}
 
-                  {diagnosis.sections.actionPlan?.length ? (
-                    <div>
-                      <h4 className="font-semibold text-slate-900 mb-2">🧭 Action Plan</h4>
-                      <div className="space-y-3">
-                        {diagnosis.sections.actionPlan.map((item, idx) => (
-                          <div key={idx} className="border border-slate-200 rounded-lg p-3 bg-white">
-                            <p className="text-sm font-semibold text-slate-900">{item.what}</p>
-                            <p className="text-xs text-slate-500 mt-1">Who: {item.who} • When: {item.when}</p>
-                            <p className="text-sm text-slate-700 mt-2">How: {item.how}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="pt-4 border-t border-slate-200">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        {diagnosis.status === 'APPROVED' && diagnosis.approvedBy && (
-                          <p className="text-sm text-slate-600">Approved by <span className="font-medium">{diagnosis.approvedBy.name}</span></p>
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100" />
+            ))}
+          </div>
+        ) : diagnosisError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{diagnosisError}</div>
+        ) : diagnoses.length === 0 ? (
+          <EmptyState icon="📊" title="No diagnoses yet" description="Published analyses will appear here." />
+        ) : (
+          <div className="space-y-3">
+            {diagnoses.map((d) => {
+              const isExpanded = expandedId === d.id;
+              return (
+                <div key={d.id} className={`rounded-2xl border transition-all ${isExpanded ? 'border-primary/30 shadow-md' : 'border-slate-200'}`}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-4 p-4 text-left"
+                    onClick={() => setExpandedId(isExpanded ? null : d.id)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{d.evaluation.title}</p>
+                        <StatusBadge status={d.status} />
+                        {d.isAiGenerated && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-violet-200">
+                            🤖 AI
+                          </span>
                         )}
                       </div>
-                      {diagnosis.status === 'PENDING_REVIEW' && (
-                        <div className="flex gap-2">
+                      <p className="text-xs text-slate-500">
+                        Created {new Date(d.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {d.approvedBy && ` · Approved by ${d.approvedBy.name}`}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {d.status === 'PENDING_REVIEW' || d.status === 'IN_REVIEW' ? (
+                        <>
                           <button
                             type="button"
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleRejectDiagnosis(diagnosis.id);
-                            }}
-                            disabled={reviewLoadingId === diagnosis.id}
+                            onClick={(e) => { e.stopPropagation(); updateDiagnosisStatus(d.id, 'APPROVED'); }}
+                            disabled={reviewLoadingId === d.id}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors shadow-sm"
                           >
-                            {reviewLoadingId === diagnosis.id ? 'Processing…' : 'Reject'}
+                            {reviewLoadingId === d.id ? '…' : '✓ Approve'}
                           </button>
                           <button
                             type="button"
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleApproveDiagnosis(diagnosis.id);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const reason = window.prompt('Rejection reason:');
+                              if (reason?.trim()) updateDiagnosisStatus(d.id, 'REJECTED', reason.trim());
                             }}
-                            disabled={reviewLoadingId === diagnosis.id}
+                            disabled={reviewLoadingId === d.id}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors"
                           >
-                            {reviewLoadingId === diagnosis.id ? 'Processing…' : 'Approve'}
+                            ✕ Reject
                           </button>
+                        </>
+                      ) : null}
+                      <span className="text-slate-400 text-sm">{isExpanded ? '▲' : '▼'}</span>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t border-slate-100 p-4 space-y-4">
+                      {d.sections.executiveSummary && (
+                        <div className="rounded-2xl bg-slate-50 p-4">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Executive summary</p>
+                          <p className="text-sm text-slate-700 whitespace-pre-wrap">{d.sections.executiveSummary}</p>
                         </div>
                       )}
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {d.sections.strengths.length > 0 && (
+                          <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
+                            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-2">Strengths</p>
+                            <ul className="space-y-1.5 text-sm text-slate-700">
+                              {d.sections.strengths.map((s, i) => <li key={i} className="flex gap-2"><span className="text-emerald-500">•</span>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {d.sections.weaknesses.length > 0 && (
+                          <div className="rounded-2xl bg-red-50 border border-red-100 p-4">
+                            <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-2">Weaknesses</p>
+                            <ul className="space-y-1.5 text-sm text-slate-700">
+                              {d.sections.weaknesses.map((s, i) => <li key={i} className="flex gap-2"><span className="text-red-400">•</span>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

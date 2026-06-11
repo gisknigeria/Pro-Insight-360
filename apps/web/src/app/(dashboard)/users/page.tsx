@@ -4,6 +4,15 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 
 interface User {
   id: string;
@@ -17,57 +26,47 @@ interface User {
   lastLogin?: string;
 }
 
-const ROLE_CONFIG: Record<string, { label: string; color: string; ring: string }> = {
-  SUPER_ADMIN: { label: 'Super Admin', color: 'bg-red-50 text-red-700', ring: 'ring-red-500/20' },
-  CONSULTANT: { label: 'Consultant', color: 'bg-amber-50 text-amber-800', ring: 'ring-blue-500/20' },
-  CLIENT_ADMIN: { label: 'Client Admin', color: 'bg-emerald-50 text-emerald-700', ring: 'ring-emerald-500/20' },
-  HOD: { label: 'Head of Dept', color: 'bg-purple-50 text-purple-700', ring: 'ring-purple-500/20' },
-  RESPONDENT: { label: 'Respondent', color: 'bg-slate-50 text-slate-700', ring: 'ring-slate-500/20' },
+const ROLE_CFG: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  SUPER_ADMIN:  { label: 'Super Admin',  bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-500' },
+  CONSULTANT:   { label: 'Consultant',   bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500' },
+  CLIENT_ADMIN: { label: 'Client Admin', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  HOD:          { label: 'Head of Dept', bg: 'bg-violet-50',  text: 'text-violet-700',  dot: 'bg-violet-500' },
+  RESPONDENT:   { label: 'Respondent',   bg: 'bg-slate-100',  text: 'text-slate-600',   dot: 'bg-slate-400' },
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  ACTIVE: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20',
-  INACTIVE: 'bg-slate-50 text-slate-600 ring-1 ring-slate-500/20',
-  LOCKED: 'bg-red-50 text-red-700 ring-1 ring-red-500/20',
+const STATUS_CFG: Record<string, { bg: string; text: string; dot: string }> = {
+  ACTIVE:   { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  INACTIVE: { bg: 'bg-slate-100',  text: 'text-slate-600',   dot: 'bg-slate-400' },
+  LOCKED:   { bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-500' },
 };
 
-function StatCard({ label, value, icon, delay = 0 }: { label: string; value: number; icon: string; delay?: number }) {
+function RoleBadge({ role }: { role: string }) {
+  const cfg = ROLE_CFG[role] ?? ROLE_CFG.RESPONDENT;
   return (
-    <div
-      className="rounded-xl border border-border bg-surface p-4 shadow-sm animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
-    >
-      <div className="flex items-center gap-3 mb-2">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 text-base shadow-sm">
-          {icon}
-        </span>
-        <p className="text-sm font-semibold text-muted">{label}</p>
-      </div>
-      <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
-    </div>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.text}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
   );
 }
 
-function LoadingSkeleton() {
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CFG[status] ?? STATUS_CFG.INACTIVE;
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="skeleton h-8 w-32 mb-2" />
-          <div className="skeleton h-4 w-64" />
-        </div>
-        <div className="skeleton h-10 w-32 rounded-xl" />
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => <div key={i} className="skeleton h-24 rounded-xl" />)}
-      </div>
-      <div className="rounded-2xl border border-border overflow-hidden">
-        <div className="skeleton h-12 w-full" />
-        {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton h-16 w-full border-t border-border" />)}
-      </div>
-    </div>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.text}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+      {status}
+    </span>
   );
 }
+
+const ROLE_CHART_COLORS: Record<string, string> = {
+  SUPER_ADMIN: '#ef4444',
+  CONSULTANT:  '#f59e0b',
+  CLIENT_ADMIN:'#10b981',
+  HOD:         '#8b5cf6',
+  RESPONDENT:  '#64748b',
+};
 
 export default function UsersPage() {
   const router = useRouter();
@@ -75,215 +74,230 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [resetInfo, setResetInfo] = useState<{ email: string; setupToken: string; temporaryPassword: string } | null>(null);
   const [error, setError] = useState('');
-  const [mounted, setMounted] = useState(false);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
 
   useEffect(() => {
-    setMounted(true);
     const token = localStorage.getItem('accessToken');
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setUsers)
       .finally(() => setLoading(false));
   }, []);
 
   async function handleResetPassword(user: User) {
-    setError('');
-    setResetInfo(null);
+    setError(''); setResetInfo(null);
     if (!confirm(`Reset password for ${user.name || user.email}?`)) return;
-
     const token = localStorage.getItem('accessToken');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}/reset-password`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}/reset-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.message || 'Unable to reset password.');
-        return;
-      }
+      const data = await res.json();
+      if (!res.ok) { setError(data.message || 'Unable to reset.'); return; }
       setResetInfo({ email: data.email, setupToken: data.setupToken, temporaryPassword: data.temporaryPassword });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to connect to server.');
-    }
+    } catch { setError('Unable to connect.'); }
   }
 
   async function handleDeleteUser(user: User) {
-    if (!confirm(`Delete user ${user.name || user.email}? This cannot be undone.`)) return;
+    if (!confirm(`Delete ${user.name || user.email}? This cannot be undone.`)) return;
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
     });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      setError(payload?.message || 'Unable to delete user.');
-      return;
-    }
-    setUsers((current) => current.filter((item) => item.id !== user.id));
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) { setError(payload?.message || 'Unable to delete.'); return; }
+    setUsers((prev) => prev.filter((u) => u.id !== user.id));
   }
 
-  if (loading) return <LoadingSkeleton />;
+  // Role distribution chart data
+  const roleDistribution = Object.entries(ROLE_CFG).map(([role, cfg]) => ({
+    name: cfg.label,
+    value: users.filter((u) => u.role === role).length,
+    role,
+  }));
+
+  const filtered = users.filter((u) => {
+    const matchesSearch = !search ||
+      u.name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      u.organisation?.name?.toLowerCase().includes(search.toLowerCase());
+    const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   return (
-    <div className={mounted ? 'animate-fade-in' : ''}>
+    <div className="min-h-screen bg-slate-50/50">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">Users</h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary ring-1 ring-primary/20">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Access</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Users</h1>
+            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">
               {users.length}
             </span>
           </div>
-          <p className="text-sm text-muted">Manage system users, roles, and access permissions.</p>
+          <p className="mt-1.5 text-sm text-slate-500">Manage system users, roles, and access permissions.</p>
         </div>
         <Link
           href="/users/new"
-          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0"
+          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
         >
-          <span className="text-lg leading-none">+</span>
-          <span>Add User</span>
+          <span className="text-base">+</span>
+          Add User
         </Link>
       </div>
 
-      {/* ── Stats ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <StatCard label="Total Users" value={users.length} icon="👥" delay={0} />
-        <StatCard label="Active" value={users.filter((u) => u.status === 'ACTIVE').length} icon="✅" delay={50} />
-        <StatCard label="Locked" value={users.filter((u) => u.status === 'LOCKED').length} icon="🔒" delay={100} />
+      {/* ── Stats + Chart ── */}
+      <div className="mb-8 grid gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[
+            { label: 'Total',    value: users.length,                                 icon: '👥', grad: 'from-blue-500 to-indigo-600' },
+            { label: 'Active',   value: users.filter((u) => u.status === 'ACTIVE').length,   icon: '✅', grad: 'from-emerald-400 to-green-600' },
+            { label: 'Locked',   value: users.filter((u) => u.status === 'LOCKED').length,   icon: '🔒', grad: 'from-red-400 to-rose-600' },
+            { label: 'Inactive', value: users.filter((u) => u.status === 'INACTIVE').length, icon: '⏸', grad: 'from-slate-400 to-slate-600' },
+          ].map((s) => (
+            <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>
+                {s.icon}
+              </div>
+              <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+              <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Role distribution chart */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Users by role</p>
+          <div className="h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={roleDistribution} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 9 }} interval={0} angle={-15} textAnchor="end" height={35} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} allowDecimals={false} />
+                <Tooltip
+                  formatter={(v) => [v, 'Users']}
+                  contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {roleDistribution.map((entry) => (
+                    <Cell key={entry.role} fill={ROLE_CHART_COLORS[entry.role] ?? '#94a3b8'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       {/* ── Alerts ── */}
-      {error ? (
-        <div className="mb-6 rounded-xl border border-red-200/50 bg-gradient-to-r from-red-50 to-red-100/50 p-4 text-sm text-red-700 shadow-sm animate-scale-in">
-          <div className="flex items-center gap-2">
-            <span>⚠️</span>
-            <span>{error}</span>
+      {error && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>⚠</span>{error}
+        </div>
+      )}
+      {resetInfo && (
+        <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
+          <p className="font-bold mb-3 flex items-center gap-2">✅ Password reset for {resetInfo.email}</p>
+          <div className="space-y-2 rounded-xl bg-white/60 border border-emerald-200 p-4 text-xs">
+            <p><strong>Temp password:</strong> <code className="bg-emerald-100 px-2 py-0.5 rounded font-mono">{resetInfo.temporaryPassword}</code></p>
+            <p><strong>Setup token:</strong> <code className="bg-emerald-100 px-2 py-0.5 rounded font-mono break-all">{resetInfo.setupToken}</code></p>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {resetInfo ? (
-        <div className="mb-6 rounded-xl border border-green-200/50 bg-gradient-to-r from-green-50 to-green-100/50 p-5 text-sm text-green-800 shadow-sm animate-scale-in">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-lg">✅</span>
-            <p className="font-bold text-foreground">Password reset link generated for {resetInfo.email}</p>
-          </div>
-          <div className="space-y-2 bg-white/60 rounded-lg p-4 border border-green-200/50">
-            <p>
-              <span className="font-bold text-foreground">Temporary password:</span>{' '}
-              <code className="font-mono bg-green-100 px-2 py-0.5 rounded text-green-800">{resetInfo.temporaryPassword}</code>
-            </p>
-            <p>
-              <span className="font-bold text-foreground">Setup token:</span>{' '}
-              <code className="font-mono bg-green-100 px-2 py-0.5 rounded text-green-800 text-xs break-all">{resetInfo.setupToken}</code>
-            </p>
-          </div>
+      {/* ── Search + Filter ── */}
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+          <input
+            type="search"
+            placeholder="Search by name, email or organisation…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition"
+          />
         </div>
-      ) : null}
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition"
+        >
+          <option value="ALL">All roles</option>
+          {Object.entries(ROLE_CFG).map(([role, cfg]) => (
+            <option key={role} value={role}>{cfg.label}</option>
+          ))}
+        </select>
+      </div>
 
-      {/* ── Users Table ── */}
-      {users.length === 0 ? (
-        <EmptyState
-          icon="👥"
-          title="No users yet"
-          description="Add users to your organization to start collaborating."
-          actionLabel="Add First User"
-          onAction={() => router.push('/users/new')}
-        />
+      {/* ── Table ── */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1,2,3,4,5].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white border border-slate-200" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon="👥" title="No users found" description={search || roleFilter !== 'ALL' ? 'Try adjusting your search or filter.' : 'Add users to your organisation.'} actionLabel={!search && roleFilter === 'ALL' ? 'Add First User' : undefined} onAction={!search && roleFilter === 'ALL' ? () => router.push('/users/new') : undefined} />
       ) : (
-        <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
-          {/* Table header */}
-          <div className="hidden md:grid grid-cols-[3fr_2fr_1.5fr_1.5fr_1fr_1.5fr_1.5fr] gap-4 px-6 py-4 border-b border-border bg-gradient-to-r from-primary/[0.02] to-accent/[0.01] text-[11px] font-bold uppercase tracking-wider text-muted">
-            <span>Name</span>
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          {/* Header */}
+          <div className="hidden md:grid grid-cols-[2.5fr_2fr_1.5fr_1.5fr_1.2fr_1.5fr] gap-4 border-b border-slate-100 bg-slate-50/80 px-6 py-3 text-xs font-bold uppercase tracking-widest text-slate-400">
+            <span>User</span>
             <span>Email</span>
             <span>Role</span>
             <span>Organisation</span>
-            <span>Dept.</span>
             <span>Status</span>
             <span className="text-right">Actions</span>
           </div>
 
-          {/* Table rows */}
-          <div className="divide-y divide-border">
-            {users.map((user) => {
-              const roleCfg = ROLE_CONFIG[user.role];
-              return (
-                <div
-                  key={user.id}
-                  className="grid grid-cols-1 md:grid-cols-[3fr_2fr_1.5fr_1.5fr_1fr_1.5fr_1.5fr] gap-3 md:gap-4 px-6 py-4 hover:bg-surface-muted/60 transition-all duration-200 items-start md:items-center"
-                >
-                  {/* Name (mobile-first) */}
-                  <div className="flex items-center gap-3 md:gap-0">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-sm font-bold text-primary md:hidden">
-                      {user.name?.charAt(0) || '?'}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{user.name}</p>
-                      <span className="md:hidden text-xs text-muted">{user.email}</span>
-                    </div>
+          <div className="divide-y divide-slate-100">
+            {filtered.map((user) => (
+              <div key={user.id} className="group grid grid-cols-1 md:grid-cols-[2.5fr_2fr_1.5fr_1.5fr_1.2fr_1.5fr] gap-3 md:gap-4 px-6 py-4 hover:bg-slate-50/80 transition-colors items-start md:items-center">
+                {/* Name */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-sm font-bold text-primary">
+                    {(user.name || user.email).charAt(0).toUpperCase()}
                   </div>
-
-                  {/* Email (hidden on mobile) */}
-                  <span className="hidden md:block text-sm text-muted truncate">{user.email}</span>
-
-                  {/* Role */}
-                  <span className={`inline-flex items-center justify-center text-[11px] font-semibold px-2.5 py-1 rounded-lg ${roleCfg.color} ring-1 ${roleCfg.ring} w-fit`}>
-                    {roleCfg.label}
-                  </span>
-
-                  {/* Organisation */}
-                  <span className="text-sm text-muted truncate">{user.organisation?.name || '—'}</span>
-
-                  {/* Department */}
-                  <span className="text-sm text-muted truncate">{user.department || '—'}</span>
-
-                  {/* Status + Last Login (combined on mobile) */}
-                  <div className="flex flex-col gap-1.5">
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg w-fit ${STATUS_STYLES[user.status] || STATUS_STYLES.INACTIVE}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        user.status === 'ACTIVE' ? 'bg-emerald-500' :
-                        user.status === 'LOCKED' ? 'bg-red-500' : 'bg-slate-400'
-                      }`} />
-                      {user.status}
-                    </span>
-                    <span className="text-xs text-muted">
-                      {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never'}
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 justify-end">
-                    <Link
-                      href={`/users/${user.id}/edit`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-muted bg-surface-muted border border-border hover:border-primary/30 rounded-lg transition-all hover:shadow-sm"
-                    >
-                      ✏️ Edit
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleResetPassword(user)}
-                      className="px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                    >
-                      🔑 Reset
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteUser(user)}
-                      className="px-3 py-1.5 text-xs font-semibold text-danger hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      🗑️
-                    </button>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">{user.name}</p>
+                    <p className="text-xs text-slate-400 md:hidden">{user.email}</p>
+                    {user.department && <p className="text-xs text-slate-400">{user.department}</p>}
                   </div>
                 </div>
-              );
-            })}
+
+                <span className="hidden md:block text-sm text-slate-500 truncate">{user.email}</span>
+                <RoleBadge role={user.role} />
+                <span className="text-sm text-slate-500 truncate">{user.organisation?.name || '—'}</span>
+                <StatusBadge status={user.status} />
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-1.5">
+                  <Link
+                    href={`/users/${user.id}/edit`}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-primary/30 hover:bg-white transition"
+                  >
+                    Edit
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleResetPassword(user)}
+                    className="rounded-xl px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition"
+                  >
+                    🔑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteUser(user)}
+                    className="rounded-xl px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -1905,6 +1905,59 @@ app.get('/diagnosis/evaluations/:id/diagnosis', authenticate, async (req, res) =
   }
 });
 
+// Returns response stats for a client admin's organisation — used on the Insights page
+app.get('/insights/response-stats', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+
+    // Determine which organisation this user belongs to
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { organisationId: true, role: true },
+    });
+
+    if (!user || !user.organisationId) {
+      return res.json({ totalRespondents: 0, totalSubmissions: 0, totalAnswers: 0, averageCompletion: 0, evaluationCount: 0 });
+    }
+
+    const evaluations = await prisma.evaluation.findMany({
+      where: { organisationId: user.organisationId },
+      include: { forms: { include: { responses: { where: { status: 'SUBMITTED' }, include: { answers: true, respondent: true } } } } },
+    });
+
+    let totalSubmissions = 0;
+    let totalAnswers = 0;
+    let completionSum = 0;
+    const respondentIds = new Set();
+
+    for (const evaluation of evaluations) {
+      for (const form of evaluation.forms) {
+        const definition = getJsonValue(form.definition);
+        const pages = Array.isArray(definition?.pages) ? definition.pages : [];
+        const qCount = pages.reduce((n, p) => n + (Array.isArray(p.questions) ? p.questions.length : 0), 0);
+
+        for (const response of form.responses) {
+          totalSubmissions++;
+          totalAnswers += response.answers.length;
+          respondentIds.add(response.respondentId);
+          if (qCount > 0) completionSum += (response.answers.length / qCount) * 100;
+        }
+      }
+    }
+
+    res.json({
+      totalRespondents: respondentIds.size,
+      totalSubmissions,
+      totalAnswers,
+      averageCompletion: totalSubmissions > 0 ? Math.round(completionSum / totalSubmissions) : 0,
+      evaluationCount: evaluations.length,
+    });
+  } catch (error) {
+    console.error('Fetch insights response stats failed:', error);
+    res.status(500).json({ message: 'Unable to fetch response stats.' });
+  }
+});
+
 app.get('/published-analyses', authenticate, async (req, res) => {
   try {
     const logs = await prisma.auditLog.findMany({
