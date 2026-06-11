@@ -35,141 +35,49 @@ interface Diagnosis {
   createdAt: string;
 }
 
-interface PromptTemplate {
-  id: string;
-  label: string;
-  icon: string;
-  description: string;
-  prompt: string;
-}
+// ─── Single master prompt ────────────────────────────────────────────────────
 
-// ─── Prompt library ──────────────────────────────────────────────────────────
+const MASTER_PROMPT = `You are an expert organisational analyst. You have been given submitted form responses from a professional evaluation covering organisational health, GIS readiness, digital transformation, technical skills, and governance.
 
-const PROMPT_TEMPLATES: PromptTemplate[] = [
-  {
-    id: 'general-org',
-    label: 'General Organisational',
-    icon: '🏢',
-    description: 'Full SWOT analysis with executive summary and action plan.',
-    prompt: `You are given submitted form responses from an organisational evaluation.
-Analyse the questions and responses to identify:
-- An executive summary of the organisation's current state
-- Key strengths, weaknesses, and growth opportunities
-- Missing capabilities or critical gaps revealed by the answers
-- Prioritised recommendations and a practical action plan
-- Chart data for readiness, capability, or risk visualisation
-- Organogram structure if there is sufficient organisational data
+Carefully read every question and answer. Then produce a comprehensive structured analysis that covers ALL of the following dimensions:
 
-Return ONLY valid JSON in this exact shape:
+1. OVERALL ORGANISATIONAL HEALTH — executive summary, SWOT (strengths, weaknesses, opportunities, threats/gaps), and prioritised recommendations.
+2. GIS READINESS — assess geospatial capability maturity (Nascent / Emerging / Developing / Advanced), infrastructure, data management, and staff competency in GIS.
+3. DIGITAL TRANSFORMATION — evaluate technology adoption, process automation maturity, digital culture, change readiness, and leadership alignment. Score each domain 0–100.
+4. TECHNICAL SKILLS — map identified skills against required capabilities, highlight critical skill gaps, training needs, and career development priorities.
+5. GOVERNANCE & COMPLIANCE — assess policy adherence, risk management maturity, accountability structures, and regulatory compliance gaps.
+6. CHART DATA — generate multiple chart datasets (one per domain above) with realistic scores derived from the actual responses.
+7. ACTION PLAN — produce a practical, prioritised action plan with clear ownership (who), deliverable (what), method (how), and timeline (when) for the top findings.
+8. ORGANOGRAM — if the responses contain enough organisational structure information (roles, departments, reporting lines), generate a hierarchical organogram.
+
+Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences, prose, or any text outside the JSON object:
+
 {
   "questions": [{"question":"...","answer":"..."}],
-  "executiveSummary": "...",
+  "executiveSummary": "A concise 3–5 sentence summary of the organisation's overall state across all dimensions.",
   "strengths": ["..."],
   "weaknesses": ["..."],
   "opportunities": ["..."],
-  "recommendations": ["..."],
-  "gaps": ["..."],
-  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
-  "charts": [{"title":"...","data":[{"label":"...","value":0}]}],
-  "organogram": {"nodes":[{"id":"...","label":"...","group":"..."}],"links":[{"source":"...","target":"...","relation":"..."}]}
+  "gaps": ["Critical gap 1", "Critical gap 2"],
+  "recommendations": ["Prioritised recommendation 1", "Prioritised recommendation 2"],
+  "actionPlan": [
+    {"who":"Role or team","what":"Specific deliverable","how":"Approach and method","when":"Timeline e.g. Within 30 days"}
+  ],
+  "charts": [
+    {"title":"GIS Readiness by Domain","data":[{"label":"Infrastructure","value":0},{"label":"Data Management","value":0},{"label":"Staff Skills","value":0},{"label":"Governance","value":0},{"label":"Workflows","value":0}]},
+    {"title":"Digital Readiness Scores","data":[{"label":"Technology","value":0},{"label":"Process","value":0},{"label":"Culture","value":0},{"label":"Data","value":0},{"label":"Leadership","value":0}]},
+    {"title":"Technical Skills Proficiency","data":[{"label":"Technical","value":0},{"label":"Analytical","value":0},{"label":"Communication","value":0},{"label":"Leadership","value":0},{"label":"Change Mgmt","value":0}]},
+    {"title":"Governance Maturity","data":[{"label":"Policy","value":0},{"label":"Risk","value":0},{"label":"Compliance","value":0},{"label":"Accountability","value":0}]},
+    {"title":"Overall Organisational Readiness","data":[{"label":"GIS","value":0},{"label":"Digital","value":0},{"label":"Skills","value":0},{"label":"Governance","value":0},{"label":"Operations","value":0}]}
+  ],
+  "organogram": {
+    "nodes": [{"id":"1","label":"Role name","group":"Department name"}],
+    "links": [{"source":"Child role label","target":"Parent role label","relation":"reports to"}]
+  }
 }
-Do not include markdown, code fences, or any extra text. Respond with plain JSON only.`,
-  },
-  {
-    id: 'gis-readiness',
-    label: 'GIS Readiness',
-    icon: '🗺️',
-    description: 'Assess GIS capability maturity, infrastructure and skills gaps.',
-    prompt: `You are analysing form responses from a GIS readiness evaluation.
-Focus on geospatial capability, infrastructure, data management, and staff competency.
-Identify the organisation's GIS maturity level (Nascent / Emerging / Developing / Advanced).
 
-Return ONLY valid JSON:
-{
-  "questions": [{"question":"...","answer":"..."}],
-  "executiveSummary": "...",
-  "strengths": ["..."],
-  "weaknesses": ["..."],
-  "opportunities": ["..."],
-  "recommendations": ["..."],
-  "gaps": ["..."],
-  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
-  "charts": [{"title":"GIS Readiness by Domain","data":[{"label":"Infrastructure","value":0},{"label":"Data Management","value":0},{"label":"Skills","value":0},{"label":"Governance","value":0}]}],
-  "organogram": {"nodes":[],"links":[]}
-}
-Plain JSON only. No markdown or extra text.`,
-  },
-  {
-    id: 'digital-readiness',
-    label: 'Digital Transformation',
-    icon: '💻',
-    description: 'Evaluate digital maturity, technology adoption, and change readiness.',
-    prompt: `You are analysing form responses from a digital transformation readiness assessment.
-Evaluate technology adoption, process automation maturity, digital culture, and change readiness.
-Score each domain 0–100 and identify the top priorities for transformation.
+Base all scores and findings strictly on the actual form responses provided. Do not invent data. If a dimension is not covered by the responses, set its chart values to 0 and note the gap in the gaps array.`;
 
-Return ONLY valid JSON:
-{
-  "questions": [{"question":"...","answer":"..."}],
-  "executiveSummary": "...",
-  "strengths": ["..."],
-  "weaknesses": ["..."],
-  "opportunities": ["..."],
-  "recommendations": ["..."],
-  "gaps": ["..."],
-  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
-  "charts": [{"title":"Digital Readiness Scores","data":[{"label":"Technology","value":0},{"label":"Process","value":0},{"label":"Culture","value":0},{"label":"Data","value":0},{"label":"Leadership","value":0}]}],
-  "organogram": {"nodes":[],"links":[]}
-}
-Plain JSON only.`,
-  },
-  {
-    id: 'technical-skills',
-    label: 'Technical Skills Audit',
-    icon: '🔧',
-    description: 'Map skills gaps, training needs, and competency levels across teams.',
-    prompt: `You are analysing form responses from a technical skills and competency assessment.
-Map identified skills against required capabilities. Highlight critical gaps, training needs, and career development opportunities.
-
-Return ONLY valid JSON:
-{
-  "questions": [{"question":"...","answer":"..."}],
-  "executiveSummary": "...",
-  "strengths": ["..."],
-  "weaknesses": ["..."],
-  "opportunities": ["..."],
-  "recommendations": ["..."],
-  "gaps": ["..."],
-  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
-  "charts": [{"title":"Skill Proficiency by Area","data":[{"label":"Technical","value":0},{"label":"Analytical","value":0},{"label":"Communication","value":0},{"label":"Leadership","value":0}]}],
-  "organogram": {"nodes":[],"links":[]}
-}
-Plain JSON only.`,
-  },
-  {
-    id: 'governance',
-    label: 'Governance & Compliance',
-    icon: '⚖️',
-    description: 'Assess policy adherence, risk management, and governance maturity.',
-    prompt: `You are analysing form responses from a governance and compliance evaluation.
-Assess policy adherence, risk management maturity, accountability structures, and regulatory compliance gaps.
-
-Return ONLY valid JSON:
-{
-  "questions": [{"question":"...","answer":"..."}],
-  "executiveSummary": "...",
-  "strengths": ["..."],
-  "weaknesses": ["..."],
-  "opportunities": ["..."],
-  "recommendations": ["..."],
-  "gaps": ["..."],
-  "actionPlan": [{"who":"...","what":"...","how":"...","when":"..."}],
-  "charts": [{"title":"Governance Maturity by Domain","data":[{"label":"Policy","value":0},{"label":"Risk","value":0},{"label":"Compliance","value":0},{"label":"Accountability","value":0}]}],
-  "organogram": {"nodes":[],"links":[]}
-}
-Plain JSON only.`,
-  },
-];
 
 const STATUS_CONFIG = {
   PENDING_REVIEW: { label: 'Pending Review', bg: 'bg-amber-50', text: 'text-amber-700', ring: 'ring-amber-200', dot: 'bg-amber-400' },
@@ -275,9 +183,14 @@ export default function AIDiagnosisPage() {
   const [reviewMessage, setReviewMessage] = useState('');
   const [reviewError, setReviewError] = useState('');
 
-  // Prompt panel
-  const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate>(PROMPT_TEMPLATES[0]);
+  // Prompt copy
   const [promptCopied, setPromptCopied] = useState(false);
+
+  async function copyPrompt() {
+    await navigator.clipboard.writeText(MASTER_PROMPT);
+    setPromptCopied(true);
+    setTimeout(() => setPromptCopied(false), 2500);
+  }
 
   // Expand diagnosis history
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -334,14 +247,6 @@ export default function AIDiagnosisPage() {
       setParsedChat(null);
       setParseError('Could not parse JSON. Make sure you paste only the AI JSON output — no markdown fences or surrounding text.');
     }
-  }
-
-  // ── Prompt copy ───────────────────────────────────────────────────────────
-
-  async function copyPrompt() {
-    await navigator.clipboard.writeText(selectedPrompt.prompt);
-    setPromptCopied(true);
-    setTimeout(() => setPromptCopied(false), 2500);
   }
 
   // ── Publish ───────────────────────────────────────────────────────────────
@@ -486,78 +391,51 @@ export default function AIDiagnosisPage() {
       <div className="grid gap-6 xl:grid-cols-[1fr_380px] mb-8">
         {/* ── LEFT: Prompt panel + Import ── */}
         <div className="space-y-6">
-          {/* Prompt library — ALL prompts visible at once */}
+          {/* Master prompt — single panel */}
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 mb-1">Step 1 — Choose a prompt & copy responses</h2>
-            <p className="text-sm text-slate-500 mb-6">
-              Go to your evaluation's Responses tab → <strong>Copy all answers</strong>. Then pick a prompt below, copy it, and paste both into ChatGPT or Claude.
+            <h2 className="text-lg font-bold text-slate-900 mb-1">Step 1 — Copy your responses & use this prompt</h2>
+            <p className="text-sm text-slate-500 mb-5">
+              Go to your evaluation → Diagnosis → Responses tab → click <strong>Copy all answers</strong>. Then copy the prompt below and paste both into ChatGPT or Claude.
             </p>
 
-            <div className="space-y-4">
-              {PROMPT_TEMPLATES.map((tpl) => {
-                const isActive = selectedPrompt.id === tpl.id;
-                const isCopied = promptCopied && isActive;
-
-                const PROMPT_GRAD: Record<string, string> = {
-                  'general-org':      'from-blue-500 to-indigo-600',
-                  'gis-readiness':    'from-emerald-500 to-teal-600',
-                  'digital-readiness':'from-violet-500 to-purple-600',
-                  'technical-skills': 'from-amber-500 to-orange-600',
-                  'governance':       'from-rose-500 to-red-600',
-                };
-                const grad = PROMPT_GRAD[tpl.id] ?? 'from-primary to-primary/70';
-
-                return (
-                  <div
-                    key={tpl.id}
-                    className={`rounded-2xl border transition-all ${isActive ? 'border-primary/40 shadow-md' : 'border-slate-200'}`}
-                  >
-                    {/* Header row */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPrompt(tpl)}
-                      className="flex w-full items-center gap-4 p-4 text-left"
-                    >
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${grad} text-lg shadow-md`}>
-                        {tpl.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-slate-900">{tpl.label}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{tpl.description}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPrompt(tpl);
-                            navigator.clipboard.writeText(tpl.prompt);
-                            setPromptCopied(true);
-                            setTimeout(() => setPromptCopied(false), 2500);
-                          }}
-                          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                            isCopied
-                              ? 'bg-emerald-500 text-white'
-                              : `bg-gradient-to-r ${grad} text-white shadow-sm hover:shadow-md hover:opacity-90`
-                          }`}
-                        >
-                          {isCopied ? '✓ Copied!' : '📋 Copy'}
-                        </button>
-                        <span className="text-slate-400 text-xs">{isActive ? '▲' : '▼'}</span>
-                      </div>
-                    </button>
-
-                    {/* Expanded prompt text */}
-                    {isActive && (
-                      <div className="border-t border-slate-100 px-4 pb-4">
-                        <pre className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 leading-relaxed max-h-64 overflow-y-auto">
-                          {tpl.prompt}
-                        </pre>
-                      </div>
-                    )}
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-indigo-50/50 p-5">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-indigo-600 text-xl shadow-md">
+                    🧠
                   </div>
-                );
-              })}
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Universal Analysis Prompt</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Covers GIS · Digital · Skills · Governance · SWOT · Charts · Organogram
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={copyPrompt}
+                  className={`shrink-0 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all shadow-sm ${
+                    promptCopied
+                      ? 'bg-emerald-500 text-white shadow-emerald-200'
+                      : 'bg-gradient-to-r from-primary to-indigo-600 text-white hover:opacity-90 hover:shadow-md'
+                  }`}
+                >
+                  {promptCopied ? '✓ Copied!' : '📋 Copy prompt'}
+                </button>
+              </div>
+
+              {/* What it covers */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {['SWOT Analysis', 'GIS Readiness', 'Digital Maturity', 'Skills Audit', 'Governance', '5 Charts', 'Organogram', 'Action Plan'].map((tag) => (
+                  <span key={tag} className="inline-flex items-center rounded-full bg-white border border-primary/20 px-2.5 py-1 text-xs font-semibold text-primary shadow-sm">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <pre className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 leading-relaxed max-h-72 overflow-y-auto">
+                {MASTER_PROMPT}
+              </pre>
             </div>
           </div>
 

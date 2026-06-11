@@ -803,49 +803,50 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 mb-6">
-            <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-4 mb-4">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Completion distribution</p>
-                  <p className="text-xs text-muted mt-0.5">How many responses fall into each band.</p>
+          {/* ── Only show charts if there is real data ── */}
+          {(completionDistribution.some(d => d.value > 0) || evaluationResponseCounts.length > 0) && (
+            <div className="grid gap-4 sm:grid-cols-2 mb-6">
+              {completionDistribution.some(d => d.value > 0) && (
+                <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-4 mb-4">
+                    <p className="text-sm font-semibold text-foreground">Completion distribution</p>
+                    <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
+                  </div>
+                  <div className="h-52">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={completionDistribution} margin={{ top: 8, right: 8, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
-              </div>
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={completionDistribution} margin={{ top: 8, right: 8, left: -10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                    <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+              )}
 
-            <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-4 mb-4">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Top evaluations</p>
-                  <p className="text-xs text-muted mt-0.5">Most active by response count.</p>
+              {evaluationResponseCounts.length > 0 && (
+                <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-4 mb-4">
+                    <p className="text-sm font-semibold text-foreground">Top evaluations</p>
+                    <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
+                  </div>
+                  <div className="h-52">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={evaluationResponseCounts} margin={{ top: 8, right: 8, left: -10, bottom: 40 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={55} />
+                        <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
-              </div>
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={evaluationResponseCounts} margin={{ top: 8, right: 8, left: -10, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={55} />
-                    <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                    <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              )}
             </div>
-          </div>
+          )}
 
           {selectedEvaluationForMetrics ? (
             <div className="mb-6 rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted">
