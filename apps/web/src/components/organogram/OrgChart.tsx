@@ -35,7 +35,8 @@ interface TreeNode {
 function buildTree(rows: OrgRow[]): TreeNode[] {
   const map = new Map<string, TreeNode>();
   for (const r of rows) {
-    map.set(r.name, { name: r.name, title: r.title ?? '', children: [], x: 0, y: 0, subtreeW: 0 });
+    const dept = r.title ?? r.department ?? r.jobTitle ?? '';
+    map.set(r.name, { name: r.name, title: dept, children: [], x: 0, y: 0, subtreeW: 0 });
   }
   const roots: TreeNode[] = [];
   for (const r of rows) {
@@ -104,7 +105,7 @@ export default function OrgChart({ rows }: { rows: OrgRow[] }) {
 
   // Build department → colour map
   const deptColourMap = useMemo(() => {
-    const depts = [...new Set((rows ?? []).map(r => r.title).filter(Boolean))];
+    const depts = [...new Set((rows ?? []).map(r => r.title ?? r.department ?? r.jobTitle ?? '').filter(Boolean))];
     const map = new Map<string, typeof DEPT_COLOURS[0]>();
     depts.forEach((d, i) => map.set(d, DEPT_COLOURS[i % DEPT_COLOURS.length]));
     return map;

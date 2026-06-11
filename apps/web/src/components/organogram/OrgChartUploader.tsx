@@ -3,6 +3,7 @@ import React, { useState } from "react";
 
 export type OrgRow = {
   name: string;
+  title?: string;
   jobTitle?: string;
   department?: string;
   reportsTo?: string;
