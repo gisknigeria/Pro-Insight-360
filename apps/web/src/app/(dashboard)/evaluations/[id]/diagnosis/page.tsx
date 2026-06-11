@@ -152,11 +152,12 @@ export default function EvaluationDiagnosisPage() {
     );
   }
 
-  const gaps = gapsApi.data as any[] | null;
+  const diagnosisGaps = Array.isArray(diagnosis?.sections?.gaps) ? diagnosis.sections.gaps : null;
+  const gaps = diagnosisGaps ?? (gapsApi.data as any[] | null);
   const responses = responsesApi.data;
-  const gapsLoading = gapsApi.loading;
+  const gapsLoading = diagnosisGaps ? false : gapsApi.loading;
   const responsesLoading = responsesApi.loading;
-  const pageError = gapsApi.error || responsesApi.error || diagnosisApi.error;
+  const pageError = (diagnosisGaps ? '' : gapsApi.error) || responsesApi.error || diagnosisApi.error;
 
   function buildGapSummary(gapsData: any[] | null) {
     if (!gapsData) return null;
