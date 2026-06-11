@@ -57,7 +57,7 @@ export default function EditFormPage() {
   if (loading) {
     return (
       <div className="text-center py-16">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     );
   }
@@ -65,7 +65,7 @@ export default function EditFormPage() {
   if (error || !definition) {
     return (
       <div className="max-w-3xl mx-auto py-12">
-        <Link href="/forms" className="text-sm text-blue-600 hover:underline mb-4 inline-block">
+        <Link href="/forms" className="text-sm text-primary hover:underline mb-4 inline-block">
           ← Back to forms
         </Link>
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">

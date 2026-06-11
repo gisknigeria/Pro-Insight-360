@@ -67,7 +67,7 @@ export default function FillFormPage() {
   if (error) {
     return (
       <div>
-        <Link href="/my-forms" className="text-sm text-blue-600 hover:underline mb-4 inline-block">
+        <Link href="/my-forms" className="text-sm text-primary hover:underline mb-4 inline-block">
           ← Back to my forms
         </Link>
         <div role="alert" className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
@@ -95,7 +95,7 @@ export default function FillFormPage() {
 
   return (
     <div>
-      <Link href="/my-forms" className="text-sm text-blue-600 hover:underline mb-4 inline-block">
+      <Link href="/my-forms" className="text-sm text-primary hover:underline mb-4 inline-block">
         ← Back to my forms
       </Link>
 

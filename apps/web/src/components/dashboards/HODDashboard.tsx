@@ -42,7 +42,7 @@ function EmptyState({ title, description }: { title: string; description: string
 
 function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: string; color?: string }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-600",
+    blue: "bg-amber-50 text-primary",
     green: "bg-green-50 text-green-600",
     yellow: "bg-yellow-50 text-yellow-600",
     purple: "bg-purple-50 text-purple-600",
@@ -91,12 +91,12 @@ export default function HODDashboard() {
       </div>
 
       {/* ── My Department Highlight ────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 mb-6">
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-amber-200 rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold text-blue-900 mb-4">Your Department: {sampleMyDeptScore.name}</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg p-4 shadow-sm">
             <div className="text-sm text-gray-500 mb-1">Digital Readiness</div>
-            <div className="text-3xl font-bold text-blue-600">{sampleMyDeptScore.digitalReadiness}</div>
+            <div className="text-3xl font-bold text-primary">{sampleMyDeptScore.digitalReadiness}</div>
             <div className="text-xs text-gray-500 mt-1">Band: {maturityBand(sampleMyDeptScore.digitalReadiness)}</div>
           </div>
           <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -152,13 +152,13 @@ export default function HODDashboard() {
                   <tr
                     key={dept.name}
                     className={`border-b border-gray-100 ${
-                      dept.name === sampleMyDeptScore.name ? "bg-blue-50" : "hover:bg-gray-50"
+                      dept.name === sampleMyDeptScore.name ? "bg-amber-50" : "hover:bg-gray-50"
                     }`}
                   >
                     <td className="py-3 px-3 font-medium text-gray-800">
                       {dept.name}
                       {dept.name === sampleMyDeptScore.name && (
-                        <span className="ml-2 text-xs text-blue-600">(You)</span>
+                        <span className="ml-2 text-xs text-primary">(You)</span>
                       )}
                     </td>
                     <td className="py-3 px-3">
@@ -166,7 +166,7 @@ export default function HODDashboard() {
                         <span className="font-semibold w-8">{dept.digitalReadiness}</span>
                         <div className="w-24 bg-gray-200 rounded-full h-2">
                           <div
-                            className="bg-blue-500 h-2 rounded-full"
+                            className="bg-amber-500 h-2 rounded-full"
                             style={{ width: `${dept.digitalReadiness}%` }}
                           />
                         </div>
@@ -230,7 +230,7 @@ export default function HODDashboard() {
                   <div
                     className={`h-3 rounded-full ${
                       dim.color === "blue"
-                        ? "bg-blue-500"
+                        ? "bg-amber-500"
                         : dim.color === "green"
                         ? "bg-green-500"
                         : dim.color === "yellow"

@@ -152,12 +152,12 @@ export function SidebarNav({ role, userName }: SidebarNavProps) {
     <nav aria-label="Main navigation" className="flex h-full w-72 shrink-0 flex-col bg-surface text-foreground">
       <div className="border-b border-border px-5 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-amber-500 text-sm font-bold text-white shadow-sm">
             PI
           </div>
           <div className="min-w-0">
             <p className="truncate text-base font-bold text-foreground">Pro-Insight 360</p>
-            <p className="mt-0.5 text-xs font-medium text-muted">GIS assessment workspace</p>
+            <p className="mt-0.5 text-xs font-medium text-muted">Executive assessment workspace</p>
           </div>
         </div>
       </div>
@@ -189,7 +189,7 @@ export function SidebarNav({ role, userName }: SidebarNavProps) {
                 aria-current={isActive ? 'page' : undefined}
                 className={`group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-primary-light text-primary-dark ring-1 ring-blue-200'
+                    ? 'bg-primary-light text-primary-dark ring-1 ring-amber-200'
                     : 'text-slate-600 hover:bg-surface-muted hover:text-foreground'
                 }`}
               >

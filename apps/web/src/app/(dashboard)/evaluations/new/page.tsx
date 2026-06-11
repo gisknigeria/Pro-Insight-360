@@ -74,7 +74,7 @@ export default function NewEvaluationPage() {
               id="org"
               value={form.organisationId}
               onChange={(e) => setForm((f) => ({ ...f, organisationId: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Select an organisation…</option>
               {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
@@ -93,7 +93,7 @@ export default function NewEvaluationPage() {
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               placeholder="e.g. 2025 Organisational Capacity Assessment"
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {errors.title && <p role="alert" className="mt-1 text-xs text-red-600">{errors.title}</p>}
           </div>
@@ -107,7 +107,7 @@ export default function NewEvaluationPage() {
               type="date"
               value={form.startDate}
               onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {errors.startDate && <p role="alert" className="mt-1 text-xs text-red-600">{errors.startDate}</p>}
           </div>
@@ -123,7 +123,7 @@ export default function NewEvaluationPage() {
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-2.5 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+              className="flex-1 py-2.5 px-4 text-sm font-medium text-white bg-primary hover:bg-primary-dark disabled:bg-amber-300 rounded-lg transition-colors"
             >
               {saving ? 'Creating…' : 'Create Evaluation'}
             </button>

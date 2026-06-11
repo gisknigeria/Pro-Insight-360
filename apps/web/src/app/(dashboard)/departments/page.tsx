@@ -45,7 +45,7 @@ export default function DepartmentsPage() {
           </div>
           <Link
             href="/departments/new"
-            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            className="inline-flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark"
           >
             + Add Department
           </Link>
@@ -72,7 +72,7 @@ export default function DepartmentsPage() {
       {/* Departments Grid */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : departments.length === 0 ? (
         <EmptyState
@@ -119,7 +119,7 @@ export default function DepartmentsPage() {
                 </div>
                 <div className="bg-slate-200 rounded-full h-2">
                   <div
-                    className="bg-blue-600 h-2 rounded-full"
+                    className="bg-primary h-2 rounded-full"
                     style={{ width: `${dept.evaluationProgress}%` }}
                   ></div>
                 </div>

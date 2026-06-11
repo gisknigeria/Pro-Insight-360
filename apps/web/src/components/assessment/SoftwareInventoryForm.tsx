@@ -245,7 +245,7 @@ export default function SoftwareInventoryForm({ onSubmit, initialData }: Softwar
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "bg-green-100 text-green-800 border-green-300";
-    if (score >= 60) return "bg-blue-100 text-blue-800 border-blue-300";
+    if (score >= 60) return "bg-amber-100 text-blue-800 border-blue-300";
     if (score >= 40) return "bg-yellow-100 text-yellow-800 border-yellow-300";
     return "bg-red-100 text-red-800 border-red-300";
   };
@@ -263,10 +263,10 @@ export default function SoftwareInventoryForm({ onSubmit, initialData }: Softwar
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6">
-          <div className="text-sm text-blue-700 mb-1">License Compliance</div>
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-amber-200 rounded-lg p-6">
+          <div className="text-sm text-amber-800 mb-1">License Compliance</div>
           <div className="text-4xl font-bold text-blue-900">{scores.compliance}</div>
-          <div className="text-xs text-blue-600 mt-1">Based on license vs usage</div>
+          <div className="text-xs text-primary mt-1">Based on license vs usage</div>
         </div>
         <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-6">
           <div className="text-sm text-green-700 mb-1">GIS Software Coverage</div>
@@ -296,7 +296,7 @@ export default function SoftwareInventoryForm({ onSubmit, initialData }: Softwar
       <button
         type="button"
         onClick={addItem}
-        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 transition mb-6"
+        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-primary transition mb-6"
       >
         + Add Software Item
       </button>
@@ -305,7 +305,7 @@ export default function SoftwareInventoryForm({ onSubmit, initialData }: Softwar
       <div className="flex justify-end">
         <button
           type="submit"
-          className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+          className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition"
         >
           Save Software Assessment
         </button>

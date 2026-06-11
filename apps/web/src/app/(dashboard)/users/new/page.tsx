@@ -122,7 +122,7 @@ export default function NewUserPage() {
                 <button
                   type="button"
                   onClick={() => copyToClipboard(result.temporaryPassword)}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-primary hover:underline"
                 >
                   Copy
                 </button>
@@ -137,7 +137,7 @@ export default function NewUserPage() {
                 <button
                   type="button"
                   onClick={() => copyToClipboard(result.setupToken)}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-primary hover:underline"
                 >
                   Copy
                 </button>
@@ -188,7 +188,7 @@ export default function NewUserPage() {
               id="name"
               value={values.name}
               onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))}
-              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
               placeholder="e.g. Jane Doe"
               required
             />
@@ -203,7 +203,7 @@ export default function NewUserPage() {
               type="email"
               value={values.email}
               onChange={(event) => setValues((current) => ({ ...current, email: event.target.value }))}
-              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
               placeholder="jane@example.org"
               required
             />
@@ -217,7 +217,7 @@ export default function NewUserPage() {
               id="organisation"
               value={values.organisationId}
               onChange={(event) => setValues((current) => ({ ...current, organisationId: event.target.value }))}
-              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             >
               <option value="">Select organisation (optional)</option>
               {orgs.map((org) => (
@@ -239,7 +239,7 @@ export default function NewUserPage() {
               id="department"
               value={values.department}
               onChange={(event) => setValues((current) => ({ ...current, department: event.target.value }))}
-              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
               placeholder="e.g. Marketing, Operations, CEO"
             />
           </div>
@@ -252,7 +252,7 @@ export default function NewUserPage() {
               id="role"
               value={values.role}
               onChange={(event) => setValues((current) => ({ ...current, role: event.target.value }))}
-              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             >
               {roles.map((role) => (
                 <option key={role.value} value={role.value}>
@@ -266,7 +266,7 @@ export default function NewUserPage() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+              className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-amber-300"
             >
               {saving ? 'Creating user…' : 'Create user'}
             </button>

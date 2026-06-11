@@ -109,7 +109,7 @@ export function ConflictsPanel({ conflicts, onResolve }: ConflictsPanelProps) {
                   <button
                     onClick={() => openResolve(conflict.id)}
                     disabled={resolving === conflict.id}
-                    className="shrink-0 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+                    className="shrink-0 px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-dark disabled:bg-amber-300 rounded-lg transition-colors"
                   >
                     {resolving === conflict.id ? 'Resolving…' : 'Mark resolved'}
                   </button>
@@ -170,7 +170,7 @@ export function ConflictsPanel({ conflicts, onResolve }: ConflictsPanelProps) {
               onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Verified with department head — the correct figure is 45 computers."
               rows={3}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-4"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none mb-4"
               autoFocus
             />
             <div className="flex gap-3 justify-end">
@@ -182,7 +182,7 @@ export function ConflictsPanel({ conflicts, onResolve }: ConflictsPanelProps) {
               </button>
               <button
                 onClick={handleConfirmResolve}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg"
               >
                 Mark Resolved
               </button>

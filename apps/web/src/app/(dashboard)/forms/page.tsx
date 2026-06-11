@@ -128,7 +128,7 @@ export default function FormsPage() {
           </div>
           <Link
             href="/forms/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark"
           >
             + Create Form
           </Link>
@@ -142,7 +142,7 @@ export default function FormsPage() {
             onClick={() => setActiveTab('forms')}
             className={`py-3 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'forms'
-                ? 'border-blue-600 text-blue-600'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -152,7 +152,7 @@ export default function FormsPage() {
             onClick={() => setActiveTab('templates')}
             className={`py-3 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'templates'
-                ? 'border-blue-600 text-blue-600'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -169,7 +169,7 @@ export default function FormsPage() {
 
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : forms.length === 0 ? (
         <EmptyState
@@ -182,7 +182,7 @@ export default function FormsPage() {
       ) : (
         <div className="space-y-3">
           {copyMessage ? (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               {copyMessage}
             </div>
           ) : null}
@@ -247,7 +247,7 @@ export default function FormsPage() {
                     <button
                       type="button"
                       onClick={() => handleCopyLink(form.id, form.accessMode)}
-                      className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                      className="rounded-2xl bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark"
                     >
                       Copy share link
                     </button>

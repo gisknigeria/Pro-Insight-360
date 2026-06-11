@@ -44,7 +44,7 @@ export function OfflineStatusBanner() {
       message: 'You are offline. Your answers are being saved locally and will sync when you reconnect.',
     },
     syncing: {
-      bg: 'bg-blue-50 border-blue-200',
+      bg: 'bg-amber-50 border-amber-200',
       text: 'text-blue-800',
       icon: '🔄',
       message: 'Syncing your saved responses…',

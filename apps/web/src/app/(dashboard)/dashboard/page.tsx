@@ -82,7 +82,7 @@ function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: st
   const colorConfig: Record<string, { bg: string; text: string; glow: string; ring: string }> = {
     blue: {
       bg: 'bg-gradient-to-br from-blue-50 to-blue-100/50 group-hover:from-blue-100 group-hover:to-blue-200/50',
-      text: 'text-blue-600',
+      text: 'text-primary',
       glow: 'glow-blue',
       ring: 'ring-blue-500/20',
     },
@@ -139,7 +139,7 @@ function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: st
 function Pill({ label, color = 'slate' }: { label: string; color?: 'slate' | 'blue' | 'green' | 'amber' }) {
   const colors: Record<string, string> = {
     slate: 'bg-slate-100 text-slate-700',
-    blue: 'bg-blue-50 text-blue-700 ring-1 ring-blue-500/20',
+    blue: 'bg-amber-50 text-amber-800 ring-1 ring-blue-500/20',
     green: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20',
     amber: 'bg-amber-50 text-amber-700 ring-1 ring-amber-500/20',
   };
@@ -240,7 +240,7 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       </div>
 
       {analysis?.opportunities ? (
-        <div className="rounded-2xl border border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-surface p-5 shadow-sm">
+        <div className="rounded-2xl border border-amber-200/50 bg-gradient-to-br from-blue-50/50 to-surface p-5 shadow-sm">
           <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
             <span className="text-blue-500">✦</span>
             Primary opportunities

@@ -84,7 +84,7 @@ function Quadrant({ title, subtitle, opportunities, color, onOpportunityClick }:
   const colorClasses: Record<string, string> = {
     green: "bg-green-50 border-green-200",
     yellow: "bg-yellow-50 border-yellow-200",
-    blue: "bg-blue-50 border-blue-200",
+    blue: "bg-amber-50 border-amber-200",
     gray: "bg-gray-50 border-gray-200",
   };
 
@@ -154,7 +154,7 @@ function OpportunityDetail({ opportunity, onClose }: OpportunityDetailProps) {
         </button>
         <h3 className="text-xl font-bold text-gray-800 mb-2">{opportunity.title}</h3>
         <div className="flex items-center gap-2 mb-4">
-          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">
             {typeInfo?.label}
           </span>
           <span className={`px-3 py-1 rounded-full text-sm ${
@@ -204,7 +204,7 @@ function OpportunityDetail({ opportunity, onClose }: OpportunityDetailProps) {
           >
             Close
           </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+          <button className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-dark">
             Add to Roadmap
           </button>
         </div>
@@ -227,7 +227,7 @@ function Roadmap({ items }: { items: RoadmapItem[] }) {
       {items.map((item, idx) => (
         <div key={idx} className="relative">
           <div className="flex items-center mb-3">
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+            <div className="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center font-bold">
               {idx + 1}
             </div>
             <div className="ml-4">
@@ -235,7 +235,7 @@ function Roadmap({ items }: { items: RoadmapItem[] }) {
               <p className="text-sm text-gray-500">{item.timeframe}</p>
             </div>
           </div>
-          <div className="ml-16 border-l-2 border-blue-200 pl-4 pb-4">
+          <div className="ml-16 border-l-2 border-amber-200 pl-4 pb-4">
             <div className="space-y-2">
               {item.opportunities.map((opp) => (
                 <div key={opp.id} className="bg-white p-3 rounded border border-gray-200">
@@ -356,11 +356,11 @@ export default function GISOpportunityMatrix({
           </div>
           <div className="text-sm text-green-600">Quick Wins</div>
         </div>
-        <div className="bg-blue-50 p-4 rounded border border-blue-200 text-center">
-          <div className="text-2xl font-bold text-blue-700">
+        <div className="bg-amber-50 p-4 rounded border border-amber-200 text-center">
+          <div className="text-2xl font-bold text-amber-800">
             {matrixData.highImpactLowFeasibility.length}
           </div>
-          <div className="text-sm text-blue-600">Strategic</div>
+          <div className="text-sm text-primary">Strategic</div>
         </div>
         <div className="bg-yellow-50 p-4 rounded border border-yellow-200 text-center">
           <div className="text-2xl font-bold text-yellow-700">

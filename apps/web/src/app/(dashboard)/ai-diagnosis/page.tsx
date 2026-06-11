@@ -41,7 +41,7 @@ interface Diagnosis {
 
 const STATUS_CONFIG = {
   PENDING_REVIEW: { label: 'Pending Review', color: 'bg-yellow-100 text-yellow-700', icon: '⏳' },
-  IN_REVIEW: { label: 'In Review', color: 'bg-blue-100 text-blue-700', icon: '👀' },
+  IN_REVIEW: { label: 'In Review', color: 'bg-amber-100 text-amber-800', icon: '👀' },
   APPROVED: { label: 'Approved', color: 'bg-green-100 text-green-700', icon: '✅' },
   REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: '❌' },
 };
@@ -49,6 +49,7 @@ const STATUS_CONFIG = {
 export default function AIDiagnosisPage() {
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [loading, setLoading] = useState(true);
+  const [diagnosisError, setDiagnosisError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [chatOutput, setChatOutput] = useState('');
   const [parsedChat, setParsedChat] = useState<any | null>(null);
@@ -91,11 +92,45 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
 
   async function loadDiagnoses() {
     setLoading(true);
+    setDiagnosisError('');
     try {
       const data = await apiFetch<Diagnosis[]>('/diagnoses');
-      setDiagnoses(data);
-    } catch (error) {
-      setDiagnoses([]);
+      setDiagnoses(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      try {
+        const published = await apiFetch<Array<{
+          id: string;
+          publishedAt: string;
+          evaluationId?: string | null;
+          analysis?: Diagnosis['sections'] | null;
+        }>>('/published-analyses');
+
+        setDiagnoses(
+          published
+            .filter((item) => item.analysis)
+            .map((item) => ({
+              id: item.id,
+              evaluation: {
+                id: item.evaluationId || item.id,
+                title: 'Published analysis',
+              },
+              status: 'APPROVED',
+              isAiGenerated: true,
+              sections: {
+                executiveSummary: item.analysis?.executiveSummary || 'No summary available.',
+                strengths: Array.isArray(item.analysis?.strengths) ? item.analysis.strengths : [],
+                weaknesses: Array.isArray(item.analysis?.weaknesses) ? item.analysis.weaknesses : [],
+                opportunities: Array.isArray(item.analysis?.opportunities) ? item.analysis.opportunities : [],
+                recommendations: Array.isArray(item.analysis?.recommendations) ? item.analysis.recommendations : [],
+                actionPlan: Array.isArray(item.analysis?.actionPlan) ? item.analysis.actionPlan : [],
+              },
+              createdAt: item.publishedAt,
+            })),
+        );
+      } catch {
+        setDiagnoses([]);
+        setDiagnosisError(error?.message || 'Unable to load diagnosis history.');
+      }
     } finally {
       setLoading(false);
     }
@@ -239,6 +274,7 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
       });
       setPublishMessage(`${result.message || 'Analysis published successfully.'} Your client admin can review it in Insights and it is now linked to the selected evaluation.`);
       setPublishError('');
+      await loadDiagnoses();
     } catch (error: any) {
       setPublishError(error?.message || 'Unable to publish analysis.');
       setPublishMessage('');
@@ -370,12 +406,12 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
             onChange={(event) => setChatOutput(event.target.value)}
             rows={10}
             placeholder="Paste JSON analysis output here"
-            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-sm focus:border-primary focus:ring-primary"
           />
           <button
             type="button"
             onClick={handleParseChatOutput}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition"
           >
             Parse and render analysis output
           </button>
@@ -408,7 +444,7 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
                 <select
                   value={selectedAdminId}
                   onChange={(event) => setSelectedAdminId(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-amber-200"
                 >
                   {clientAdmins.length === 0 ? (
                     <option value="">No client admins available</option>
@@ -426,7 +462,7 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
                 <select
                   value={selectedEvaluationId}
                   onChange={(event) => setSelectedEvaluationId(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-amber-200"
                 >
                   {evaluations.length === 0 ? (
                     <option value="">No evaluations available</option>
@@ -446,7 +482,7 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
                 type="button"
                 disabled={publishLoading || clientAdmins.length === 0}
                 onClick={handlePublishAnalysis}
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {publishLoading ? 'Publishing...' : 'Publish report'}
               </button>
@@ -543,7 +579,7 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
                 ))}
               </div>
             </div>
-            <div className="rounded-[24px] border border-blue-200 bg-blue-50 p-5 shadow-sm xl:col-span-1">
+            <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm xl:col-span-1">
               <h3 className="font-semibold text-slate-900 mb-3">Primary opportunities</h3>
               <div className="space-y-3">
                 {Array.isArray(parsedChat.opportunities) && parsedChat.opportunities.map((item: string, idx: number) => (
@@ -562,7 +598,7 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
                   <h3 className="text-xl font-semibold text-slate-900">Supporting charts</h3>
                   <p className="text-sm text-slate-600 mt-1">Rendered visual insights based on the AI analysis output.</p>
                 </div>
-                <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Live graph view</span>
+                <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Live graph view</span>
               </div>
               <div className="grid gap-4 xl:grid-cols-2">
                 {parsedChat.charts.map((chart: any, chartIndex: number) => (
@@ -596,11 +632,17 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
           {reviewError}
         </div>
       )}
+      {diagnosisError && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <p className="font-semibold">Unable to load diagnosis history</p>
+          <p>{diagnosisError}</p>
+        </div>
+      )}
 
       {/* Diagnoses */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : diagnoses.length === 0 ? (
         <EmptyState
@@ -677,7 +719,7 @@ Do not include markdown, code fences, or any extra text. Respond with plain JSON
                     <ul className="space-y-2">
                       {diagnosis.sections.opportunities.map((item, idx) => (
                         <li key={idx} className="text-sm text-slate-700 flex gap-2">
-                          <span className="text-blue-600">→</span>
+                          <span className="text-primary">→</span>
                           <span>{item}</span>
                         </li>
                       ))}

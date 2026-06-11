@@ -57,7 +57,7 @@ function ScoreBadge({ score, band, size = "md" }: ScoreBadgeProps) {
 
   const colorClasses: Record<ScoreBand, string> = {
     Advanced: "bg-green-100 text-green-800 border-green-300",
-    Developing: "bg-blue-100 text-blue-800 border-blue-300",
+    Developing: "bg-amber-100 text-blue-800 border-blue-300",
     Emerging: "bg-yellow-100 text-yellow-800 border-yellow-300",
     Nascent: "bg-red-100 text-red-800 border-red-300",
   };
@@ -82,7 +82,7 @@ function ProgressBar({ value, max = 100, color = "blue", showLabel = true }: Pro
   const percentage = (value / max) * 100;
   
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-500",
+    blue: "bg-amber-500",
     green: "bg-green-500",
     yellow: "bg-yellow-500",
     red: "bg-red-500",
@@ -206,8 +206,8 @@ export function SkillsBreakdownCard({ skills }: SkillsBreakdownCardProps) {
           <div className="text-sm text-green-700 mb-1">GIS Champions</div>
           <div className="text-2xl font-bold text-green-900">{skills.championsCount}</div>
         </div>
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <div className="text-sm text-blue-700 mb-1">Skill Categories</div>
+        <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+          <div className="text-sm text-amber-800 mb-1">Skill Categories</div>
           <div className="text-2xl font-bold text-blue-900">{skills.byCategory.length}</div>
         </div>
       </div>

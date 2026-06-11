@@ -91,7 +91,7 @@ export default function EditUserPage() {
   if (loading) {
     return (
       <div className="text-center py-16">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function EditUserPage() {
   if (!user) {
     return (
       <div className="max-w-3xl mx-auto py-12">
-        <Link href="/users" className="text-sm text-blue-600 hover:underline">
+        <Link href="/users" className="text-sm text-primary hover:underline">
           ← Back to users
         </Link>
         <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
@@ -136,7 +136,7 @@ export default function EditUserPage() {
             id="name"
             value={user.name}
             onChange={(event) => setUser({ ...user, name: event.target.value })}
-            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             required
           />
         </div>
@@ -161,7 +161,7 @@ export default function EditUserPage() {
             id="organisation"
             value={user.organisationId || ''}
             onChange={(event) => setUser({ ...user, organisationId: event.target.value })}
-            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
           >
             <option value="">Select organisation</option>
             {orgs.map((org) => (
@@ -180,7 +180,7 @@ export default function EditUserPage() {
             id="role"
             value={user.role}
             onChange={(event) => setUser({ ...user, role: event.target.value as Role })}
-            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
           >
             {roles.map((roleOption) => (
               <option key={roleOption.value} value={roleOption.value}>
@@ -198,7 +198,7 @@ export default function EditUserPage() {
             id="department"
             value={user.department || ''}
             onChange={(event) => setUser({ ...user, department: event.target.value })}
-            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             placeholder="e.g. Finance, Operations, CEO"
           />
         </div>
@@ -209,7 +209,7 @@ export default function EditUserPage() {
               type="checkbox"
               checked={user.status !== 'INACTIVE'}
               onChange={(event) => setUser({ ...user, status: event.target.checked ? 'ACTIVE' : 'INACTIVE' })}
-              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
             />
             Active account
           </label>
@@ -220,7 +220,7 @@ export default function EditUserPage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+            className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-amber-300"
           >
             {saving ? 'Saving…' : 'Save changes'}
           </button>

@@ -26,7 +26,7 @@ interface Diagnosis {
 
 const STATUS_CONFIG = {
   PENDING_REVIEW: { label: 'Pending Review', color: 'bg-yellow-100 text-yellow-700' },
-  IN_REVIEW: { label: 'In Review', color: 'bg-blue-100 text-blue-700' },
+  IN_REVIEW: { label: 'In Review', color: 'bg-amber-100 text-amber-800' },
   APPROVED: { label: 'Approved', color: 'bg-green-100 text-green-700' },
   REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-700' },
 } as const;
@@ -204,7 +204,7 @@ export default function EvaluationDetailPage() {
                   {diagnosis.sections.opportunities?.length ? (
                     <ul className="space-y-2 text-sm text-slate-700">
                       {diagnosis.sections.opportunities.map((item, index) => (
-                        <li key={index} className="flex gap-2"><span className="text-blue-600">→</span>{item}</li>
+                        <li key={index} className="flex gap-2"><span className="text-primary">→</span>{item}</li>
                       ))}
                     </ul>
                   ) : (

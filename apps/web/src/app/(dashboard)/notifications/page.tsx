@@ -14,7 +14,7 @@ interface Notification {
 }
 
 const TYPE_CONFIG = {
-  FORM_ASSIGNED: { label: 'Form Assigned', icon: '📋', color: 'bg-blue-100 text-blue-700' },
+  FORM_ASSIGNED: { label: 'Form Assigned', icon: '📋', color: 'bg-amber-100 text-amber-800' },
   FORM_REMINDER: { label: 'Form Reminder', icon: '⏰', color: 'bg-orange-100 text-orange-700' },
   RESPONSE_SUBMITTED: { label: 'Response Submitted', icon: '✅', color: 'bg-green-100 text-green-700' },
   EVALUATION_ACTIVATED: { label: 'Evaluation Activated', icon: '🚀', color: 'bg-purple-100 text-purple-700' },
@@ -99,7 +99,7 @@ export default function NotificationsPage() {
       {/* Notifications */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -115,7 +115,7 @@ export default function NotificationsPage() {
               className={`rounded-lg border p-4 transition hover:shadow ${
                 notif.read
                   ? 'bg-white border-slate-200'
-                  : 'bg-blue-50 border-blue-200'
+                  : 'bg-amber-50 border-amber-200'
               }`}
             >
               <div className="flex gap-4">
@@ -141,7 +141,7 @@ export default function NotificationsPage() {
                   <p className="text-xs text-slate-500 mt-2">{new Date(notif.createdAt).toLocaleString()}</p>
                 </div>
                 {!notif.read && (
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
                 )}
               </div>
             </div>

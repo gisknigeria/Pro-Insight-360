@@ -39,7 +39,7 @@ export default function WorkflowPage() {
               Design, analyze, and optimize organizational workflows and processes.
             </p>
           </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          <button className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark">
             + Create Workflow
           </button>
         </div>
@@ -65,7 +65,7 @@ export default function WorkflowPage() {
       {/* Workflows */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : workflows.length === 0 ? (
         <EmptyState
@@ -89,7 +89,7 @@ export default function WorkflowPage() {
                     workflow.status === 'COMPLETED'
                       ? 'bg-green-100 text-green-700'
                       : workflow.status === 'ACTIVE'
-                        ? 'bg-blue-100 text-blue-700'
+                        ? 'bg-amber-100 text-amber-800'
                         : 'bg-slate-100 text-slate-600'
                   }`}
                 >

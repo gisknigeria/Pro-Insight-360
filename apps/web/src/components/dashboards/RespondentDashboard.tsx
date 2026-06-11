@@ -43,7 +43,7 @@ function SyncBanner({
 }) {
   const statusConfig: Record<string, { bg: string; text: string; icon: string; label: string }> = {
     synced: { bg: "bg-green-50", text: "text-green-700", icon: "✅", label: "All data synced" },
-    syncing: { bg: "bg-blue-50", text: "text-blue-700", icon: "🔄", label: "Syncing..." },
+    syncing: { bg: "bg-amber-50", text: "text-amber-800", icon: "🔄", label: "Syncing..." },
     pending: { bg: "bg-yellow-50", text: "text-yellow-700", icon: "⏳", label: `${pendingItems} item(s) pending` },
     error: { bg: "bg-red-50", text: "text-red-700", icon: "❌", label: "Sync error - click to retry" },
   };
@@ -67,7 +67,7 @@ function SyncBanner({
 
 function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: string; color?: string }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-600",
+    blue: "bg-amber-50 text-primary",
     green: "bg-green-50 text-green-600",
     yellow: "bg-yellow-50 text-yellow-600",
     red: "bg-red-50 text-red-600",
@@ -136,7 +136,7 @@ export default function RespondentDashboard() {
             title="No forms assigned"
             description="You haven't been assigned any evaluation forms yet. Check back later or contact your administrator."
             action={
-              <button className="px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+              <button className="px-4 py-2 bg-amber-500 text-white rounded text-sm hover:bg-primary">
                 Refresh
               </button>
             }
@@ -163,7 +163,7 @@ export default function RespondentDashboard() {
                       form.status === "completed"
                         ? "bg-green-100 text-green-700"
                         : form.status === "in_progress"
-                        ? "bg-blue-100 text-blue-700"
+                        ? "bg-amber-100 text-amber-800"
                         : form.status === "overdue"
                         ? "bg-red-100 text-red-700"
                         : "bg-gray-100 text-gray-600"
@@ -185,7 +185,7 @@ export default function RespondentDashboard() {
                         form.progress === 100
                           ? "bg-green-500"
                           : form.progress > 0
-                          ? "bg-blue-500"
+                          ? "bg-amber-500"
                           : "bg-gray-300"
                       }`}
                       style={{ width: `${form.progress}%` }}
@@ -200,7 +200,7 @@ export default function RespondentDashboard() {
                       View Responses
                     </button>
                   ) : (
-                    <button className="px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition">
+                    <button className="px-4 py-2 bg-amber-500 text-white rounded text-sm hover:bg-primary transition">
                       {form.progress > 0 ? "Continue Form" : "Start Form"}
                     </button>
                   )}
@@ -218,7 +218,7 @@ export default function RespondentDashboard() {
 
       {/* ── Helpful Info ───────────────────────────────────────────────── */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <h4 className="font-semibold text-blue-900 mb-2">💡 Save & Continue</h4>
           <p className="text-sm text-blue-800">
             Your progress is automatically saved every 30 seconds. You can close the browser and return later to continue where you left off.

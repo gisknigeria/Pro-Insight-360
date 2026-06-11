@@ -243,7 +243,7 @@ export function FormRenderer({
         </div>
         <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-blue-600 rounded-full transition-all duration-300"
+            className="h-full bg-primary rounded-full transition-all duration-300"
             style={{ width: `${progressPct}%` }}
             role="progressbar"
             aria-valuenow={progressPct}
@@ -308,7 +308,7 @@ export function FormRenderer({
           <button
             type="button"
             onClick={handleNext}
-            className="flex-1 py-2.5 px-4 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm"
+            className="flex-1 py-2.5 px-4 min-h-[44px] bg-primary hover:bg-primary-dark text-white font-medium rounded-lg text-sm"
           >
             Next page
           </button>
@@ -316,7 +316,7 @@ export function FormRenderer({
           <button
             type="submit"
             disabled={submitting}
-            className="flex-1 py-2.5 px-4 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg text-sm"
+            className="flex-1 py-2.5 px-4 min-h-[44px] bg-primary hover:bg-primary-dark disabled:bg-amber-300 text-white font-medium rounded-lg text-sm"
             aria-busy={submitting}
           >
             {submitting ? 'Submitting…' : 'Submit response'}

@@ -108,7 +108,7 @@ export function FileUploadInput({
           type="button"
           disabled={uploading}
           onClick={() => inputRef.current?.click()}
-          className="w-full border-2 border-dashed border-slate-300 rounded-lg p-6 text-center text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors disabled:opacity-50"
+          className="w-full border-2 border-dashed border-slate-300 rounded-lg p-6 text-center text-sm text-slate-500 hover:border-blue-400 hover:text-primary transition-colors disabled:opacity-50"
         >
           {uploading ? 'Uploading…' : 'Click to choose a file or drag and drop here'}
         </button>

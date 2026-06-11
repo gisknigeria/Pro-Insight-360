@@ -17,7 +17,7 @@ const BAND_COLORS: Record<string, string> = {
   'Very Low': 'bg-red-100 text-red-700 border-red-200',
   Low: 'bg-orange-100 text-orange-700 border-orange-200',
   Moderate: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  High: 'bg-blue-100 text-blue-700 border-blue-200',
+  High: 'bg-amber-100 text-amber-800 border-amber-200',
 };
 
 export function ScoreCard({ label, score, band, icon, description }: ScoreCardProps) {

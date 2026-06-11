@@ -57,7 +57,7 @@ const OPERATING_SYSTEMS = [
 
 const CONDITION_CONFIG: Record<HardwareItem["condition"], { label: string; color: string; score: number }> = {
   excellent: { label: "Excellent", color: "bg-green-100 text-green-800", score: 100 },
-  good: { label: "Good", color: "bg-blue-100 text-blue-800", score: 75 },
+  good: { label: "Good", color: "bg-amber-100 text-blue-800", score: 75 },
   fair: { label: "Fair", color: "bg-yellow-100 text-yellow-800", score: 50 },
   poor: { label: "Poor", color: "bg-orange-100 text-orange-800", score: 25 },
   obsolete: { label: "Obsolete", color: "bg-red-100 text-red-800", score: 0 },
@@ -233,7 +233,7 @@ export default function HardwareInventoryForm({ onSubmit, initialData }: Hardwar
 
   const getAdequacyColor = (score: number) => {
     if (score >= 80) return "bg-green-100 text-green-800 border-green-300";
-    if (score >= 60) return "bg-blue-100 text-blue-800 border-blue-300";
+    if (score >= 60) return "bg-amber-100 text-blue-800 border-blue-300";
     if (score >= 40) return "bg-yellow-100 text-yellow-800 border-yellow-300";
     return "bg-red-100 text-red-800 border-red-300";
   };
@@ -248,14 +248,14 @@ export default function HardwareInventoryForm({ onSubmit, initialData }: Hardwar
       </div>
 
       {/* Summary */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 mb-8">
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-amber-200 rounded-lg p-6 mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-blue-700 mb-1">Hardware Adequacy Score</div>
+            <div className="text-sm text-amber-800 mb-1">Hardware Adequacy Score</div>
             <div className="text-4xl font-bold text-blue-900">{overallAdequacy}</div>
           </div>
           <div className="text-right">
-            <div className="text-sm text-blue-700">Total Devices</div>
+            <div className="text-sm text-amber-800">Total Devices</div>
             <div className="text-2xl font-bold text-blue-900">
               {items.reduce((sum, item) => sum + item.quantity, 0)}
             </div>
@@ -279,7 +279,7 @@ export default function HardwareInventoryForm({ onSubmit, initialData }: Hardwar
       <button
         type="button"
         onClick={addItem}
-        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 transition mb-6"
+        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-primary transition mb-6"
       >
         + Add Hardware Item
       </button>
@@ -288,7 +288,7 @@ export default function HardwareInventoryForm({ onSubmit, initialData }: Hardwar
       <div className="flex justify-end">
         <button
           type="submit"
-          className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+          className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition"
         >
           Save Hardware Assessment
         </button>

@@ -166,14 +166,14 @@ export default function ConsultantDashboard() {
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-800">Active Evaluations</h3>
-            <button className="text-sm text-blue-600 hover:underline">View All</button>
+            <button className="text-sm text-primary hover:underline">View All</button>
           </div>
           {evaluations.length === 0 ? (
             <EmptyState
               title="No evaluations yet"
               description="Create your first evaluation to start collecting responses and generating insights."
               action={
-                <button className="px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+                <button className="px-4 py-2 bg-amber-500 text-white rounded text-sm hover:bg-primary">
                   Create Evaluation
                 </button>
               }
@@ -203,7 +203,7 @@ export default function ConsultantDashboard() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-blue-500 h-2 rounded-full transition-all"
+                      className="bg-amber-500 h-2 rounded-full transition-all"
                       style={{ width: `${eval_.progress}%` }}
                     />
                   </div>
@@ -235,7 +235,7 @@ export default function ConsultantDashboard() {
               </p>
             </div>
           </div>
-          <button className="w-full mt-4 px-4 py-2 border border-blue-500 text-blue-600 rounded text-sm hover:bg-blue-50 transition">
+          <button className="w-full mt-4 px-4 py-2 border border-blue-500 text-primary rounded text-sm hover:bg-amber-50 transition">
             Review Diagnoses
           </button>
         </div>
@@ -247,8 +247,8 @@ export default function ConsultantDashboard() {
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">Score Summary</h3>
           <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-3xl font-bold text-blue-600">{sampleScores.digitalReadiness}</div>
+            <div className="text-center p-4 bg-amber-50 rounded-lg">
+              <div className="text-3xl font-bold text-primary">{sampleScores.digitalReadiness}</div>
               <div className="text-xs text-gray-600 mt-1">Digital Readiness</div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
@@ -281,7 +281,7 @@ export default function ConsultantDashboard() {
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-800">Conflicts ({sampleConflicts.length})</h3>
-            <button className="text-sm text-blue-600 hover:underline">View All</button>
+            <button className="text-sm text-primary hover:underline">View All</button>
           </div>
           {sampleConflicts.length === 0 ? (
             <EmptyState
@@ -307,7 +307,7 @@ export default function ConsultantDashboard() {
                   <div className="text-xs text-gray-500">
                     {conflict.respondents.join(" vs ")}: {conflict.values.join(" vs ")}
                   </div>
-                  <button className="text-xs text-blue-600 hover:underline mt-2">Resolve</button>
+                  <button className="text-xs text-primary hover:underline mt-2">Resolve</button>
                 </div>
               ))}
             </div>

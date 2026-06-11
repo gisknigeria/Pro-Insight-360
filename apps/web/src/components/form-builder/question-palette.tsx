@@ -16,7 +16,7 @@ function ClickableQuestionType({ config, onAddQuestion }: { config: QuestionType
     <button
       type="button"
       onClick={() => onAddQuestion(config.type)}
-      className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm transition-colors hover:border-blue-300 hover:bg-blue-50"
+      className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm transition-colors hover:border-blue-300 hover:bg-amber-50"
       title={config.description}
     >
       <span className="text-base w-5 text-center" aria-hidden="true">

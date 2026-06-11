@@ -130,7 +130,7 @@ function Slider({ id, label, description, value, onChange }: SliderProps) {
           onChange={(e) => onChange(parseInt(e.target.value))}
           className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
         />
-        <span className="w-12 text-center font-semibold text-lg text-blue-600">{value}</span>
+        <span className="w-12 text-center font-semibold text-lg text-primary">{value}</span>
       </div>
       <div className="flex justify-between text-xs text-gray-400 mt-1">
         <span>Not Ready</span>
@@ -240,7 +240,7 @@ export default function GISReadinessForm({ onSubmit, initialData }: GISReadiness
   const getBandColor = (band: string) => {
     switch (band) {
       case "Advanced": return "bg-green-100 text-green-800 border-green-300";
-      case "Developing": return "bg-blue-100 text-blue-800 border-blue-300";
+      case "Developing": return "bg-amber-100 text-blue-800 border-blue-300";
       case "Emerging": return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "Nascent": return "bg-red-100 text-red-800 border-red-300";
       default: return "bg-gray-100 text-gray-800 border-gray-300";
@@ -257,10 +257,10 @@ export default function GISReadinessForm({ onSubmit, initialData }: GISReadiness
       </div>
 
       {/* Live Score Summary */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 mb-8">
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-amber-200 rounded-lg p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="text-sm text-blue-700 mb-1">GIS Readiness Score</div>
+            <div className="text-sm text-amber-800 mb-1">GIS Readiness Score</div>
             <div className="text-4xl font-bold text-blue-900">{score.overall}</div>
           </div>
           <div className={`px-4 py-2 rounded-full border font-semibold ${getBandColor(score.band)}`}>
@@ -283,7 +283,7 @@ export default function GISReadinessForm({ onSubmit, initialData }: GISReadiness
       {categories.map((category) => (
         <div key={category.name} className="mb-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">
+            <span className="w-8 h-8 bg-amber-100 text-primary rounded-full flex items-center justify-center text-sm font-bold">
               {category.name.charAt(0)}
             </span>
             {category.name}
@@ -311,7 +311,7 @@ export default function GISReadinessForm({ onSubmit, initialData }: GISReadiness
       <div className="flex justify-end">
         <button
           type="submit"
-          className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+          className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition"
         >
           Save Assessment
         </button>

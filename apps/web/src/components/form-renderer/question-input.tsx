@@ -28,7 +28,7 @@ export function QuestionInput({
   onChange,
 }: QuestionInputProps) {
   const baseInputClass =
-    'w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px]';
+    'w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[44px]';
 
   const options = getOptions(question);
 
@@ -211,7 +211,7 @@ export function QuestionInput({
               onClick={() => onChange(n)}
               className={`min-w-[44px] min-h-[44px] rounded-lg border text-sm font-medium transition-colors ${
                 value === n
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-primary text-white border-primary'
                   : 'border-slate-300 text-slate-600 hover:border-blue-400'
               }`}
               aria-pressed={value === n}
@@ -235,7 +235,7 @@ export function QuestionInput({
                 onClick={() => onChange(opt)}
                 className={`px-3 py-2 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
                   value === opt
-                    ? 'bg-blue-600 text-white border-blue-600'
+                    ? 'bg-primary text-white border-primary'
                     : 'border-slate-300 text-slate-600 hover:border-blue-400'
                 }`}
               >
@@ -275,7 +275,7 @@ export function QuestionInput({
               onClick={() => onChange(n)}
               className={`min-w-[36px] min-h-[44px] rounded border text-xs font-medium ${
                 value === n
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-primary text-white border-primary'
                   : 'border-slate-300 text-slate-600'
               }`}
               aria-label={`Score ${n}`}
@@ -428,7 +428,7 @@ export function QuestionInput({
 
     case 'instruction_block':
       return (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
           {question.helperText ||
             question.label ||
             'Please read the instructions before continuing.'}

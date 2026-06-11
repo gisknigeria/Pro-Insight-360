@@ -56,7 +56,7 @@ export default function MyFormsPage() {
             <div>
               <h2 className="text-sm font-semibold text-slate-900 mb-3">
                 Forms to complete
-                <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                <span className="ml-2 px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full">
                   {pending.length}
                 </span>
               </h2>
@@ -84,7 +84,7 @@ export default function MyFormsPage() {
                       </div>
                       <Link
                         href={`/my-forms/${form.formId}`}
-                        className="shrink-0 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                        className="shrink-0 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
                       >
                         Complete Form
                       </Link>

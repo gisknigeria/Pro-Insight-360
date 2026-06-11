@@ -19,7 +19,7 @@ interface User {
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; ring: string }> = {
   SUPER_ADMIN: { label: 'Super Admin', color: 'bg-red-50 text-red-700', ring: 'ring-red-500/20' },
-  CONSULTANT: { label: 'Consultant', color: 'bg-blue-50 text-blue-700', ring: 'ring-blue-500/20' },
+  CONSULTANT: { label: 'Consultant', color: 'bg-amber-50 text-amber-800', ring: 'ring-blue-500/20' },
   CLIENT_ADMIN: { label: 'Client Admin', color: 'bg-emerald-50 text-emerald-700', ring: 'ring-emerald-500/20' },
   HOD: { label: 'Head of Dept', color: 'bg-purple-50 text-purple-700', ring: 'ring-purple-500/20' },
   RESPONDENT: { label: 'Respondent', color: 'bg-slate-50 text-slate-700', ring: 'ring-slate-500/20' },

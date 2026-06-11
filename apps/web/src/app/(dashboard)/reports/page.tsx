@@ -37,7 +37,7 @@ export default function ReportsPage() {
               Generate and download evaluation reports in PDF, DOCX, or XLSX format.
             </p>
           </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          <button className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark">
             + Generate Report
           </button>
         </div>
@@ -63,7 +63,7 @@ export default function ReportsPage() {
       {/* Reports List */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : reports.length === 0 ? (
         <EmptyState
@@ -90,7 +90,7 @@ export default function ReportsPage() {
                 <tr key={report.id} className="border-b border-slate-200 hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{report.evaluation.title}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded font-medium">{report.format}</span>
+                    <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded font-medium">{report.format}</span>
                   </td>
                   <td className="px-6 py-4 text-sm">
                     {report.status === 'READY' && (
@@ -106,7 +106,7 @@ export default function ReportsPage() {
                   <td className="px-6 py-4 text-sm text-slate-600">{new Date(report.createdAt).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-right">
                     {report.status === 'READY' && (
-                      <button className="text-blue-600 hover:text-blue-800 font-medium">Download</button>
+                      <button className="text-primary hover:text-blue-800 font-medium">Download</button>
                     )}
                   </td>
                 </tr>

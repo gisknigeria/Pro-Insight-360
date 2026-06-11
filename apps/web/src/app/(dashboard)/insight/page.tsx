@@ -97,7 +97,7 @@ interface PublishedAnalysis {
 
 function StatCard({ label, value, icon, color = 'blue' }: { label: string; value: string | number; icon: string; color?: string }) {
   const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
+    blue: 'bg-amber-50 text-primary',
     green: 'bg-green-50 text-green-600',
     yellow: 'bg-amber-50 text-amber-600',
     red: 'bg-red-50 text-red-600',
@@ -160,7 +160,7 @@ function LatestPublishedReport({ published, evaluation }: { published: Published
             <p className="text-sm font-semibold text-slate-900">{published.summary || 'Published evaluation insight'}</p>
             <p className="text-xs text-slate-500">Published {new Date(published.publishedAt).toLocaleDateString()} by {published.publishedBy || 'Superadmin'}</p>
             {evaluation ? (
-              <Link href={`/evaluations/${evaluation.id}/diagnosis`} className="text-xs text-blue-600 hover:underline">
+              <Link href={`/evaluations/${evaluation.id}/diagnosis`} className="text-xs text-primary hover:underline">
                 View {evaluation.title} diagnosis
               </Link>
             ) : null}
@@ -212,7 +212,7 @@ function LatestPublishedReport({ published, evaluation }: { published: Published
           <ul className="space-y-2 text-sm text-slate-700">
             {analysis.opportunities.map((item, idx) => (
               <li key={idx} className="flex gap-2">
-                <span className="text-blue-600">•</span>
+                <span className="text-primary">•</span>
                 <span>{item}</span>
               </li>
             ))}
@@ -266,7 +266,7 @@ function LatestPublishedReport({ published, evaluation }: { published: Published
                         <span>{value}</span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                        <div className="h-full rounded-full bg-blue-600" style={{ width: `${width}%` }} />
+                        <div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} />
                       </div>
                     </div>
                   );
@@ -410,7 +410,7 @@ export default function InsightPage() {
   if (loading) {
     return (
       <div className="text-center py-20">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
         <p className="mt-4 text-sm text-slate-600">Loading company insights…</p>
       </div>
     );
@@ -489,7 +489,7 @@ export default function InsightPage() {
                       <div key={evaluation.id} className="rounded-3xl border border-slate-200 p-4 hover:border-blue-300 transition-colors">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <Link href={`/evaluations/${evaluation.id}`} className="font-semibold text-slate-900 hover:text-blue-600 transition-colors text-sm block">
+                            <Link href={`/evaluations/${evaluation.id}`} className="font-semibold text-slate-900 hover:text-primary transition-colors text-sm block">
                               {evaluation.title}
                             </Link>
                             <p className="text-sm text-slate-500">Started {evaluation.startDate ? new Date(evaluation.startDate).toLocaleDateString() : new Date(evaluation.createdAt).toLocaleDateString()}</p>
@@ -499,7 +499,7 @@ export default function InsightPage() {
                             <Pill label={`${evaluation._count.forms} form${evaluation._count.forms !== 1 ? 's' : ''}`} />
                             <Link
                               href={`/evaluations/${evaluation.id}/diagnosis`}
-                              className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-blue-50 transition"
+                              className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-amber-50 transition"
                             >
                               View diagnosis
                             </Link>
@@ -605,7 +605,7 @@ export default function InsightPage() {
                       <span className="text-sm font-semibold text-slate-700">{form.averageCompletion}%</span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                      <div className="h-full rounded-full bg-blue-600" style={{ width: `${form.averageCompletion}%` }} />
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${form.averageCompletion}%` }} />
                     </div>
                   </div>
                 ))}

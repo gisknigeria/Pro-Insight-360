@@ -43,7 +43,7 @@ function EmptyState({ title, description, action }: { title: string; description
 
 function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: string; color?: string }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-600",
+    blue: "bg-amber-50 text-primary",
     green: "bg-green-50 text-green-600",
     yellow: "bg-yellow-50 text-yellow-600",
     red: "bg-red-50 text-red-600",
@@ -131,7 +131,7 @@ export default function ClientAdminDashboard() {
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-800">Assigned Forms</h3>
-            <button className="text-sm text-blue-600 hover:underline">View All</button>
+            <button className="text-sm text-primary hover:underline">View All</button>
           </div>
           {forms.length === 0 ? (
             <EmptyState
@@ -159,7 +159,7 @@ export default function ClientAdminDashboard() {
                             form.status === "completed"
                               ? "bg-green-100 text-green-700"
                               : form.status === "in_progress"
-                              ? "bg-blue-100 text-blue-700"
+                              ? "bg-amber-100 text-amber-800"
                               : form.status === "overdue"
                               ? "bg-red-100 text-red-700"
                               : "bg-gray-100 text-gray-600"
@@ -177,7 +177,7 @@ export default function ClientAdminDashboard() {
                                 form.progress === 100
                                   ? "bg-green-500"
                                   : form.progress > 0
-                                  ? "bg-blue-500"
+                                  ? "bg-amber-500"
                                   : "bg-gray-300"
                               }`}
                               style={{ width: `${form.progress}%` }}
@@ -223,7 +223,7 @@ export default function ClientAdminDashboard() {
                         <span className="font-semibold w-8">{dept.digitalReadiness}</span>
                         <div className="w-24 bg-gray-200 rounded-full h-2">
                           <div
-                            className="bg-blue-500 h-2 rounded-full"
+                            className="bg-amber-500 h-2 rounded-full"
                             style={{ width: `${dept.digitalReadiness}%` }}
                           />
                         </div>

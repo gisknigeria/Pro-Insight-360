@@ -25,6 +25,7 @@ export default function EvaluationDiagnosisPage() {
   const [showAllResponses, setShowAllResponses] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [canRunDiagnosis, setCanRunDiagnosis] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -33,11 +34,7 @@ export default function EvaluationDiagnosisPage() {
       return;
     }
 
-    if (isClientAdmin()) {
-      router.replace('/dashboard');
-      return;
-    }
-
+    setCanRunDiagnosis(!isClientAdmin());
     setHasAccess(true);
   }, [router]);
 
@@ -201,18 +198,20 @@ export default function EvaluationDiagnosisPage() {
             Saved analysis, gap review, and response insights for this evaluation.
           </p>
         </div>
-        <button
-          onClick={runDiagnosis}
-          disabled={running}
-          className="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
-          aria-busy={running}
-        >
-          {running ? '⏳ Running…' : '▶ Run Diagnosis'}
-        </button>
+        {canRunDiagnosis && (
+          <button
+            onClick={runDiagnosis}
+            disabled={running}
+            className="px-4 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary-dark disabled:bg-amber-300 rounded-lg transition-colors"
+            aria-busy={running}
+          >
+            {running ? 'Running...' : 'Run Diagnosis'}
+          </button>
+        )}
       </div>
 
       {runMsg && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded-lg">
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
           {runMsg}
         </div>
       )}
@@ -240,7 +239,7 @@ export default function EvaluationDiagnosisPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-primary text-primary'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
               aria-current={activeTab === tab.id ? 'page' : undefined}
@@ -262,8 +261,8 @@ export default function EvaluationDiagnosisPage() {
                 icon="🧠"
                 title="No saved analysis yet"
                 description="Publish or generate a diagnosis to show the saved analysis content here."
-                actionLabel="Run Diagnosis"
-                onAction={runDiagnosis}
+                actionLabel={canRunDiagnosis ? 'Run Diagnosis' : undefined}
+                onAction={canRunDiagnosis ? runDiagnosis : undefined}
               />
             ) : (
               <div className="space-y-6">
@@ -309,7 +308,7 @@ export default function EvaluationDiagnosisPage() {
                     <ul className="mt-3 space-y-2 text-sm text-slate-700">
                       {Array.isArray(diagnosis.sections?.opportunities) && diagnosis.sections.opportunities.length > 0 ? (
                         diagnosis.sections.opportunities.map((item: string, idx: number) => (
-                          <li key={idx} className="flex gap-2"><span className="text-blue-600">→</span>{item}</li>
+                          <li key={idx} className="flex gap-2"><span className="text-primary">→</span>{item}</li>
                         ))
                       ) : (
                         <li className="text-slate-500">No opportunities provided.</li>
@@ -417,7 +416,7 @@ export default function EvaluationDiagnosisPage() {
                   type="button"
                   onClick={copyAllResponses}
                   disabled={allResponsesLoading}
-                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition"
                 >
                   Copy all answers
                 </button>
@@ -425,7 +424,7 @@ export default function EvaluationDiagnosisPage() {
             </div>
 
             {copyMessage && (
-              <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-sm">
+              <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
                 {copyMessage}
               </div>
             )}

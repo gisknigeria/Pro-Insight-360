@@ -683,7 +683,7 @@ export default function NewFormPage() {
   if (loading) {
     return (
       <div className="text-center py-16">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     );
   }
@@ -705,7 +705,7 @@ export default function NewFormPage() {
         <p className="text-slate-500 mb-6">You need at least one evaluation project before you can create a form.</p>
         <Link
           href="/evaluations/new"
-          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700"
+          className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-dark"
         >
           Create Evaluation First
         </Link>
@@ -737,7 +737,7 @@ export default function NewFormPage() {
             id="name"
             value={values.name}
             onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             placeholder="e.g. GIS Readiness Assessment"
             required
           />
@@ -751,7 +751,7 @@ export default function NewFormPage() {
             id="description"
             value={values.description}
             onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none"
+            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200 resize-none"
             rows={4}
             placeholder="What is this form for?"
           />
@@ -765,7 +765,7 @@ export default function NewFormPage() {
             id="evaluationId"
             value={values.evaluationId}
             onChange={(event) => setValues((current) => ({ ...current, evaluationId: event.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             required
           >
             <option value="" disabled>
@@ -787,7 +787,7 @@ export default function NewFormPage() {
             id="accessMode"
             value={values.accessMode}
             onChange={(event) => setValues((current) => ({ ...current, accessMode: event.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
           >
             <option value="REGISTERED">Registered only</option>
             <option value="PUBLIC">Public access</option>
@@ -798,7 +798,7 @@ export default function NewFormPage() {
           <button
             type="submit"
             disabled={!canSubmit || saving}
-            className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+            className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-amber-300"
           >
             {saving ? 'Creating form…' : 'Create form'}
           </button>

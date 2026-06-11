@@ -18,7 +18,7 @@ const SKILL_LEVELS = {
   NONE: { label: 'None', color: 'bg-red-100 text-red-700', value: 0 },
   BASIC: { label: 'Basic', color: 'bg-orange-100 text-orange-700', value: 1 },
   INTERMEDIATE: { label: 'Intermediate', color: 'bg-yellow-100 text-yellow-700', value: 2 },
-  ADVANCED: { label: 'Advanced', color: 'bg-blue-100 text-blue-700', value: 3 },
+  ADVANCED: { label: 'Advanced', color: 'bg-amber-100 text-amber-800', value: 3 },
   EXPERT: { label: 'Expert', color: 'bg-green-100 text-green-700', value: 4 },
 };
 
@@ -65,7 +65,7 @@ export default function TechnicalSkillsPage() {
       {/* Assessments */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : assessments.length === 0 ? (
         <EmptyState

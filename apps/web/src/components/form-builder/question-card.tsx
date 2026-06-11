@@ -193,7 +193,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                 onUpdate({ ...question, helperText: e.target.value })
               }
               placeholder="e.g. Enter the number of full-time staff, e.g. 45"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -207,7 +207,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                     <button
                       type="button"
                       onClick={addOption}
-                      className="text-xs font-medium text-blue-600 hover:underline"
+                      className="text-xs font-medium text-primary hover:underline"
                     >
                       Add option
                     </button>
@@ -219,7 +219,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                           type="text"
                           value={option}
                           onChange={(e) => updateOption(index, e.target.value)}
-                          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
                         />
                         <button
                           type="button"
@@ -241,7 +241,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                     <button
                       type="button"
                       onClick={addRow}
-                      className="text-xs font-medium text-blue-600 hover:underline"
+                      className="text-xs font-medium text-primary hover:underline"
                     >
                       Add row
                     </button>
@@ -253,7 +253,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                           type="text"
                           value={row}
                           onChange={(e) => updateRow(index, e.target.value)}
-                          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
                         />
                         <button
                           type="button"
@@ -278,7 +278,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                         type="number"
                         value={typeof question.config?.min === 'number' ? question.config.min : 0}
                         onChange={(e) => updateNumericConfig('min', Number(e.target.value))}
-                        className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
                       />
                     </div>
                     <div>
@@ -287,7 +287,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                         type="number"
                         value={typeof question.config?.max === 'number' ? question.config.max : question.type === 'net_promoter_score' ? 10 : 5}
                         onChange={(e) => updateNumericConfig('max', Number(e.target.value))}
-                        className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
                       />
                     </div>
                   </div>
@@ -311,7 +311,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                   onClick={() => toggleDimension(dim)}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                     question.dimensions?.includes(dim)
-                      ? 'bg-blue-600 text-white border-blue-600'
+                      ? 'bg-primary text-white border-primary'
                       : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400'
                   }`}
                   aria-pressed={question.dimensions?.includes(dim)}

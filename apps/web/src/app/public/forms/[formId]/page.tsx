@@ -45,7 +45,7 @@ export default function PublicFillFormPage() {
   if (error) {
     return (
       <div>
-        <Link href="/" className="text-sm text-blue-600 hover:underline mb-4 inline-block">
+        <Link href="/" className="text-sm text-primary hover:underline mb-4 inline-block">
           ← Back to home
         </Link>
         <div role="alert" className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
@@ -73,7 +73,7 @@ export default function PublicFillFormPage() {
 
   return (
     <div>
-      <Link href="/" className="text-sm text-blue-600 hover:underline mb-4 inline-block">
+      <Link href="/" className="text-sm text-primary hover:underline mb-4 inline-block">
         ← Back to home
       </Link>
 

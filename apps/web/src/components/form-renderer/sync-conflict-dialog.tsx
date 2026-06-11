@@ -58,7 +58,7 @@ export function SyncConflictDialog({
         <div className="space-y-2">
           <button
             onClick={onKeepLocal}
-            className="w-full py-2.5 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            className="w-full py-2.5 px-4 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
           >
             Use my local version
           </button>

@@ -87,7 +87,7 @@ export default function NewOrganogramPage() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -133,7 +133,7 @@ export default function NewOrganogramPage() {
             id="evaluation"
             value={selectedEvaluationId}
             onChange={(event) => setSelectedEvaluationId(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
           >
             {evaluations.map((evaluation) => (
               <option key={evaluation.id} value={evaluation.id}>
@@ -158,7 +158,7 @@ export default function NewOrganogramPage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+            className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-amber-300"
           >
             {saving ? 'Creating organogram…' : 'Create organogram'}
           </button>

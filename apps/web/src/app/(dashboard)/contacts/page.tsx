@@ -82,13 +82,13 @@ export default function ContactsPage() {
           </div>
           <Link
             href="/contacts/new"
-            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            className="inline-flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark"
           >
             + Add Contact
           </Link>
         </div>
         {feedback ? (
-          <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             {feedback}
           </div>
         ) : null}
@@ -125,7 +125,7 @@ export default function ContactsPage() {
       {/* Contacts Table */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -176,7 +176,7 @@ export default function ContactsPage() {
                       type="button"
                       onClick={() => handleAssign(contact)}
                       disabled={busyContactId === contact.id}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:text-slate-400"
+                      className="text-primary hover:text-blue-800 text-sm font-medium disabled:text-slate-400"
                     >
                       {busyContactId === contact.id ? 'Assigning…' : 'Assign'}
                     </button>

@@ -41,7 +41,7 @@ export default function OrganogramPage() {
           <button
             type="button"
             onClick={() => (window.location.href = '/organogram/new')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark"
           >
             + Create Organogram
           </button>
@@ -68,7 +68,7 @@ export default function OrganogramPage() {
       {/* Organograms */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : organograms.length === 0 ? (
         <EmptyState

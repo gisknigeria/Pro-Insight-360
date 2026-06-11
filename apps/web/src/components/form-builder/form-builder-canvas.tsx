@@ -186,7 +186,7 @@ export function FormBuilderCanvas({
                   onChange={(event) =>
                     setDefinition((prev) => prev && ({ ...prev, title: event.target.value }))
                   }
-                  className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
                   placeholder="Untitled form"
                 />
               </div>
@@ -201,7 +201,7 @@ export function FormBuilderCanvas({
                     setDefinition((prev) => prev && ({ ...prev, description: event.target.value }))
                   }
                   rows={2}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
                   placeholder="Describe what this form is for"
                 />
               </div>
@@ -218,7 +218,7 @@ export function FormBuilderCanvas({
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark disabled:bg-amber-300 rounded-lg transition-colors"
                 aria-busy={saving}
               >
                 {saving ? 'Saving…' : '💾 Save Form'}
@@ -235,7 +235,7 @@ export function FormBuilderCanvas({
                   onClick={() => setCurrentPageIndex(index)}
                   className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
                     index === currentPageIndex
-                      ? 'bg-blue-600 text-white border-blue-600'
+                      ? 'bg-primary text-white border-primary'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >

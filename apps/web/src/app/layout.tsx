@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description:
     'Professional organisational evaluation, diagnosis and solution recommendation platform by GIS Konsult Ltd.',
   manifest: '/manifest.json',
-  themeColor: '#2563eb',
+  themeColor: '#b7791f',
   icons: {
     icon: '/favicon.ico',
   },
@@ -28,7 +28,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" content="#b7791f" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

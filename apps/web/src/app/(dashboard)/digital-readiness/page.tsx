@@ -80,7 +80,7 @@ export default function DigitalReadinessPage() {
       {/* Scores */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : scores.length === 0 ? (
         <EmptyState
@@ -110,7 +110,7 @@ export default function DigitalReadinessPage() {
                   <p className="text-2xl font-bold text-slate-900">{score.score}/100</p>
                 </div>
                 <div className="bg-slate-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${score.score}%` }}></div>
+                  <div className="bg-primary h-2 rounded-full" style={{ width: `${score.score}%` }}></div>
                 </div>
               </div>
 

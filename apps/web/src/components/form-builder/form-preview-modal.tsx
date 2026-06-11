@@ -88,7 +88,7 @@ function QuestionPreview({ question }: { question: QuestionDefinition }) {
         return null;
       case 'instruction_block':
         return (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             ℹ️ Instruction text will appear here
           </div>
         );
@@ -160,7 +160,7 @@ export function FormPreviewModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
-            <p className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-0.5">
+            <p className="text-xs font-medium text-primary uppercase tracking-wide mb-0.5">
               Preview — as respondents will see it
             </p>
             <h2 className="text-lg font-semibold text-slate-900">
@@ -205,7 +205,7 @@ export function FormPreviewModal({
         <div className="px-6 py-4 border-t border-slate-200 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+            className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg"
           >
             Close Preview
           </button>

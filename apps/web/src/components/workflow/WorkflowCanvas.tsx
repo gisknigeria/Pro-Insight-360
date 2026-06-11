@@ -232,7 +232,7 @@ function NodeInspector({ node, onUpdate, onClose }: NodeInspectorProps) {
 
       <button
         onClick={handleSave}
-        className="w-full bg-blue-500 text-white text-sm py-2 rounded hover:bg-blue-600 transition"
+        className="w-full bg-amber-500 text-white text-sm py-2 rounded hover:bg-primary transition"
       >
         Save Changes
       </button>

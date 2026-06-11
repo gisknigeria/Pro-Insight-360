@@ -73,7 +73,7 @@ export default function ResponsesPage() {
               onClick={() => setFilterStatus(status)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
                 filterStatus === status
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
@@ -86,7 +86,7 @@ export default function ResponsesPage() {
       {/* Responses Table */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -136,7 +136,7 @@ export default function ResponsesPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-24 bg-slate-200 rounded-full h-2">
                         <div
-                          className="bg-blue-600 h-2 rounded-full"
+                          className="bg-primary h-2 rounded-full"
                           style={{ width: `${response.completionPercentage}%` }}
                         ></div>
                       </div>
@@ -147,7 +147,7 @@ export default function ResponsesPage() {
                     {response.submittedAt ? new Date(response.submittedAt).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">View</button>
+                    <button className="text-primary hover:text-blue-800 text-sm font-medium">View</button>
                   </td>
                 </tr>
               ))}

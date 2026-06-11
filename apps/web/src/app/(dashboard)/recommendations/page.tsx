@@ -20,7 +20,7 @@ const PRIORITY_CONFIG = {
   CRITICAL: { label: 'Critical', color: 'bg-red-100 text-red-700' },
   HIGH: { label: 'High', color: 'bg-orange-100 text-orange-700' },
   MEDIUM: { label: 'Medium', color: 'bg-yellow-100 text-yellow-700' },
-  LOW: { label: 'Low', color: 'bg-blue-100 text-blue-700' },
+  LOW: { label: 'Low', color: 'bg-amber-100 text-amber-800' },
 };
 
 export default function RecommendationsPage() {
@@ -61,7 +61,7 @@ export default function RecommendationsPage() {
               onClick={() => setFilterPriority(priority)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
                 filterPriority === priority
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
@@ -74,7 +74,7 @@ export default function RecommendationsPage() {
       {/* List */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState

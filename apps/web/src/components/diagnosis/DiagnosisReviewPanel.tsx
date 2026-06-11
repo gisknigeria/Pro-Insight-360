@@ -67,7 +67,7 @@ function SectionEditor({ title, content, onChange, isEditing }: SectionEditorPro
           value={content}
           onChange={(e) => onChange(e.target.value)}
           rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-primary focus:border-primary"
         />
       </div>
     );
@@ -95,7 +95,7 @@ function RecommendationEditor({ recommendation, onChange, isEditing, onAddTimeli
     critical: "bg-red-100 text-red-800",
     high: "bg-orange-100 text-orange-800",
     medium: "bg-yellow-100 text-yellow-800",
-    low: "bg-blue-100 text-blue-800",
+    low: "bg-amber-100 text-blue-800",
   };
 
   if (isEditing) {
@@ -197,7 +197,7 @@ function RecommendationEditor({ recommendation, onChange, isEditing, onAddTimeli
         <span className="bg-gray-100 px-2 py-0.5 rounded">Dimension: {recommendation.dimension}</span>
         <span className="bg-gray-100 px-2 py-0.5 rounded">Effort: {recommendation.effort}</span>
         {recommendation.timeline && (
-          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Timeline: {recommendation.timeline}</span>
+          <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Timeline: {recommendation.timeline}</span>
         )}
       </div>
       <p className="text-xs text-gray-500 mt-2">
@@ -280,7 +280,7 @@ export default function DiagnosisReviewPanel({
 
   const statusColors: Record<DiagnosisStatus, string> = {
     pending_review: "bg-yellow-100 text-yellow-800 border-yellow-300",
-    in_review: "bg-blue-100 text-blue-800 border-blue-300",
+    in_review: "bg-amber-100 text-blue-800 border-blue-300",
     approved: "bg-green-100 text-green-800 border-green-300",
     rejected: "bg-red-100 text-red-800 border-red-300",
   };
@@ -338,7 +338,7 @@ export default function DiagnosisReviewPanel({
               className={`px-3 py-2 text-sm rounded-md ${
                 isEditing
                   ? "bg-gray-200 text-gray-700"
-                  : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  : "bg-amber-100 text-amber-800 hover:bg-blue-200"
               }`}
             >
               {isEditing ? "Cancel Edit" : "Edit"}
@@ -469,7 +469,7 @@ export default function DiagnosisReviewPanel({
           {isEditing && (
             <button
               onClick={handleSave}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark text-sm font-medium"
             >
               Save Changes
             </button>
