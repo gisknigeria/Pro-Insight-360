@@ -17,6 +17,7 @@ interface Gap {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   affectedDepartments: string[];
   recommendedAction: string;
+  what?: string;
   who?: string;
   how?: string;
   when?: string;
