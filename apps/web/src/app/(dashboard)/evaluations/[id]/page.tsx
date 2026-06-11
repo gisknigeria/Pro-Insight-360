@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch } from '@/lib/api';
-import { diagnosisApiEndpoints, evaluationApiEndpoints } from '@/lib/apiEndpoints';
+import { diagnosisApiEndpoints } from '@/lib/apiEndpoints';
 
 interface Diagnosis {
   id: string;
@@ -45,7 +45,7 @@ export default function EvaluationDetailPage() {
     setLoading(true);
     setError('');
     try {
-      const response = await apiFetch<{ diagnosis: Diagnosis | null }>(evaluationApiEndpoints.diagnosis(evaluationId));
+      const response = await apiFetch<{ diagnosis: Diagnosis | null }>(diagnosisApiEndpoints.diagnosis(evaluationId));
       setDiagnosis(response.diagnosis);
     } catch (err: any) {
       setError(err?.message || 'Unable to load AI diagnosis.');

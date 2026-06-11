@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { GapAnalysisPanel } from '@/components/diagnosis/gap-analysis-panel';
 import RadarChart from '@/components/charts/RadarChart';
@@ -14,49 +14,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 type Tab = 'analysis' | 'gaps' | 'responses';
 
-class DiagnosisErrorBoundary extends React.Component<{
-  children: React.ReactNode;
-  onReset: () => void;
-}> {
-  state = { hasError: false, errorMessage: '' };
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, errorMessage: error?.message ?? 'Something went wrong while rendering the diagnosis page.' };
-  }
-
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('Diagnosis page rendering error:', error, info);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
-          <div className="max-w-xl rounded-3xl border border-red-200 bg-white p-8 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-red-600">Rendering error</p>
-            <h1 className="mt-4 text-2xl font-semibold text-slate-900">Unable to display diagnosis</h1>
-            <p className="mt-3 text-sm text-slate-600">{this.state.errorMessage}</p>
-            <button
-              type="button"
-              onClick={this.props.onReset}
-              className="mt-6 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              Try again
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
 export default function EvaluationDiagnosisPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>('analysis');
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState('');
@@ -152,12 +113,11 @@ export default function EvaluationDiagnosisPage() {
     );
   }
 
-  const diagnosisGaps = Array.isArray(diagnosis?.sections?.gaps) ? diagnosis.sections.gaps : null;
-  const gaps = diagnosisGaps ?? (gapsApi.data as any[] | null);
+  const gaps = gapsApi.data as any[] | null;
   const responses = responsesApi.data;
-  const gapsLoading = diagnosisGaps ? false : gapsApi.loading;
+  const gapsLoading = gapsApi.loading;
   const responsesLoading = responsesApi.loading;
-  const pageError = (diagnosisGaps ? '' : gapsApi.error) || responsesApi.error || diagnosisApi.error;
+  const pageError = gapsApi.error || responsesApi.error || diagnosisApi.error;
 
   function buildGapSummary(gapsData: any[] | null) {
     if (!gapsData) return null;
@@ -193,27 +153,6 @@ export default function EvaluationDiagnosisPage() {
   }
 
   const gapSummary = buildGapSummary(gaps);
-
-  const diagnosisWeaknesses: string[] = Array.isArray(diagnosis?.sections?.weaknesses)
-    ? diagnosis.sections.weaknesses.map((item: any) => String(item))
-    : [];
-
-  const diagnosisRecommendations: string[] = Array.isArray(diagnosis?.sections?.recommendations)
-    ? diagnosis.sections.recommendations.map((item: any) => String(item))
-    : [];
-
-  const diagnosisActionPlan = Array.isArray(diagnosis?.sections?.actionPlan)
-    ? diagnosis.sections.actionPlan
-    : [];
-
-  const gapSeverityChartData = useMemo(() => {
-    return [
-      { label: 'Critical', value: gapSummary?.bySeverity.critical ?? 0, color: '#ef4444' },
-      { label: 'High', value: gapSummary?.bySeverity.high ?? 0, color: '#f97316' },
-      { label: 'Medium', value: gapSummary?.bySeverity.medium ?? 0, color: '#eab308' },
-      { label: 'Low', value: gapSummary?.bySeverity.low ?? 0, color: '#0f766e' },
-    ];
-  }, [gapSummary]);
 
   async function runDiagnosis() {
     setRunning(true);
@@ -293,11 +232,7 @@ export default function EvaluationDiagnosisPage() {
 
 
   return (
-    <DiagnosisErrorBoundary
-      key={errorBoundaryKey}
-      onReset={() => setErrorBoundaryKey((current) => current + 1)}
-    >
-      <div>
+    <div>
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -500,111 +435,22 @@ export default function EvaluationDiagnosisPage() {
         )}
 
         {activeTab === 'gaps' && (
-          <div className="space-y-6">
-            <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-                  <div>
-                    <h2 className="text-base font-semibold text-slate-900">Gap Analysis</h2>
-                    <p className="text-sm text-slate-500 mt-1">
-                      Combined diagnosis insights, severity distribution, and recommended actions from the backend.
-                    </p>
-                  </div>
-                  <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-                    Total gaps: {gapSummary?.total ?? 0}
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between gap-2 mb-4">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">Severity distribution</p>
-                      <p className="text-sm text-slate-500">Review how gaps are weighted by severity.</p>
-                    </div>
-                    <span className="text-sm font-medium text-slate-600">{gapSummary?.total ?? 0} gaps</span>
-                  </div>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={gapSeverityChartData} layout="vertical" margin={{ left: 0, right: 10, top: 10, bottom: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis type="number" tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                        <YAxis dataKey="label" type="category" tick={{ fill: '#0f172a', fontSize: 12 }} width={90} />
-                        <Tooltip cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
-                        <Bar dataKey="value" radius={[10, 10, 10, 10]} fill="#2563eb" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {gapsLoading ? (
-                  <div className="mt-6 text-slate-500 text-sm">Loading gap analysis…</div>
-                ) : gaps === null ? (
-                  <EmptyState
-                    icon="🔍"
-                    title="Gap analysis unavailable"
-                    description="Unable to fetch gap details for this evaluation."
-                  />
-                ) : (
-                  <div className="mt-6">
-                    <GapAnalysisPanel summary={gapSummary} />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-6">
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-sm font-semibold text-slate-900 mb-4">Key weaknesses</h3>
-                  {diagnosisWeaknesses.length > 0 ? (
-                    <ul className="space-y-3 text-sm text-slate-700">
-                      {diagnosisWeaknesses.map((item, idx) => (
-                        <li key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-slate-500">No weaknesses were identified by the latest diagnosis.</p>
-                  )}
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-sm font-semibold text-slate-900 mb-4">Recommendations</h3>
-                  {diagnosisRecommendations.length > 0 ? (
-                    <ul className="space-y-3 text-sm text-slate-700">
-                      {diagnosisRecommendations.map((item, idx) => (
-                        <li key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-slate-500">No recommendations have been generated yet.</p>
-                  )}
-                </div>
-
-                {diagnosisActionPlan.length > 0 && (
-                  <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Action plan</h3>
-                    <div className="space-y-4 text-sm text-slate-700">
-                      {diagnosisActionPlan.map((item: any, idx: number) => (
-                        <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <p className="font-semibold text-slate-900">{item.what || 'Action item'}</p>
-                          <p className="mt-3 text-sm text-slate-600">{item.how || 'How to execute is not available.'}</p>
-                          <div className="mt-4 grid gap-3 sm:grid-cols-2 text-xs text-slate-500">
-                            <div>
-                              <span className="font-semibold">Owner:</span> {item.who || 'TBD'}
-                            </div>
-                            <div>
-                              <span className="font-semibold">When:</span> {item.when || 'TBD'}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 mb-4">Gap Analysis</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Loaded from the diagnosis backend for this evaluation.
+            </p>
+            {gapsLoading ? (
+              <p className="text-slate-400 text-sm">Loading gap analysis…</p>
+            ) : gaps === null ? (
+              <EmptyState
+                icon="🔍"
+                title="Gap analysis unavailable"
+                description="Unable to fetch gap details for this evaluation."
+              />
+            ) : (
+              <GapAnalysisPanel summary={gapSummary} />
+            )}
           </div>
         )}
 
@@ -729,6 +575,5 @@ export default function EvaluationDiagnosisPage() {
         )}
       </div>
     </div>
-  </DiagnosisErrorBoundary>
   );
 }
