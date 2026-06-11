@@ -451,7 +451,7 @@ export default function EvaluationDiagnosisPage() {
 
                 {responses.sampleAnswers && responses.sampleAnswers.length > 0 ? (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-slate-900">Sample answers used for diagnosis</h3>
+                    
                     <div className="space-y-3">
                       {responses.sampleAnswers.map((item: any, index: number) => (
                         <div key={index} className="rounded-2xl border border-slate-200 bg-white p-4">

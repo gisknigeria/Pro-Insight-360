@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import OrgChart from '@/components/organogram/OrgChart';
 import ConsultantDashboard from '@/components/dashboards/ConsultantDashboard';
 import HODDashboard from '@/components/dashboards/HODDashboard';
@@ -186,27 +187,7 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
   return (
     <div className="space-y-4">
       {/* Summary card */}
-      <div className="rounded-2xl border border-border bg-gradient-to-r from-primary/5 via-accent/5 to-transparent p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-lg shadow-lg shadow-primary/20">
-              📊
-            </div>
-            <div>
-              <p className="text-sm font-bold text-foreground">{published.summary || 'Latest published evaluation'}</p>
-              <p className="text-xs text-muted mt-0.5">
-                Published {new Date(published.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} by {published.publishedBy || 'Superadmin'}
-              </p>
-              {evaluation ? (
-                <Link href={`/evaluations/${evaluation.id}/diagnosis`} className="text-xs font-semibold text-primary hover:text-primary-light mt-1 inline-block transition-colors">
-                  Open evaluation diagnosis →
-                </Link>
-              ) : null}
-            </div>
-          </div>
-          <Pill label={published.recipientName ? `For ${published.recipientName}` : 'Shared insight'} color="blue" />
-        </div>
-      </div>
+      
 
       {analysis?.executiveSummary ? (
         <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
@@ -320,28 +301,9 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             Supporting charts
           </h4>
-          <div className="grid gap-4">
+          <div className="grid gap-4 xl:grid-cols-2">
             {analysis.charts.map((chart, chartIndex) => (
-              <div key={chartIndex} className="rounded-xl border border-border bg-surface-muted p-4">
-                <p className="font-semibold text-foreground mb-3">{chart.title || `Chart ${chartIndex + 1}`}</p>
-                {chart.data?.map((row, rowIndex) => {
-                  const value = Math.min(100, Math.max(0, Number(row.value || 0)));
-                  return (
-                    <div key={rowIndex} className="mb-3 last:mb-0">
-                      <div className="flex justify-between text-xs text-muted mb-1.5">
-                        <span className="font-medium">{row.label}</span>
-                        <span className="font-bold">{value}%</span>
-                      </div>
-                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-border">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-1000 ease-out"
-                          style={{ width: `${value}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <AnalysisChartCard key={chartIndex} chart={chart} />
             ))}
           </div>
         </div>
@@ -361,6 +323,50 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ label?: string; name?: string; value?: number; count?: number }>; }; }) {
+  const chartData = Array.isArray(chart.data)
+    ? chart.data.map((row, rowIndex) => ({
+        name: String(row.label ?? row.name ?? `Item ${rowIndex + 1}`),
+        value: Number(row.value ?? row.count ?? 0),
+      }))
+    : [];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-muted p-4 min-w-0">
+      <p className="font-semibold text-foreground mb-3">{chart.title || 'Supporting chart'}</p>
+      {chartData.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border/60 bg-surface p-5 text-sm text-muted">No chart data available.</div>
+      ) : (
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: '#475569', fontSize: 11 }}
+                interval={0}
+                angle={-20}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  fontSize: 12,
+                }}
+              />
+              <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
@@ -640,7 +646,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={mounted ? 'animate-fade-in' : ''}>
+    <div className={`${mounted ? 'animate-fade-in' : ''} max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8`}>
       {/* ── Header ── */}
       <div className="mb-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
