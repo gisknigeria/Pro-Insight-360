@@ -1,22 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { isClientAdmin as checkClientAdmin } from '@/lib/auth';
 import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
 import type { OrgRow } from '@/components/organogram/OrgChartUploader';
-import { isClientAdmin } from '@/lib/auth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Organisation { id: string; name: string; }
-
-interface UserSummary {
-  id: string; email: string; name: string; role: string; organisation: Organisation;
-}
-
 interface OrgNode { id?: string; label?: string; group?: string; }
 interface OrgLink { source?: string; target?: string; relation?: string; }
+interface Organogram { nodes?: OrgNode[]; links?: OrgLink[]; }
 
 interface PublishedAnalysis {
   id: string;
@@ -27,7 +22,7 @@ interface PublishedAnalysis {
   evaluationId?: string | null;
   summary: string;
   analysis: {
-    organogram?: { nodes?: OrgNode[]; links?: OrgLink[] };
+    organogram?: Organogram;
     executiveSummary?: string;
   } | null;
 }
@@ -55,129 +50,157 @@ function buildOrgRows(nodes?: OrgNode[], links?: OrgLink[]): OrgRow[] {
   return rows;
 }
 
-// Convert OrgRow[] back to nodes/links for saving
-function orgRowsToOrgData(rows: OrgRow[]): { nodes: OrgNode[]; links: OrgLink[] } {
-  const nodes: OrgNode[] = rows.map((r, i) => ({
-    id: String(i + 1),
-    label: r.name,
-    group: r.title ?? '',
-  }));
-  const labelToId = new Map(nodes.map(n => [n.label!, n.id!]));
-  const links: OrgLink[] = rows
-    .filter(r => r.reportsTo)
-    .map(r => ({
-      source: labelToId.get(r.name) ?? r.name,
-      target: labelToId.get(r.reportsTo ?? '') ?? r.reportsTo ?? '',
-      relation: 'reports to',
-    }));
-  return { nodes, links };
+// ─── Edit panel ───────────────────────────────────────────────────────────────
+
+interface EditPanelProps {
+  organogram: Organogram;
+  onSave: (updated: Organogram) => Promise<void>;
+  onCancel: () => void;
 }
 
-// ─── Inline editor for organogram rows ───────────────────────────────────────
+function EditPanel({ organogram, onSave, onCancel }: EditPanelProps) {
+  const [nodesText, setNodesText] = useState(JSON.stringify(organogram.nodes ?? [], null, 2));
+  const [linksText, setLinksText] = useState(JSON.stringify(organogram.links ?? [], null, 2));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-interface EditorRow { name: string; title: string; reportsTo: string; }
-
-function OrgEditor({
-  rows, onChange,
-}: {
-  rows: EditorRow[];
-  onChange: (rows: EditorRow[]) => void;
-}) {
-  function update(i: number, field: keyof EditorRow, val: string) {
-    const next = rows.map((r, idx) => idx === i ? { ...r, [field]: val } : r);
-    onChange(next);
-  }
-  function addRow() {
-    onChange([...rows, { name: '', title: '', reportsTo: '' }]);
-  }
-  function removeRow(i: number) {
-    onChange(rows.filter((_, idx) => idx !== i));
+  async function handleSave() {
+    setError('');
+    try {
+      const nodes = JSON.parse(nodesText);
+      const links = JSON.parse(linksText);
+      if (!Array.isArray(nodes) || !Array.isArray(links)) throw new Error('Both must be arrays.');
+      setSaving(true);
+      await onSave({ nodes, links });
+    } catch (e: any) {
+      setError(e?.message ?? 'Invalid JSON');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[1fr_1fr_1fr_36px] gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
-        <span>Role / Name</span><span>Department</span><span>Reports To</span><span />
-      </div>
-      {rows.map((row, i) => (
-        <div key={i} className="grid grid-cols-[1fr_1fr_1fr_36px] gap-2 items-center">
-          <input value={row.name} onChange={e => update(i, 'name', e.target.value)}
-            placeholder="Role name"
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
-          <input value={row.title} onChange={e => update(i, 'title', e.target.value)}
-            placeholder="Department"
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
-          <select value={row.reportsTo} onChange={e => update(i, 'reportsTo', e.target.value)}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30">
-            <option value="">— Root (no parent) —</option>
-            {rows.filter((_, idx) => idx !== i).map((r, j) => (
-              <option key={j} value={r.name}>{r.name || `Row ${j + 1}`}</option>
-            ))}
-          </select>
-          <button type="button" onClick={() => removeRow(i)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition text-sm font-bold">
-            ✕
+    <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-bold text-blue-800">Edit organogram data</p>
+        <div className="flex gap-2">
+          <button type="button" onClick={onCancel}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+            Cancel
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving}
+            className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition">
+            {saving ? 'Saving…' : '💾 Save & publish'}
           </button>
         </div>
-      ))}
-      <button type="button" onClick={addRow}
-        className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
-        + Add row
-      </button>
+      </div>
+      {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+            Nodes — <code className="text-[10px]">[{"{"}"id","label","group"{"}"}]</code>
+          </p>
+          <textarea value={nodesText} onChange={e => setNodesText(e.target.value)} rows={14}
+            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-mono text-slate-800 focus:border-blue-400 focus:outline-none resize-none" />
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+            Links — <code className="text-[10px]">[{"{"}"source","target","relation"{"}"}]</code>
+          </p>
+          <textarea value={linksText} onChange={e => setLinksText(e.target.value)} rows={14}
+            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-mono text-slate-800 focus:border-blue-400 focus:outline-none resize-none" />
+        </div>
+      </div>
+      <p className="text-[11px] text-slate-400">
+        Tip: In links, use the exact label text from nodes in source/target (e.g. "General Manager (GM)"). Saving will update the chart for both admin and client immediately.
+      </p>
     </div>
+  );
+}
+
+// ─── Org card (super admin view) ──────────────────────────────────────────────
+
+interface OrgCardProps {
+  analysis: PublishedAnalysis;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function OrgCard({ analysis, isSelected, onSelect }: OrgCardProps) {
+  const nodeCount = analysis.analysis?.organogram?.nodes?.length ?? 0;
+  const deptCount = new Set(analysis.analysis?.organogram?.nodes?.map(n => n.group).filter(Boolean)).size;
+
+  return (
+    <button type="button" onClick={onSelect}
+      className={`w-full text-left rounded-2xl border p-4 transition-all ${
+        isSelected
+          ? 'border-blue-400 bg-blue-50 shadow-md'
+          : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'
+      }`}>
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${
+            isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100'
+          }`}>🏢</span>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-slate-900 truncate">
+              {analysis.recipientName ?? 'Unknown org'}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              {new Date(analysis.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {analysis.publishedBy ? ` · ${analysis.publishedBy}` : ''}
+            </p>
+          </div>
+        </div>
+        {isSelected && <span className="shrink-0 text-blue-600 font-bold text-xs">▶ Viewing</span>}
+      </div>
+      <div className="flex gap-3 text-xs text-slate-500">
+        <span className="inline-flex items-center gap-1">👤 {nodeCount} roles</span>
+        <span className="inline-flex items-center gap-1">🏢 {deptCount} depts</span>
+      </div>
+    </button>
   );
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OrganogramPage() {
-  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
-  const [orgName, setOrgName] = useState('');
+  const [isClient, setIsClient] = useState(false);
+  const [clientRole, setClientRole] = useState(false);
   const [analyses, setAnalyses] = useState<PublishedAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // Super admin state
   const [selectedId, setSelectedId] = useState<string>('');
   const [editing, setEditing] = useState(false);
-  const [editorRows, setEditorRows] = useState<EditorRow[]>([]);
-  const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
-    async function load() {
-      const token = localStorage.getItem('accessToken');
-      if (!token) { setError('Please sign in.'); setLoading(false); return; }
-
-      let userId = '';
-      try { userId = JSON.parse(atob(token.split('.')[1])).sub; }
-      catch { setError('Session error.'); setLoading(false); return; }
-
-      try {
-        const user = await apiFetch<UserSummary>(`/users/${userId}`);
-        const superAdmin = !isClientAdmin() && user.role === 'SUPER_ADMIN';
-        setIsSuperAdmin(superAdmin);
-        setOrgName(user.organisation?.name ?? '');
-
-        const endpoint = superAdmin ? '/published-analyses/all' : '/published-analyses';
-        const allPublished = await apiFetch<PublishedAnalysis[]>(endpoint);
-
-        const withOrg = allPublished.filter(
-          pa => pa.analysis?.organogram?.nodes && pa.analysis.organogram.nodes.length > 0
-        );
-        setAnalyses(withOrg);
-        if (withOrg.length > 0) setSelectedId(withOrg[0].id);
-      } catch (err: any) {
-        setError(err?.message || 'Unable to load organogram data.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    setIsClient(true);
+    setClientRole(checkClientAdmin());
   }, []);
 
+  const loadAnalyses = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const isClientAdminRole = checkClientAdmin();
+      const endpoint = isClientAdminRole ? '/published-analyses' : '/published-analyses/all';
+      const data = await apiFetch<PublishedAnalysis[]>(endpoint);
+      const withOrg = data.filter(
+        pa => pa.analysis?.organogram?.nodes && pa.analysis.organogram.nodes.length > 0
+      );
+      setAnalyses(withOrg);
+      if (withOrg.length > 0 && !selectedId) setSelectedId(withOrg[0].id);
+    } catch (err: any) {
+      setError(err?.message || 'Unable to load organogram data.');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedId]);
+
+  useEffect(() => { if (isClient) loadAnalyses(); }, [isClient]);
+
   const selected = useMemo(
-    () => analyses.find(a => a.id === selectedId) ?? analyses[0] ?? null,
+    () => analyses.find(a => a.id === selectedId) ?? null,
     [analyses, selectedId]
   );
 
@@ -191,220 +214,189 @@ export default function OrganogramPage() {
     [orgRows]
   );
 
-  // Start editing — copy current rows into editor
-  function startEdit() {
-    setEditorRows(orgRows.map(r => ({ name: r.name, title: r.title ?? '', reportsTo: r.reportsTo ?? '' })));
-    setEditing(true);
-    setSaveMsg('');
-  }
-
-  function cancelEdit() {
-    setEditing(false);
-    setEditorRows([]);
-    setSaveMsg('');
-  }
-
-  // Preview of the edited rows as OrgRow[]
-  const previewRows: OrgRow[] = useMemo(
-    () => editorRows.map(r => ({ name: r.name, title: r.title, reportsTo: r.reportsTo })),
-    [editorRows]
-  );
-
-  async function saveOrganogram() {
+  async function handleSaveOrganogram(updated: Organogram) {
     if (!selected) return;
-    setSaving(true); setSaveMsg('');
-    try {
-      const organogram = orgRowsToOrgData(editorRows);
-      await apiFetch(`/published-analyses/${selected.id}/organogram`, {
-        method: 'PATCH',
-        body: JSON.stringify({ organogram }),
-      });
-      // Update local state so the chart refreshes immediately
-      setAnalyses(prev => prev.map(a => {
-        if (a.id !== selected.id) return a;
-        return {
-          ...a,
-          analysis: { ...a.analysis, organogram },
-        };
-      }));
-      setSaveMsg('Organogram saved successfully.');
-      setEditing(false);
-    } catch (err: any) {
-      setSaveMsg(err?.message || 'Unable to save organogram.');
-    } finally {
-      setSaving(false);
-    }
+    await apiFetch(`/published-analyses/${selected.id}/organogram`, {
+      method: 'PATCH',
+      body: JSON.stringify({ organogram: updated }),
+    });
+    // Update local state immediately
+    setAnalyses(prev => prev.map(a => {
+      if (a.id !== selected.id) return a;
+      return { ...a, analysis: { ...(a.analysis ?? {}), organogram: updated } };
+    }));
+    setEditing(false);
+    setSaveMsg('Organogram saved and published to client.');
+    setTimeout(() => setSaveMsg(''), 4000);
   }
 
-  // ── Loading / error ───────────────────────────────────────────────────────
-
-  if (loading || isSuperAdmin === null) {
+  if (!isClient || loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <div className="h-10 w-10 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin mb-4" />
-        <p className="text-sm text-slate-500">Loading organogram…</p>
+        <p className="text-sm text-slate-500">Loading organograms…</p>
       </div>
     );
   }
 
   if (error) {
-    return <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 font-medium">{error}</div>;
+    return <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>;
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── CLIENT ADMIN view ────────────────────────────────────────────────────────
+  if (clientRole) {
+    return (
+      <div className="min-h-screen bg-slate-50/50">
+        <div className="mb-8">
+          <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">GISKonsult · Organisational Structure</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Organogram</h1>
+          <p className="mt-1.5 text-sm text-slate-500">Your organisation's hierarchy and reporting structure.</p>
+        </div>
+        {analyses.length === 0 ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <EmptyState icon="🏢" title="No organogram available yet"
+              description="Your organisational structure chart will appear here once it has been prepared by the GISKonsult team." />
+          </div>
+        ) : (
+          <>
+            {analyses.length > 1 && (
+              <div className="mb-6 flex flex-wrap gap-2">
+                {analyses.map(a => (
+                  <button key={a.id} type="button" onClick={() => setSelectedId(a.id)}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+                      selectedId === a.id ? 'bg-teal-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:border-teal-400'
+                    }`}>
+                    📋 {new Date(a.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {[
+                { label: 'Total Roles', value: orgRows.length, icon: '👤', grad: 'from-teal-500 to-emerald-600' },
+                { label: 'Departments', value: departments.length, icon: '🏢', grad: 'from-blue-500 to-indigo-600' },
+                { label: 'Report Date', value: selected ? new Date(selected.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—', icon: '📅', grad: 'from-violet-500 to-purple-600' },
+              ].map(stat => (
+                <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.grad} text-lg shadow-md`}>{stat.icon}</div>
+                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                  <p className="text-xs font-semibold text-slate-500 mt-0.5">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-base font-bold text-slate-900 mb-5">Reporting Structure</h2>
+              {orgRows.length > 0
+                ? <OrgChart rows={orgRows} />
+                : <EmptyState icon="🏢" title="No structure data" description="The organogram structure could not be loaded." />
+              }
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
-  const headerLabel = isSuperAdmin ? 'Super Admin · All Organisations' : 'GISKonsult · Organisational Structure';
-  const headerTitle = isSuperAdmin ? 'All Organisation Organograms' : 'Organogram';
-  const headerDesc = isSuperAdmin
-    ? 'View and edit organisational structures across all client accounts.'
-    : `Organisational hierarchy and reporting structure${orgName ? ` for ${orgName}` : ''}.`;
-
+  // ── SUPER ADMIN view ─────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50/50">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">{headerLabel}</p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">{headerTitle}</h1>
-            <p className="mt-1.5 text-sm text-slate-500">{headerDesc}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">Super Admin · Organograms</p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Organisation Charts</h1>
+            <p className="mt-1.5 text-sm text-slate-500">
+              View, edit, and publish organograms across all client organisations.
+            </p>
           </div>
-          {!isSuperAdmin && orgName && (
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-teal-500 animate-pulse" />
-              <span className="text-sm font-bold text-slate-800">{orgName}</span>
-            </div>
-          )}
-          {isSuperAdmin && (
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-fuchsia-500 animate-pulse" />
-              <span className="text-sm font-bold text-slate-800">{analyses.length} organogram{analyses.length !== 1 ? 's' : ''}</span>
-            </div>
-          )}
+          <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-teal-500" />
+            <span className="text-sm font-bold text-slate-700">{analyses.length} organisation{analyses.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
       </div>
 
+      {saveMsg && (
+        <div className="mb-5 flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <span>✓</span>{saveMsg}
+        </div>
+      )}
+
       {analyses.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <EmptyState icon="🏢" title="No organograms available"
-            description={isSuperAdmin
-              ? "No published analyses with organogram data exist yet. Publish an analysis with organogram data from the GISKonsult Analytics page."
-              : "Your organisational structure chart will appear here once it has been prepared by the GISKonsult team."} />
+          <EmptyState icon="🏢" title="No organograms yet"
+            description="Organograms are generated when you publish an analysis that includes organisational structure data." />
         </div>
       ) : (
-        <>
-          {/* ── Organisation / analysis selector ── */}
-          <div className="mb-6 flex flex-wrap gap-2">
+        <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
+          {/* ── Left: Org list ── */}
+          <div className="space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 mb-2">Client organisations</p>
             {analyses.map(a => (
-              <button key={a.id} type="button"
-                onClick={() => { setSelectedId(a.id); setEditing(false); setSaveMsg(''); }}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                  selectedId === a.id
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700'
-                }`}>
-                🏢
-                {isSuperAdmin && a.recipientName ? `${a.recipientName} · ` : ''}
-                {new Date(a.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </button>
+              <OrgCard key={a.id} analysis={a} isSelected={selectedId === a.id}
+                onSelect={() => { setSelectedId(a.id); setEditing(false); }} />
             ))}
           </div>
 
-          {/* ── Stats ── */}
-          <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {[
-              { label: 'Total Roles',  value: editing ? editorRows.length : orgRows.length, icon: '👤', grad: 'from-teal-500 to-emerald-600' },
-              { label: 'Departments',  value: editing ? [...new Set(editorRows.map(r => r.title).filter(Boolean))].length : departments.length, icon: '🏢', grad: 'from-blue-500 to-indigo-600' },
-              { label: 'Report Date',  value: selected ? new Date(selected.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—', icon: '📅', grad: 'from-violet-500 to-purple-600' },
-            ].map(stat => (
-              <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.grad} text-lg shadow-md`}>{stat.icon}</div>
-                <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Save message ── */}
-          {saveMsg && (
-            <div className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${
-              saveMsg.includes('success') ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'
-            }`}>
-              {saveMsg.includes('success') ? '✓ ' : '⚠ '}{saveMsg}
-            </div>
-          )}
-
-          {/* ── Main card ── */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-4 mb-5">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  {isSuperAdmin && selected?.recipientName ? `${selected.recipientName} — ` : ''}Reporting Structure
-                </h2>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  {editing ? `Editing ${editorRows.length} roles` : `${orgRows.length} roles across ${departments.length} department${departments.length !== 1 ? 's' : ''}`}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {isSuperAdmin && !editing && (
-                  <button type="button" onClick={startEdit}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition shadow-sm">
-                    ✏️ Edit organogram
-                  </button>
-                )}
-                {isSuperAdmin && editing && (
-                  <>
-                    <button type="button" onClick={cancelEdit}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
-                      Cancel
-                    </button>
-                    <button type="button" onClick={saveOrganogram} disabled={saving}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition shadow-sm">
-                      {saving ? (
-                        <><span className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />Saving…</>
-                      ) : '💾 Save & publish'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* ── Editor ── */}
-            {isSuperAdmin && editing ? (
-              <div className="space-y-6">
-                <OrgEditor rows={editorRows} onChange={setEditorRows} />
-                {previewRows.filter(r => r.name).length > 0 && (
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Live preview</p>
-                    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <OrgChart rows={previewRows.filter(r => r.name)} />
+          {/* ── Right: Chart panel ── */}
+          <div className="space-y-5">
+            {selected && (
+              <>
+                {/* Card header */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-bold text-slate-900">{selected.recipientName ?? 'Organisation'}</p>
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        {orgRows.length} roles · {departments.length} departments
+                      </p>
+                      {selected.analysis?.executiveSummary && (
+                        <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed max-w-xl">
+                          {selected.analysis.executiveSummary}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {!editing && (
+                        <button type="button" onClick={() => setEditing(true)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition shadow-sm">
+                          ✏️ Edit organogram
+                        </button>
+                      )}
                     </div>
                   </div>
+                  {/* Dept pills */}
+                  {departments.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100">
+                      {departments.map((d, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">🏢 {d}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Edit panel */}
+                {editing && selected.analysis?.organogram && (
+                  <EditPanel
+                    organogram={selected.analysis.organogram}
+                    onSave={handleSaveOrganogram}
+                    onCancel={() => setEditing(false)}
+                  />
                 )}
-              </div>
-            ) : (
-              orgRows.length > 0 ? (
-                <OrgChart rows={orgRows} />
-              ) : (
-                <EmptyState icon="🏢" title="No structure data" description="The organogram structure could not be loaded." />
-              )
+
+                {/* Chart */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-x-auto">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Reporting structure</p>
+                  {orgRows.length > 0
+                    ? <OrgChart rows={orgRows} />
+                    : <EmptyState icon="🏢" title="No chart data" description="Edit the organogram to add nodes and links." />
+                  }
+                </div>
+              </>
             )}
           </div>
-
-          {/* ── Department list ── */}
-          {departments.length > 0 && !editing && (
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Departments represented</p>
-              <div className="flex flex-wrap gap-2">
-                {departments.map((dept, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                    🏢 {dept}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );

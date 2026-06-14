@@ -197,20 +197,13 @@ export default function EvaluationsPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Projects</p>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Evaluation Projects</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Projects</h1>
             <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">
               {evaluations.length}
             </span>
           </div>
-          <p className="mt-1.5 text-sm text-slate-500">Manage all organisational evaluation engagements.</p>
+          <p className="mt-1.5 text-sm text-slate-500">Manage all organisational evaluation projects.</p>
         </div>
-        <Link
-          href="/evaluations/new"
-          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
-        >
-          <span className="text-base">+</span>
-          New Evaluation
-        </Link>
       </div>
 
       {/* ── Stats + Chart ── */}

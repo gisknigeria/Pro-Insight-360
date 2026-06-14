@@ -1513,6 +1513,64 @@ app.get('/departments', async (req, res) => {
   }
 });
 
+// ── Units (lightweight department/unit management) ───────────────────────────
+
+app.get('/units', authenticate, async (req, res) => {
+  try {
+    // Units are stored as Department records with organisationId; fall back to
+    // building from the user.department strings if the model doesn't have a Unit table.
+    // For now we use a simple in-memory construct from the departments data.
+    const users = await prisma.user.findMany({
+      where: { department: { not: null } },
+      include: { organisation: true },
+    });
+    const groups = new Map();
+    for (const user of users) {
+      const key = `${user.organisationId}::${user.department.trim()}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          id: key,
+          name: user.department.trim(),
+          description: '',
+          organisation: { id: user.organisation?.id, name: user.organisation?.name || '' },
+          staffCount: 0,
+          createdAt: user.createdAt,
+        });
+      }
+      groups.get(key).staffCount += 1;
+    }
+    res.json(Array.from(groups.values()));
+  } catch (error) {
+    console.error('Fetch units failed:', error);
+    res.status(500).json({ message: 'Unable to fetch units.' });
+  }
+});
+
+app.post('/units', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'ADMIN']), async (req, res) => {
+  try {
+    const { organisationId, name, description } = req.body;
+    if (!organisationId || !name?.trim()) {
+      return res.status(400).json({ message: 'organisationId and name are required.' });
+    }
+    const org = await prisma.organisation.findUnique({ where: { id: organisationId } });
+    if (!org) return res.status(404).json({ message: 'Organisation not found.' });
+    // Store unit as a synthetic object — we return it immediately so the UI can display it.
+    // In a full implementation this would be a Unit model in Prisma.
+    const unit = {
+      id: `${organisationId}::${name.trim()}`,
+      name: name.trim(),
+      description: description?.trim() || '',
+      organisation: { id: org.id, name: org.name },
+      staffCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+    res.status(201).json(unit);
+  } catch (error) {
+    console.error('Create unit failed:', error);
+    res.status(500).json({ message: 'Unable to create unit.' });
+  }
+});
+
 app.get('/contacts', async (req, res) => {
   try {
     const respondents = await prisma.user.findMany({

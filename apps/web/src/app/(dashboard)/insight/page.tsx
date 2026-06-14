@@ -588,10 +588,10 @@ export default function InsightPage() {
           {/* ── KPI cards ── */}
           <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              { label: 'Evaluations',      value: orgEvals.length,                icon: '📋', grad: 'from-blue-500 to-indigo-600',   sub: `${orgEvals.filter(e => e.status === 'ACTIVE').length} active` },
+              { label: 'Projects',         value: orgEvals.length,                icon: '📁', grad: 'from-blue-500 to-indigo-600',   sub: `${orgEvals.filter(e => e.status === 'ACTIVE').length} active` },
               { label: 'Submitted',        value: aggregated.totalResponses,      icon: '👥', grad: 'from-emerald-500 to-teal-600',   sub: 'total responses' },
               { label: 'Total answers',    value: aggregated.totalAnswers,        icon: '✏️', grad: 'from-amber-500 to-orange-600',   sub: 'across all forms' },
-              { label: 'Avg completion',   value: `${aggregated.avgCompletion}%`, icon: '📈', grad: 'from-violet-500 to-purple-600',  sub: 'across evaluations' },
+              { label: 'Avg completion',   value: `${aggregated.avgCompletion}%`, icon: '📈', grad: 'from-violet-500 to-purple-600',  sub: 'across forms' },
             ].map(kpi => (
               <div key={kpi.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all">
                 <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${kpi.grad} text-lg shadow-md`}>
@@ -608,9 +608,9 @@ export default function InsightPage() {
           <div className="mb-6 border-b border-slate-200">
             <nav className="flex gap-1">
               {([
-                { id: 'overview',     label: 'Overview',          icon: '📈' },
-                { id: 'reports',      label: 'Published reports',  icon: '📋', badge: publishedAnalyses.length },
-                { id: 'evaluations',  label: 'Evaluations',        icon: '🏢', badge: orgEvals.length },
+                { id: 'overview',    label: 'Overview',          icon: '📈' },
+                { id: 'reports',     label: 'Published reports',  icon: '📋', badge: publishedAnalyses.length },
+                { id: 'evaluations', label: 'Projects',           icon: '📁', badge: orgEvals.length },
               ] as const).map(tab => (
                 <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
@@ -658,7 +658,7 @@ export default function InsightPage() {
                   {/* Per-evaluation completion bars */}
                   {aggregated.formData.length > 0 ? (
                     <div className="space-y-3">
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Completion by evaluation</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Completion by project</p>
                       {aggregated.formData.map((f, i) => (
                         <div key={i}>
                           <div className="flex justify-between text-xs mb-1">
@@ -846,41 +846,45 @@ export default function InsightPage() {
             </div>
           )}
 
-          {/* ─────────────────── EVALUATIONS ─────────────────── */}
+          {/* ─────────────────── PROJECTS ─────────────────── */}
           {activeTab === 'evaluations' && (
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Your evaluations</h2>
-                  <p className="text-sm text-slate-500">All evaluations linked to {userOrg?.name ?? 'your organisation'}.</p>
+                  <h2 className="text-lg font-bold text-slate-900">Your projects</h2>
+                  <p className="text-sm text-slate-500">All projects linked to {userOrg?.name ?? 'your organisation'} with their form responses and analysis.</p>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-white">
                   {orgEvals.length}
                 </span>
               </div>
               {orgEvals.length === 0 ? (
-                <EmptyState icon="📋" title="No evaluations yet" description="Evaluations created for your organisation will appear here." />
+                <EmptyState icon="📁" title="No projects yet" description="Projects created for your organisation will appear here." />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {orgEvals.map(ev => {
                     const m = evalMetrics.get(ev.id);
                     const sc = STATUS_CFG[ev.status] ?? STATUS_CFG.DRAFT;
                     const pct = m?.averageCompletion ?? 0;
+                    const hasAnalysis = publishedAnalyses.some(pa => pa.evaluationId === ev.id);
                     return (
                       <div key={ev.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300 hover:shadow-md transition-all">
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-base">📋</div>
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-base">📁</div>
                             <div className="min-w-0">
-                              <Link href={`/evaluations/${ev.id}`} className="text-sm font-bold text-slate-900 hover:text-blue-600 transition-colors truncate block">
-                                {ev.title}
-                              </Link>
+                              <p className="text-sm font-bold text-slate-900 truncate">{ev.title}</p>
                               <p className="text-xs text-slate-400 mt-0.5">
                                 {ev.startDate ? new Date(ev.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No start date'}
                               </p>
                             </div>
                           </div>
-                          <span className={`shrink-0 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>{sc.label}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {hasAnalysis && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">✓ Analysed</span>
+                            )}
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>{sc.label}</span>
+                          </div>
                         </div>
 
                         {m ? (
@@ -900,15 +904,13 @@ export default function InsightPage() {
                             <CompletionBar pct={pct} />
                           </>
                         ) : (
-                          <div className="space-y-2">
-                            <div className="h-8 animate-pulse rounded-xl bg-slate-100" />
-                          </div>
+                          <div className="h-8 animate-pulse rounded-xl bg-slate-100" />
                         )}
 
                         <div className="flex gap-2 mt-4">
                           <Link href={`/evaluations/${ev.id}/diagnosis`}
                             className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors">
-                            🔍 Diagnosis
+                            📊 Analysis
                           </Link>
                           <Link href={`/evaluations/${ev.id}`}
                             className="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">

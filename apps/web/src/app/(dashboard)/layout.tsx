@@ -103,14 +103,7 @@ export default function DashboardLayout({
             {children}
           </div>
 
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-6">
-            <div className="border-t border-border pt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-              <p className="text-xs text-muted">
-                &copy; {new Date().getFullYear()} Pro-Insight 360 by GIS Konsult Ltd.
-              </p>
-              <p className="text-xs text-muted">Evaluate. Diagnose. Transform.</p>
-            </div>
-          </div>
+        
         </main>
       </div>
     </div>
