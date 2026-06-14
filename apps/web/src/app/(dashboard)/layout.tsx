@@ -77,12 +77,12 @@ export default function DashboardLayout({
         </aside>
 
         <main className="flex-1 min-h-screen overflow-y-auto">
-          <div className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/90 text-white backdrop-blur lg:hidden">
+          <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 text-slate-900 backdrop-blur lg:hidden">
             <div className="flex items-center justify-between max-w-[1440px] mx-auto px-4 py-3 sm:px-6">
               <button
                 type="button"
                 onClick={() => setIsNavOpen(true)}
-                className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-white/15"
+                className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-50"
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <rect x="1" y="3" width="16" height="1.5" rx="0.75" fill="currentColor" />
@@ -93,7 +93,7 @@ export default function DashboardLayout({
               </button>
 
               <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-white">Pro-Insight 360</span>
+                <span className="text-sm font-bold text-slate-900">Pro-Insight 360</span>
                 <span className="h-2.5 w-2.5 rounded-full bg-success" aria-hidden="true" />
               </div>
             </div>

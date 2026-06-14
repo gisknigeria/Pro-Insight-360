@@ -420,6 +420,39 @@ function EmptyDashboard({ message }: { message: string }) {
 }
 
 function SuperAdminDashboard() {
+  const [stats, setStats] = useState({
+    organisations: 0,
+    evaluations: 0,
+    forms: 0,
+    reports: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    async function loadStats() {
+      try {
+        const [organisations, evaluations, forms, reports] = await Promise.all([
+          apiFetch<Organisation[]>('/organisations').catch(() => []),
+          apiFetch<Evaluation[]>('/evaluations').catch(() => []),
+          apiFetch<Array<{ id: string }>>('/forms').catch(() => []),
+          apiFetch<PublishedAnalysis[]>('/published-analyses').catch(() => []),
+        ]);
+        if (!active) return;
+        setStats({
+          organisations: organisations.length,
+          evaluations: evaluations.length,
+          forms: forms.length,
+          reports: reports.length,
+        });
+      } finally {
+        if (active) setLoadingStats(false);
+      }
+    }
+    loadStats();
+    return () => { active = false; };
+  }, []);
+
   const cards = [
     {
       title: 'Organisations',
@@ -449,24 +482,24 @@ function SuperAdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="dashboard-card-dark rounded-2xl p-6 text-white">
+      <div className="dashboard-card-dark rounded-2xl p-6 text-slate-900">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-teal-300">Super Admin</p>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-teal-600">Super Admin</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive command dashboard</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
               Central platform control for client organisations, form rollouts, diagnosis workflows, and governance signals.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
-              ['Uptime', '99.8%'],
-              ['Queue', '12'],
-              ['Risk', 'Low'],
+              ['Forms', loadingStats ? '...' : String(stats.forms)],
+              ['Projects', loadingStats ? '...' : String(stats.evaluations)],
+              ['Reports', loadingStats ? '...' : String(stats.reports)],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3">
-                <p className="text-lg font-black text-white">{value}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
+              <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-lg font-black text-slate-950">{value}</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
               </div>
             ))}
           </div>
@@ -474,10 +507,10 @@ function SuperAdminDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Client orgs" value="900+" icon="🏢" color="blue" delay={0} />
-        <StatCard label="Form completion" value="54.4%" icon="📄" color="yellow" delay={50} />
-        <StatCard label="Assessments" value="300k+" icon="📊" color="green" delay={100} />
-        <StatCard label="Published insights" value="$655" icon="💎" color="slate" delay={150} />
+        <StatCard label="Client orgs" value={loadingStats ? '...' : stats.organisations} icon="🏢" color="blue" delay={0} />
+        <StatCard label="Forms" value={loadingStats ? '...' : stats.forms} icon="📄" color="yellow" delay={50} />
+        <StatCard label="Projects" value={loadingStats ? '...' : stats.evaluations} icon="📊" color="green" delay={100} />
+        <StatCard label="Published insights" value={loadingStats ? '...' : stats.reports} icon="💎" color="slate" delay={150} />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
@@ -510,13 +543,13 @@ function SuperAdminDashboard() {
           </div>
         </div>
 
-        <div className="dashboard-card-dark rounded-2xl p-5 text-white">
+        <div className="dashboard-panel rounded-2xl p-5 text-slate-900">
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold">Quick actions</h2>
-              <p className="text-xs text-slate-400">Common admin moves.</p>
+              <p className="text-xs text-slate-500">Common admin moves.</p>
             </div>
-            <span className="h-2 w-2 rounded-full bg-teal-300" />
+            <span className="h-2 w-2 rounded-full bg-teal-500" />
           </div>
           <div className="space-y-3">
             {[
@@ -528,10 +561,10 @@ function SuperAdminDashboard() {
               <Link
                 key={href}
                 href={href}
-                className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.1]"
+                className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 transition hover:border-teal-300 hover:bg-white"
               >
                 {label}
-                <span className="text-teal-300">→</span>
+                <span className="text-teal-600">→</span>
               </Link>
             ))}
           </div>
@@ -774,12 +807,12 @@ export default function DashboardPage() {
   return (
     <div className={`${mounted ? 'animate-fade-in' : ''} mx-auto max-w-screen-2xl space-y-6`}>
       {/* ── Header ── */}
-      <div className="dashboard-card-dark rounded-2xl p-6 text-white">
+      <div className="dashboard-card-dark rounded-2xl p-6 text-slate-900">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold tracking-tight text-white">Client Admin Dashboard</h1>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-400/10 px-3 py-1 text-[11px] font-semibold text-teal-200 ring-1 ring-teal-300/20">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-950">Client Admin Dashboard</h1>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-200">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-300 opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-300" />
@@ -787,13 +820,13 @@ export default function DashboardPage() {
                 Live
               </span>
             </div>
-            <p className="text-sm text-slate-300">Live evaluation metrics and your latest published GISKonsult insight.</p>
+            <p className="text-sm text-slate-500">Live evaluation metrics and your latest published GISKonsult insight.</p>
           </div>
           {userOrg && (
-            <div className="inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white shadow-sm">
+            <div className="inline-flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 shadow-sm">
               <span className="flex-shrink-0 w-2 h-2 rounded-full bg-success" />
               <span className="font-bold">Organisation:</span>
-              <span className="text-slate-300">{userOrg.name}</span>
+              <span className="text-slate-500">{userOrg.name}</span>
             </div>
           )}
         </div>
@@ -871,8 +904,8 @@ export default function DashboardPage() {
           )}
 
           {selectedEvaluationForMetrics ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.08] px-4 py-3 text-sm text-slate-200">
-              Overall metrics from <span className="font-semibold text-white">{selectedEvaluationForMetrics.title}</span>.
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+              Overall metrics from <span className="font-semibold text-slate-950">{selectedEvaluationForMetrics.title}</span>.
             </div>
           ) : null}
 
