@@ -30,11 +30,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',               href: '/dashboard',    icon: 'dashboard',  roles: ['SUPER_ADMIN','CONSULTANT','CLIENT_ADMIN','HOD','RESPONDENT'], color: 'from-blue-400 to-blue-600' },
-  { label: 'Client Organisations',    href: '/organisations',icon: 'building',   roles: ['SUPER_ADMIN'],  color: 'from-violet-400 to-violet-600' },
+  { label: 'Client Orgs',    href: '/organisations',icon: 'building',   roles: ['SUPER_ADMIN'],  color: 'from-violet-400 to-violet-600' },
   { label: 'Insights',                href: '/insight',      icon: 'search',     roles: ['SUPER_ADMIN'],  color: 'from-cyan-400 to-sky-600' },
   { label: 'My Forms',                href: '/my-forms',     icon: 'form',       roles: ['HOD','RESPONDENT'], color: 'from-amber-400 to-amber-600' },
   { label: 'Structural Organogram',   href: '/organogram',   icon: 'tree',       roles: ['SUPER_ADMIN'],  color: 'from-teal-400 to-teal-600' },
-  { label: 'GISKonsult Analytics',    href: '/ai-diagnosis', icon: 'analytics',  roles: ['SUPER_ADMIN'],  color: 'from-fuchsia-400 to-purple-600' },
+  { label: 'Analytics',    href: '/ai-diagnosis', icon: 'analytics',  roles: ['SUPER_ADMIN'],  color: 'from-fuchsia-400 to-purple-600' },
   { label: 'Insights',                href: '/insight',      icon: 'search',     roles: ['CLIENT_ADMIN'], color: 'from-cyan-400 to-sky-600' },
   { label: 'Organogram',              href: '/organogram',   icon: 'tree',       roles: ['CLIENT_ADMIN'], color: 'from-teal-400 to-teal-600' },
   { label: 'Users',                   href: '/users',        icon: 'user',       roles: ['SUPER_ADMIN'],  color: 'from-rose-400 to-red-600' },

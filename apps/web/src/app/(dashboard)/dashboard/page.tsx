@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import type { ReactNode } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import OrgChart from '@/components/organogram/OrgChart';
 import ConsultantDashboard from '@/components/dashboards/ConsultantDashboard';
 import HODDashboard from '@/components/dashboards/HODDashboard';
@@ -75,10 +76,98 @@ interface PublishedAnalysis {
   };
 }
 
+type DashboardIconName = 'building' | 'form' | 'chart' | 'insight' | 'activity' | 'check' | 'edit' | 'report' | 'clipboard' | 'bot' | 'arrowRight';
+
+function DashboardIcon({ name, className = 'h-5 w-5' }: { name: DashboardIconName; className?: string }) {
+  const paths: Record<DashboardIconName, ReactNode> = {
+    building: (
+      <>
+        <path d="M4 21V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v15" />
+        <path d="M18 21V10h2a2 2 0 0 1 2 2v9" />
+        <path d="M8 8h4M8 12h4M8 16h4M3 21h20" />
+      </>
+    ),
+    form: (
+      <>
+        <path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+        <path d="M14 3v5h5M9 13h6M9 17h4" />
+      </>
+    ),
+    chart: (
+      <>
+        <path d="M4 19V5M4 19h16" />
+        <path d="M8 16v-5M12 16V8M16 16v-8" />
+      </>
+    ),
+    insight: (
+      <>
+        <path d="M12 3a7 7 0 0 0-4 12.74V18h8v-2.26A7 7 0 0 0 12 3Z" />
+        <path d="M9 22h6M10 18v-3h4v3" />
+      </>
+    ),
+    activity: <path d="M3 12h4l3-7 4 14 3-7h4" />,
+    check: (
+      <>
+        <path d="M20 6 9 17l-5-5" />
+        <path d="M21 12a9 9 0 1 1-3-6.7" />
+      </>
+    ),
+    edit: (
+      <>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+      </>
+    ),
+    report: (
+      <>
+        <path d="M5 3h14v18H5Z" />
+        <path d="M9 8h6M9 12h6M9 16h3" />
+      </>
+    ),
+    clipboard: (
+      <>
+        <path d="M9 4h6l1 2h3v15H5V6h3Z" />
+        <path d="M9 10h6M9 14h6M9 18h3" />
+      </>
+    ),
+    bot: (
+      <>
+        <path d="M12 8V4M7 8h10a3 3 0 0 1 3 3v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-5a3 3 0 0 1 3-3Z" />
+        <path d="M9 13h.01M15 13h.01M10 17h4" />
+      </>
+    ),
+    arrowRight: <path d="M5 12h14M13 5l7 7-7 7" />,
+  };
+
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}
+
+function iconForStatLabel(label: string) {
+  const normalized = label.toLowerCase();
+  if (normalized.includes('org')) return <DashboardIcon name="building" />;
+  if (normalized.includes('form')) return <DashboardIcon name="form" />;
+  if (normalized.includes('project') || normalized.includes('completion')) return <DashboardIcon name="chart" />;
+  if (normalized.includes('response')) return <DashboardIcon name="check" />;
+  if (normalized.includes('answer')) return <DashboardIcon name="edit" />;
+  if (normalized.includes('report') || normalized.includes('insight')) return <DashboardIcon name="report" />;
+  return <DashboardIcon name="activity" />;
+}
+
+function iconForModuleTitle(title: string) {
+  if (title.includes('Organisations')) return <DashboardIcon name="building" className="h-5 w-5" />;
+  if (title.includes('Evaluations')) return <DashboardIcon name="clipboard" className="h-5 w-5" />;
+  if (title.includes('Diagnosis')) return <DashboardIcon name="bot" className="h-5 w-5" />;
+  return <DashboardIcon name="form" className="h-5 w-5" />;
+}
+
 /* ═══════════════════════════════════════════
    ✨ Premium StatCard with glow & animation
    ═══════════════════════════════════════════ */
-function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: string; value: string | number; icon: string; color?: 'blue' | 'green' | 'yellow' | 'slate'; delay?: number }) {
+function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: string; value: string | number; icon: ReactNode; color?: 'blue' | 'green' | 'yellow' | 'slate'; delay?: number }) {
   const colorConfig: Record<string, { bg: string; accent: string; text: string; subtext: string }> = {
     blue: {
       bg: 'from-cyan-500 to-teal-500',
@@ -120,7 +209,7 @@ function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: st
         <div className="flex items-center justify-between gap-4 mb-3">
           <span className={`text-sm font-semibold tracking-tight ${cfg.subtext}`}>{label}</span>
           <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${cfg.accent} ${cfg.text} text-lg shadow-sm ring-1 ring-white/15 transition-transform duration-300 group-hover:scale-110`}>
-            {icon}
+            {typeof icon === 'string' ? iconForStatLabel(label) : icon}
           </span>
         </div>
         <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
@@ -412,7 +501,7 @@ function EmptyDashboard({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 animate-fade-in">
       <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-3xl mb-4 shadow-lg shadow-primary/5">
-        📊
+        <DashboardIcon name="chart" className="h-7 w-7 text-primary" />
       </div>
       <p className="text-sm text-muted text-center max-w-md">{message}</p>
     </div>
@@ -425,6 +514,8 @@ function SuperAdminDashboard() {
     evaluations: 0,
     forms: 0,
     reports: 0,
+    moduleData: [] as ChartDataPoint[],
+    statusData: [] as ChartDataPoint[],
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -439,11 +530,23 @@ function SuperAdminDashboard() {
           apiFetch<PublishedAnalysis[]>('/published-analyses').catch(() => []),
         ]);
         if (!active) return;
+        const statusCounts = evaluations.reduce<Record<string, number>>((acc, evaluation) => {
+          const status = evaluation.status ? evaluation.status.replace(/_/g, ' ') : 'Unknown';
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
         setStats({
           organisations: organisations.length,
           evaluations: evaluations.length,
           forms: forms.length,
           reports: reports.length,
+          moduleData: [
+            { name: 'Organisations', value: organisations.length },
+            { name: 'Forms', value: forms.length },
+            { name: 'Projects', value: evaluations.length },
+            { name: 'Reports', value: reports.length },
+          ],
+          statusData: Object.entries(statusCounts).map(([name, value]) => ({ name, value })),
         });
       } finally {
         if (active) setLoadingStats(false);
@@ -458,27 +561,28 @@ function SuperAdminDashboard() {
       title: 'Organisations',
       description: 'View and manage client organisations, sectors, and evaluation memberships.',
       href: '/organisations',
-      icon: '🏢',
+      icon: <DashboardIcon name="building" />,
     },
     {
       title: 'Evaluations',
       description: 'Track evaluation progress, status, and AI review readiness across clients.',
       href: '/evaluations',
-      icon: '📋',
+      icon: <DashboardIcon name="clipboard" />,
     },
     {
       title: 'AI Diagnosis',
       description: 'Launch or review AI diagnosis workflows and monitor analysis health.',
       href: '/ai-diagnosis',
-      icon: '🤖',
+      icon: <DashboardIcon name="bot" />,
     },
     {
       title: 'Forms & Templates',
       description: 'Manage form templates and assessment designs for client rollouts.',
       href: '/forms',
-      icon: '📝',
+      icon: <DashboardIcon name="form" />,
     },
   ];
+  const pieColors = ['#14b8a6', '#2563eb', '#f97316', '#64748b', '#dc2626'];
 
   return (
     <div className="space-y-6">
@@ -507,10 +611,62 @@ function SuperAdminDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Client orgs" value={loadingStats ? '...' : stats.organisations} icon="🏢" color="blue" delay={0} />
-        <StatCard label="Forms" value={loadingStats ? '...' : stats.forms} icon="📄" color="yellow" delay={50} />
-        <StatCard label="Projects" value={loadingStats ? '...' : stats.evaluations} icon="📊" color="green" delay={100} />
-        <StatCard label="Published insights" value={loadingStats ? '...' : stats.reports} icon="💎" color="slate" delay={150} />
+        <StatCard label="Client orgs" value={loadingStats ? '...' : stats.organisations} icon={<DashboardIcon name="building" />} color="blue" delay={0} />
+        <StatCard label="Forms" value={loadingStats ? '...' : stats.forms} icon={<DashboardIcon name="form" />} color="yellow" delay={50} />
+        <StatCard label="Projects" value={loadingStats ? '...' : stats.evaluations} icon={<DashboardIcon name="chart" />} color="green" delay={100} />
+        <StatCard label="Published insights" value={loadingStats ? '...' : stats.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="dashboard-panel rounded-2xl p-5">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-950">Platform volume</h2>
+              <p className="text-xs text-slate-500">Live records across organisations, forms, projects, and reports.</p>
+            </div>
+            <Pill label="Real data" color="green" />
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stats.moduleData} margin={{ top: 12, right: 12, left: -8, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                <Bar dataKey="value" fill="#14b8a6" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="dashboard-panel rounded-2xl p-5">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-950">Project status</h2>
+              <p className="text-xs text-slate-500">Evaluation workflow split by current status.</p>
+            </div>
+            <Pill label="Projects" color="blue" />
+          </div>
+          {stats.statusData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={stats.statusData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={86} paddingAngle={3}>
+                    {stats.statusData.map((entry, index) => (
+                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                  <Legend iconType="circle" wrapperStyle={{ color: '#334155', fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
+              No project status data yet.
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
@@ -531,7 +687,7 @@ function SuperAdminDashboard() {
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xl text-white">
-                    {card.icon}
+                    {iconForModuleTitle(card.title)}
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-slate-950">{card.title}</h2>
@@ -564,7 +720,7 @@ function SuperAdminDashboard() {
                 className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 transition hover:border-teal-300 hover:bg-white"
               >
                 {label}
-                <span className="text-teal-600">→</span>
+                <DashboardIcon name="arrowRight" className="h-4 w-4 text-teal-600" />
               </Link>
             ))}
           </div>
@@ -596,7 +752,7 @@ function EvaluationStatCard({ evaluation }: { evaluation: Evaluation }) {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm text-white">
-            📋
+            <DashboardIcon name="clipboard" className="h-4 w-4" />
           </div>
           <p className="text-sm font-semibold text-foreground truncate">{evaluation.title}</p>
         </div>
@@ -843,10 +999,10 @@ export default function DashboardPage() {
         <>
           {/* ── Stat cards — 2 cols on mobile, 4 on xl ── */}
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <StatCard label="Responses" value={totalResponses} icon="✅" color="blue" delay={0} />
-            <StatCard label="Total answers" value={totalAnswers} icon="✍️" color="green" delay={50} />
-            <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="yellow" delay={100} />
-            <StatCard label="Reports" value={publishedAnalyses.length} icon="📊" color="slate" delay={150} />
+            <StatCard label="Responses" value={totalResponses} icon={<DashboardIcon name="check" />} color="blue" delay={0} />
+            <StatCard label="Total answers" value={totalAnswers} icon={<DashboardIcon name="edit" />} color="green" delay={50} />
+            <StatCard label="Avg completion" value={`${averageCompletion}%`} icon={<DashboardIcon name="chart" />} color="yellow" delay={100} />
+            <StatCard label="Reports" value={publishedAnalyses.length} icon={<DashboardIcon name="report" />} color="slate" delay={150} />
           </div>
 
           {/* ── Evaluation response stats per evaluation ── */}

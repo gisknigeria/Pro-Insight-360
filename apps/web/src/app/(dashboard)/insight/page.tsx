@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch } from '@/lib/api';
+import { getUserRole } from '@/lib/auth';
 import OrgChart from '@/components/organogram/OrgChart';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -27,10 +28,15 @@ interface Evaluation {
 interface OrganisationForm {
   id: string;
   title: string;
+  description?: string;
   status: string;
+  accessMode?: string;
   questionCount: number;
+  createdAt?: string;
+  updatedAt?: string;
   evaluationId?: string;
   organisationId?: string;
+  organisation?: Organisation;
   unitId?: string | null;
   unitName?: string | null;
 }
@@ -462,7 +468,226 @@ function AnalysisCard({ published, evaluation }: { published: PublishedAnalysis;
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+type InsightItem =
+  | { kind: 'PROJECT'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref: string; viewHref: string; hasAnalysis: boolean; unitName?: string | null; questionCount?: number; }
+  | { kind: 'FORM'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: boolean; unitName?: string | null; questionCount?: number; };
+
+function SuperAdminInsightPage() {
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [forms, setForms] = useState<OrganisationForm[]>([]);
+  const [publishedAnalyses, setPublishedAnalyses] = useState<PublishedAnalysis[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeFilter, setActiveFilter] = useState('ALL');
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError('');
+      try {
+        const [allEvals, allForms, allPublished] = await Promise.all([
+          apiFetch<Evaluation[]>('/evaluations'),
+          apiFetch<OrganisationForm[]>('/forms').catch(() => []),
+          apiFetch<PublishedAnalysis[]>('/published-analyses').catch(() => []),
+        ]);
+        setEvaluations(allEvals.filter(e => !isFormBucketEvaluation(e)));
+        setForms(allForms);
+        setPublishedAnalyses(allPublished);
+      } catch (err: any) {
+        setError(err?.message || 'Unable to load insight items.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const publishedEvalIds = useMemo(() => new Set(publishedAnalyses.map(pa => pa.evaluationId).filter(Boolean)), [publishedAnalyses]);
+  const evalById = useMemo(() => new Map(evaluations.map(ev => [ev.id, ev])), [evaluations]);
+
+  const items = useMemo<InsightItem[]>(() => {
+    const projectItems: InsightItem[] = evaluations.map(ev => ({
+      kind: 'PROJECT',
+      id: ev.id,
+      title: ev.title,
+      status: ev.status,
+      organisationName: ev.organisation?.name ?? 'Unassigned organisation',
+      formCount: ev._count?.forms ?? 0,
+      createdAt: ev.startDate ?? ev.createdAt,
+      diagnosisHref: `/evaluations/${ev.id}/diagnosis`,
+      viewHref: `/evaluations/${ev.id}`,
+      hasAnalysis: publishedEvalIds.has(ev.id),
+    }));
+
+    const formItems: InsightItem[] = forms.map(form => {
+      const ev = form.evaluationId ? evalById.get(form.evaluationId) : undefined;
+      return {
+        kind: 'FORM',
+        id: form.id,
+        title: form.title,
+        status: form.status,
+        organisationName: form.organisation?.name ?? ev?.organisation?.name ?? 'Direct organisation form',
+        formCount: 1,
+        createdAt: form.createdAt ?? form.updatedAt,
+        diagnosisHref: form.evaluationId ? `/evaluations/${form.evaluationId}/diagnosis` : undefined,
+        viewHref: `/forms/${form.id}`,
+        hasAnalysis: Boolean(form.evaluationId && publishedEvalIds.has(form.evaluationId)),
+        unitName: form.unitName,
+        questionCount: form.questionCount,
+      };
+    });
+
+    return [...projectItems, ...formItems].sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [evaluations, forms, evalById, publishedEvalIds]);
+
+  const filtered = useMemo(() => {
+    if (activeFilter === 'ALL') return items;
+    if (activeFilter === 'PROJECTS') return items.filter(item => item.kind === 'PROJECT');
+    if (activeFilter === 'FORMS') return items.filter(item => item.kind === 'FORM');
+    return items.filter(item => item.status === activeFilter);
+  }, [items, activeFilter]);
+
+  const statusData = useMemo(() => {
+    const counts = new Map<string, number>();
+    items.forEach(item => counts.set(item.status, (counts.get(item.status) ?? 0) + 1));
+    return Array.from(counts, ([name, value]) => ({ name, value }));
+  }, [items]);
+
+  const filters = [
+    { id: 'ALL', label: 'All', count: items.length },
+    { id: 'PROJECTS', label: 'Projects', count: items.filter(item => item.kind === 'PROJECT').length },
+    { id: 'FORMS', label: 'Forms', count: items.filter(item => item.kind === 'FORM').length },
+    { id: 'ACTIVE', label: 'Active', count: items.filter(item => item.status === 'ACTIVE').length },
+    { id: 'PUBLISHED', label: 'Published', count: items.filter(item => item.status === 'PUBLISHED').length },
+    { id: 'DRAFT', label: 'Draft', count: items.filter(item => item.status === 'DRAFT').length },
+    { id: 'CLOSED', label: 'Closed', count: items.filter(item => item.status === 'CLOSED').length },
+    { id: 'ARCHIVED', label: 'Archived', count: items.filter(item => item.status === 'ARCHIVED').length },
+  ].filter(filter => filter.id === 'ALL' || filter.count > 0);
+
+  return (
+    <div className="min-h-screen bg-slate-50/50">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary">Super Admin · Insights</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Insights</h1>
+            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">{items.length}</span>
+          </div>
+          <p className="mt-1.5 text-sm text-slate-500">Review every project and direct organisation form that can be diagnosed.</p>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-medium text-red-700">{error}</div>
+      ) : (
+        <>
+          <div className="mb-8 grid gap-4 xl:grid-cols-[1fr_300px]">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[
+                { label: 'Total', value: items.length, icon: '📊', grad: 'from-blue-500 to-indigo-600' },
+                { label: 'Projects', value: evaluations.length, icon: '📁', grad: 'from-cyan-500 to-blue-600' },
+                { label: 'Forms', value: forms.length, icon: '📄', grad: 'from-amber-400 to-orange-600' },
+                { label: 'Analysed', value: items.filter(item => item.hasAnalysis).length, icon: '✅', grad: 'from-emerald-400 to-green-600' },
+              ].map(s => (
+                <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>{s.icon}</div>
+                  <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {statusData.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-400">Status summary</p>
+                <div className="space-y-3">
+                  {statusData.map(row => {
+                    const cfg = STATUS_CFG[row.name] ?? STATUS_CFG.DRAFT;
+                    const width = items.length ? Math.max(8, Math.round((row.value / items.length) * 100)) : 0;
+                    return (
+                      <div key={row.name}>
+                        <div className="mb-1 flex items-center justify-between text-xs">
+                          <span className={`font-bold ${cfg.text}`}>{cfg.label}</span>
+                          <span className="font-semibold text-slate-500">{row.value}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-slate-100"><div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} /></div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mb-6 flex flex-wrap gap-2">
+            {filters.map(filter => (
+              <button key={filter.id} type="button" onClick={() => setActiveFilter(filter.id)}
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${activeFilter === filter.id ? 'bg-primary text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-primary/30'}`}
+              >
+                {filter.label}
+                <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${activeFilter === filter.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>{filter.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="animate-pulse space-y-4 rounded-3xl border border-slate-200 bg-white p-5"><div className="h-4 w-3/4 rounded bg-slate-200" /><div className="h-3 w-1/2 rounded bg-slate-100" /><div className="h-20 rounded-2xl bg-slate-100" /></div>)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState icon="📊" title="No insight items found" description="Projects and direct organisation forms will appear here once they are created." />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map(item => {
+                const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.DRAFT;
+                return (
+                  <div key={`${item.kind}-${item.id}`} className="group relative flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
+                    <div className={`h-1 ${item.kind === 'FORM' ? 'bg-amber-400' : item.status === 'ACTIVE' ? 'bg-emerald-400' : item.status === 'CLOSED' ? 'bg-orange-400' : 'bg-slate-200'}`} />
+                    <div className="flex flex-1 flex-col p-5">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base ${item.kind === 'FORM' ? 'bg-amber-50 text-amber-700' : 'bg-primary/10 text-primary'}`}>{item.kind === 'FORM' ? '📄' : '📁'}</div>
+                          <div className="min-w-0">
+                            <Link href={item.viewHref} className="block truncate text-sm font-bold text-slate-900 transition-colors hover:text-primary">{item.title}</Link>
+                            <p className="mt-0.5 truncate text-xs text-slate-400">{item.organisationName}</p>
+                          </div>
+                        </div>
+                        <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                      </div>
+
+                      <div className="mb-5 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                        <span>{item.kind === 'FORM' ? 'Form' : 'Project'}</span>
+                        {item.kind === 'PROJECT' ? <span>{item.formCount} form{item.formCount !== 1 ? 's' : ''}</span> : <span>{item.questionCount ?? 0} question{item.questionCount !== 1 ? 's' : ''}</span>}
+                        {item.unitName ? <span>Unit: {item.unitName}</span> : null}
+                      </div>
+
+                      <div className="mb-4 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Type</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? 'Direct form' : 'Evaluation'}</p></div>
+                        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Analysis</p><p className={`mt-1 text-sm font-bold ${item.hasAnalysis ? 'text-emerald-700' : 'text-slate-500'}`}>{item.hasAnalysis ? 'Published' : 'Pending'}</p></div>
+                      </div>
+
+                      <div className="mt-auto flex items-center gap-2">
+                        {item.diagnosisHref ? <Link href={item.diagnosisHref} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/10">Diagnose</Link> : <span className="flex-1 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-400">No diagnosis yet</span>}
+                        <Link href={item.viewHref} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">View →</Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function InsightPage() {
+  const [role, setRole]                 = useState<string | null>(null);
   const [userOrg, setUserOrg]         = useState<Organisation | null>(null);
   const [orgEvals, setOrgEvals]       = useState<Evaluation[]>([]);
   const [evalMetrics, setEvalMetrics] = useState<Map<string, EvalMetrics>>(new Map());
@@ -477,6 +702,13 @@ export default function InsightPage() {
     async function load() {
       const token = localStorage.getItem('accessToken');
       if (!token) { setError('Please sign in.'); setLoading(false); return; }
+
+      const currentRole = getUserRole()?.trim().toUpperCase() ?? null;
+      setRole(currentRole);
+      if (currentRole === 'SUPER_ADMIN') {
+        setLoading(false);
+        return;
+      }
 
       let userId = '';
       try { userId = JSON.parse(atob(token.split('.')[1])).sub; }
@@ -526,6 +758,10 @@ export default function InsightPage() {
     }
     load();
   }, []);
+
+  if (role === 'SUPER_ADMIN') {
+    return <SuperAdminInsightPage />;
+  }
 
   // ── Aggregate stats across all evals ─────────────────────────────────────
 
