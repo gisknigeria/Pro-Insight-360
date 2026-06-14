@@ -74,7 +74,7 @@ const STATUS_FM: Record<string, { label: string; dot: string; cls: string }> = {
 // ─── Create unit modal ────────────────────────────────────────────────────────
 
 function CreateUnitModal({ orgId, orgName, onClose, onCreated }: {
-  orgId: string; orgName: string; onClose: () => void; onCreated: () => void;
+  orgId: string; orgName: string; onClose: () => void; onCreated: (unit: Unit) => void;
 }) {
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
@@ -85,8 +85,8 @@ function CreateUnitModal({ orgId, orgName, onClose, onCreated }: {
     if (!name.trim()) { setErr('Unit name required.'); return; }
     setSaving(true); setErr('');
     try {
-      await apiFetch('/units', { method: 'POST', body: JSON.stringify({ organisationId: orgId, name: name.trim(), description: desc.trim() }) });
-      onCreated();
+      const created = await apiFetch<Unit>('/units', { method: 'POST', body: JSON.stringify({ organisationId: orgId, name: name.trim(), description: desc.trim() }) });
+      onCreated(created);
     } catch (e: any) { setErr(e?.message || 'Failed.'); }
     finally { setSaving(false); }
   }
@@ -128,7 +128,7 @@ function CreateUnitModal({ orgId, orgName, onClose, onCreated }: {
 
 // ─── Org detail panel ─────────────────────────────────────────────────────────
 
-function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, onDeleteEval, onDeleteForm }: {
+function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, onDeleteEval, onDeleteForm, onAddUnit }: {
   org: Organisation;
   forms: Form[];
   units: Unit[];
@@ -137,6 +137,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
   onDeleteUnit: (id: string) => void;
   onDeleteEval: (id: string) => void;
   onDeleteForm: (id: string) => void;
+  onAddUnit: (unit: Unit) => void;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<'forms' | 'units' | 'projects'>('projects');
@@ -295,7 +296,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
       {showUnit && (
         <CreateUnitModal orgId={org.id} orgName={org.name}
           onClose={() => setShowUnit(false)}
-          onCreated={() => { setShowUnit(false); onRefresh(); }} />
+          onCreated={(unit) => { setShowUnit(false); setTab('units'); onAddUnit(unit); }} />
       )}
     </div>
   );
@@ -364,6 +365,10 @@ export default function OrganisationsPage() {
     setUnits(p => p.filter(u => u.id !== id));
   }
 
+  function addUnit(unit: Unit) {
+    setUnits(p => [...p, unit]);
+  }
+
   const filtered = orgs.filter(o =>
     !search || o.name.toLowerCase().includes(search.toLowerCase()) || (o.sector ?? '').toLowerCase().includes(search.toLowerCase())
   );
@@ -394,21 +399,7 @@ export default function OrganisationsPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          { label: 'Total orgs',  value: orgs.length,   icon: '🏢', g: 'from-blue-500 to-indigo-600' },
-          { label: 'Active',      value: orgs.filter(o => o.status === 'ACTIVE').length, icon: '✅', g: 'from-emerald-400 to-green-600' },
-          { label: 'Total forms', value: forms.length,  icon: '📋', g: 'from-amber-400 to-orange-500' },
-          { label: 'Units',       value: units.length,  icon: '🏗️', g: 'from-violet-500 to-purple-600' },
-        ].map(s => (
-          <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${s.g} text-base shadow-md`}>{s.icon}</div>
-            <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-            <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
+
 
       {/* Search */}
       <div className="mb-5">
@@ -470,6 +461,7 @@ export default function OrganisationsPage() {
                 onDeleteUnit={deleteUnit}
                 onDeleteEval={deleteEval}
                 onDeleteForm={deleteForm}
+                onAddUnit={addUnit}
               />
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">

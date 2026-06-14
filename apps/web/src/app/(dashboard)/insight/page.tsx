@@ -454,7 +454,8 @@ export default function InsightPage() {
   const [gapItems, setGapItems]       = useState<GapItem[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState('');
-  const [activeTab, setActiveTab]     = useState<'overview' | 'reports' | 'evaluations'>('overview');
+  const [activeTab, setActiveTab]     = useState<'overview' | 'reports' | 'evaluations' | 'forms'>('overview');
+  const [orgForms, setOrgForms]       = useState<Array<{ id: string; title: string; status: string; questionCount: number; evaluationId?: string }>>([]);
 
   useEffect(() => {
     async function load() {
@@ -466,11 +467,12 @@ export default function InsightPage() {
       catch { setError('Session error.'); setLoading(false); return; }
 
       try {
-        const [user, allEvals, allPublished, allGaps] = await Promise.all([
+        const [user, allEvals, allPublished, allGaps, allForms] = await Promise.all([
           apiFetch<UserSummary>(`/users/${userId}`),
           apiFetch<Evaluation[]>('/evaluations'),
           apiFetch<PublishedAnalysis[]>('/published-analyses'),
           apiFetch<GapItem[]>('/gap-analysis').catch(() => [] as GapItem[]),
+          apiFetch<Array<{ id: string; title: string; status: string; questionCount: number; evaluationId?: string }>>('/forms').catch(() => []),
         ]);
 
         const org = user.organisation;
@@ -483,6 +485,8 @@ export default function InsightPage() {
 
         const myEvalIds = new Set(myEvals.map(e => e.id));
         setGapItems(allGaps.filter(g => myEvalIds.has(g.evaluation.id)));
+        // Forms linked to this org's evaluations
+        setOrgForms(allForms.filter(f => f.evaluationId && myEvalIds.has(f.evaluationId)));
 
         // Fetch live metrics per evaluation in parallel
         const metricEntries = await Promise.all(
@@ -611,6 +615,7 @@ export default function InsightPage() {
                 { id: 'overview',    label: 'Overview',          icon: '📈' },
                 { id: 'reports',     label: 'Published reports',  icon: '📋', badge: publishedAnalyses.length },
                 { id: 'evaluations', label: 'Projects',           icon: '📁', badge: orgEvals.length },
+                { id: 'forms',       label: 'Forms',              icon: '📄', badge: orgForms.length },
               ] as const).map(tab => (
                 <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
@@ -916,6 +921,92 @@ export default function InsightPage() {
                             className="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
                             View →
                           </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─────────────────── FORMS ─────────────────── */}
+          {activeTab === 'forms' && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Your forms</h2>
+                  <p className="text-sm text-slate-500">
+                    Forms linked to your organisation's projects. View response data and analysis.
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-white">
+                  {orgForms.length}
+                </span>
+              </div>
+              {orgForms.length === 0 ? (
+                <EmptyState icon="📄" title="No forms yet" description="Forms created for your organisation's projects will appear here." />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {orgForms.map(form => {
+                    const ev = orgEvals.find(e => e.id === form.evaluationId);
+                    const m = ev ? evalMetrics.get(ev.id) : undefined;
+                    const pct = m?.averageCompletion ?? 0;
+                    const STATUS_FM: Record<string, { label: string; bg: string; text: string }> = {
+                      DRAFT:     { label: 'Draft',     bg: 'bg-slate-100',  text: 'text-slate-600' },
+                      PUBLISHED: { label: 'Published', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+                      CLOSED:    { label: 'Closed',    bg: 'bg-orange-50',  text: 'text-orange-700' },
+                    };
+                    const sc = STATUS_FM[form.status] ?? STATUS_FM.DRAFT;
+                    return (
+                      <div key={form.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300 hover:shadow-md transition-all">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-base">📄</div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-slate-900 truncate">{form.title}</p>
+                              {ev && <p className="text-xs text-slate-400 mt-0.5 truncate">📁 {ev.title}</p>}
+                            </div>
+                          </div>
+                          <span className={`shrink-0 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>
+                            {sc.label}
+                          </span>
+                        </div>
+
+                        {/* Response metrics if available */}
+                        {m ? (
+                          <>
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                              {[
+                                { label: 'Responses', value: m.totalResponses },
+                                { label: 'Answers',   value: m.totalAnswers },
+                                { label: 'Completion',value: `${m.averageCompletion}%` },
+                              ].map(s => (
+                                <div key={s.label} className="rounded-xl bg-slate-50 border border-slate-100 p-2.5 text-center">
+                                  <p className="text-base font-bold text-slate-900">{s.value}</p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">{s.label}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <CompletionBar pct={pct} />
+                          </>
+                        ) : (
+                          <p className="text-xs text-slate-400 mb-3">{form.questionCount} questions</p>
+                        )}
+
+                        <div className="flex gap-2 mt-4">
+                          {ev && (
+                            <Link href={`/evaluations/${ev.id}/diagnosis`}
+                              className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-slate-700 transition-colors">
+                              📊 Analysis
+                            </Link>
+                          )}
+                          {ev && (
+                            <Link href={`/evaluations/${ev.id}`}
+                              className="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
+                              View project →
+                            </Link>
+                          )}
                         </div>
                       </div>
                     );

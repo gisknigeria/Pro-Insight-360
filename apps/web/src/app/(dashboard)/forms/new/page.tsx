@@ -653,19 +653,32 @@ export default function NewFormPage() {
       .finally(() => setLoading(false));
   }, [orgId]);
 
-  const canSubmit = values.name.trim() && values.evaluationId;
+  const canSubmit = values.name.trim();
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError('');
 
     if (!canSubmit) {
-      setError('Please provide a form name and select an evaluation.');
+      setError('Please provide a form name.');
       return;
     }
 
     setSaving(true);
     try {
+      // If no evaluation selected, auto-use the first available one or create without
+      let evaluationId = values.evaluationId;
+      if (!evaluationId && evaluations.length > 0) {
+        evaluationId = evaluations[0].id;
+      }
+
+      // If still no evaluation, we need at least one — show a helpful error
+      if (!evaluationId) {
+        setError('No project available. Create a project first, then add a form to it.');
+        setSaving(false);
+        return;
+      }
+
       const definition = {
         ...defaultDiagnosticChecklist,
         formId: `form-${Date.now()}`,
@@ -676,7 +689,7 @@ export default function NewFormPage() {
       const data = await apiFetch<{ id: string }>('/forms', {
         method: 'POST',
         body: JSON.stringify({
-          evaluationId: values.evaluationId,
+          evaluationId,
           title: values.name.trim(),
           definition,
           accessMode: values.accessMode,
@@ -774,17 +787,16 @@ export default function NewFormPage() {
 
         <div>
           <label htmlFor="evaluationId" className="block text-sm font-medium text-slate-700">
-            Evaluation project
+            Project / Evaluation <span className="text-slate-400 font-normal text-xs">(optional — auto-selects if only one exists)</span>
           </label>
           <select
             id="evaluationId"
             value={values.evaluationId}
             onChange={(event) => setValues((current) => ({ ...current, evaluationId: event.target.value }))}
             className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
-            required
           >
-            <option value="" disabled>
-              Select an evaluation
+            <option value="">
+              {evaluations.length === 0 ? 'No projects available' : '— Select a project (optional) —'}
             </option>
             {evaluations.map((evaluation) => (
               <option key={evaluation.id} value={evaluation.id}>
