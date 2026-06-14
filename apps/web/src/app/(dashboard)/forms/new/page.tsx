@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import type { FormDefinition } from '@/components/form-builder/form-builder.types';
@@ -621,6 +621,9 @@ const defaultDiagnosticChecklist: FormDefinition = {
 
 export default function NewFormPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const orgId = searchParams.get('orgId') ?? '';
+
   const [evaluations, setEvaluations] = useState<EvaluationOption[]>([]);
   const [values, setValues] = useState({
     name: defaultDiagnosticChecklist.title,
@@ -634,13 +637,21 @@ export default function NewFormPage() {
 
   useEffect(() => {
     apiFetch<EvaluationOption[]>('/evaluations')
-      .then(setEvaluations)
+      .then(evs => {
+        // If coming from an org, pre-filter to that org's evaluations
+        const filtered = orgId ? evs.filter(e => e.organisation.id === orgId) : evs;
+        setEvaluations(filtered);
+        // Auto-select first evaluation if only one option
+        if (filtered.length === 1) {
+          setValues(v => ({ ...v, evaluationId: filtered[0].id }));
+        }
+      })
       .catch((err) => {
         console.error('Load evaluations failed:', err);
         setError('Unable to load evaluations. Please refresh the page.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [orgId]);
 
   const canSubmit = values.name.trim() && values.evaluationId;
 
@@ -702,12 +713,16 @@ export default function NewFormPage() {
     return (
       <div className="max-w-3xl mx-auto py-12 text-center">
         <h1 className="text-2xl font-bold text-slate-900 mb-3">Create a new form</h1>
-        <p className="text-slate-500 mb-6">You need at least one evaluation project before you can create a form.</p>
+        <p className="text-slate-500 mb-6">
+          {orgId
+            ? 'This organisation has no evaluation projects yet. Create a project first, then come back to add a form.'
+            : 'You need at least one evaluation project before you can create a form.'}
+        </p>
         <Link
-          href="/evaluations/new"
-          className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-dark"
+          href={orgId ? `/evaluations/new` : '/evaluations/new'}
+          className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-bold text-amber-300 hover:bg-primary/90 transition"
         >
-          Create Evaluation First
+          Create Project First
         </Link>
       </div>
     );
@@ -798,13 +813,13 @@ export default function NewFormPage() {
           <button
             type="submit"
             disabled={!canSubmit || saving}
-            className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-amber-300"
+            className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-bold text-amber-300 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition"
           >
             {saving ? 'Creating form…' : 'Create form'}
           </button>
           <Link
-            href="/forms"
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            href={orgId ? '/organisations' : '/forms'}
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
           >
             Cancel
           </Link>
