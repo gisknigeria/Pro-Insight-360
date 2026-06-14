@@ -759,10 +759,6 @@ export default function InsightPage() {
     load();
   }, []);
 
-  if (role === 'SUPER_ADMIN') {
-    return <SuperAdminInsightPage />;
-  }
-
   // ── Aggregate stats across all evals ─────────────────────────────────────
 
   const aggregated = useMemo(() => {
@@ -810,6 +806,10 @@ export default function InsightPage() {
   }, [publishedAnalyses]);
 
   // ─────────────────────────────────────────────────────────────────────────
+
+  if (role === 'SUPER_ADMIN') {
+    return <SuperAdminInsightPage />;
+  }
 
   if (loading) {
     return (

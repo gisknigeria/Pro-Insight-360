@@ -1015,15 +1015,14 @@ export default function DashboardPage() {
           )}
 
           {/* ── Only show charts if there is real data ── */}
-          {(completionDistribution.some(d => d.value > 0) || evaluationResponseCounts.length > 0) && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {completionDistribution.some(d => d.value > 0) && (
-                <div className="dashboard-panel rounded-2xl p-5">
-                  <div className="flex items-center justify-between gap-4 mb-4">
-                    <p className="text-sm font-semibold text-foreground">Completion distribution</p>
-                    <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
-                  </div>
-                  <div className="h-52">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="dashboard-panel rounded-2xl p-5">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <p className="text-sm font-semibold text-foreground">Completion distribution</p>
+                <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
+              </div>
+              <div className="h-52">
+                {completionDistribution.some(d => d.value > 0) ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={completionDistribution} margin={{ top: 8, right: 8, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1033,17 +1032,21 @@ export default function DashboardPage() {
                         <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
+                    No completion data yet.
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </div>
 
-              {evaluationResponseCounts.length > 0 && (
-                <div className="dashboard-panel rounded-2xl p-5">
-                  <div className="flex items-center justify-between gap-4 mb-4">
-                    <p className="text-sm font-semibold text-foreground">Top evaluations</p>
-                    <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
-                  </div>
-                  <div className="h-52">
+            <div className="dashboard-panel rounded-2xl p-5">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <p className="text-sm font-semibold text-foreground">Top evaluations</p>
+                <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
+              </div>
+              <div className="h-52">
+                {evaluationResponseCounts.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={evaluationResponseCounts} margin={{ top: 8, right: 8, left: -10, bottom: 40 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1053,11 +1056,14 @@ export default function DashboardPage() {
                         <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
+                    No evaluation response data yet.
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          )}
+          </div>
 
           {selectedEvaluationForMetrics ? (
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
