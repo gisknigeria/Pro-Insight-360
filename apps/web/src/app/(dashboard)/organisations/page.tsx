@@ -116,7 +116,7 @@ function CreateUnitModal({ orgId, orgName, onClose, onCreated }: {
               Cancel
             </button>
             <button type="button" onClick={save} disabled={saving}
-              className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-amber-300 hover:bg-primary/90 disabled:opacity-50 transition">
+              className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-50 transition">
               {saving ? 'Creating…' : 'Create unit'}
             </button>
           </div>
@@ -172,7 +172,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
           </button>
           <button type="button"
             onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-amber-300 hover:bg-primary/90 transition shadow-sm">
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 transition shadow-sm">
             + Form
           </button>
         </div>
@@ -229,7 +229,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
             <div className="py-6 text-center">
               <p className="text-sm text-slate-400 mb-3">No forms yet.</p>
               <button type="button" onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-amber-300 hover:bg-primary/90 transition">
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition">
                 + Create first form
               </button>
             </div>
@@ -268,24 +268,31 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
             <div className="py-6 text-center">
               <p className="text-sm text-slate-400 mb-3">No units yet.</p>
               <button type="button" onClick={() => setShowUnit(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-violet-700 transition">
+                className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 transition">
                 + Create first unit
               </button>
             </div>
           ) : (
             <div className="space-y-2">
               {orgUnits.map(u => (
-                <div key={u.id} className="flex items-center gap-3 rounded-xl border border-violet-100 bg-violet-50 px-4 py-3">
-                  <span className="text-base shrink-0">🏗️</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{u.name}</p>
-                    {u.description && <p className="text-[10px] text-slate-500 truncate">{u.description}</p>}
+                <div key={u.id} className="rounded-xl border border-violet-100 bg-violet-50 overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <span className="text-base shrink-0">🏗️</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{u.name}</p>
+                      {u.description && <p className="text-[10px] text-slate-500 truncate">{u.description}</p>}
+                    </div>
+                    <span className="text-[10px] text-slate-400 shrink-0">{u.staffCount ?? 0} staff</span>
+                    <button type="button"
+                      onClick={() => router.push(`/forms/new?orgId=${org.id}&unitId=${u.id}&unitName=${encodeURIComponent(u.name)}`)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-primary/90 transition shrink-0">
+                      + Form
+                    </button>
+                    <button type="button" onClick={() => onDeleteUnit(u.id)}
+                      className="rounded-lg p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
+                      🗑️
+                    </button>
                   </div>
-                  <span className="text-[10px] text-slate-400 shrink-0">{u.staffCount ?? 0} staff</span>
-                  <button type="button" onClick={() => onDeleteUnit(u.id)}
-                    className="rounded-lg p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
-                    🗑️
-                  </button>
                 </div>
               ))}
             </div>
@@ -393,7 +400,7 @@ export default function OrganisationsPage() {
             + Create Form
           </button>
           <Link href="/organisations/new"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-2.5 text-sm font-bold text-amber-300 shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all">
             + Organisation
           </Link>
         </div>

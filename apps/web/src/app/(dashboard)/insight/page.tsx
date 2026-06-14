@@ -590,23 +590,7 @@ export default function InsightPage() {
       ) : (
         <>
           {/* ── KPI cards ── */}
-          <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              { label: 'Forms',          value: orgForms.length,                icon: '📄', grad: 'from-blue-500 to-indigo-600',   sub: `${orgForms.filter(f => f.status === 'PUBLISHED').length} published` },
-              { label: 'Submitted',      value: aggregated.totalResponses,      icon: '👥', grad: 'from-emerald-500 to-teal-600',   sub: 'total responses' },
-              { label: 'Total answers',  value: aggregated.totalAnswers,        icon: '✏️', grad: 'from-amber-500 to-orange-600',   sub: 'across all forms' },
-              { label: 'Avg completion', value: `${aggregated.avgCompletion}%`, icon: '📈', grad: 'from-violet-500 to-purple-600',  sub: 'across forms' },
-            ].map(kpi => (
-              <div key={kpi.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all">
-                <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${kpi.grad} text-lg shadow-md`}>
-                  {kpi.icon}
-                </div>
-                <p className="text-2xl font-bold text-slate-900">{kpi.value}</p>
-                <p className="text-xs font-semibold text-slate-600 mt-0.5">{kpi.label}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{kpi.sub}</p>
-              </div>
-            ))}
-          </div>
+         
 
           {/* ── Tabs ── */}
           <div className="mb-6 border-b border-slate-200">
