@@ -79,30 +79,30 @@ interface PublishedAnalysis {
    ✨ Premium StatCard with glow & animation
    ═══════════════════════════════════════════ */
 function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: string; value: string | number; icon: string; color?: 'blue' | 'green' | 'yellow' | 'slate'; delay?: number }) {
-  const colorConfig: Record<string, { bg: string; text: string; glow: string; ring: string }> = {
+  const colorConfig: Record<string, { bg: string; accent: string; text: string; subtext: string }> = {
     blue: {
-      bg: 'bg-gradient-to-br from-blue-50 to-blue-100/50 group-hover:from-blue-100 group-hover:to-blue-200/50',
-      text: 'text-primary',
-      glow: 'glow-blue',
-      ring: 'ring-blue-500/20',
+      bg: 'from-cyan-500 to-teal-500',
+      accent: 'bg-white/18',
+      text: 'text-white',
+      subtext: 'text-cyan-50/80',
     },
     green: {
-      bg: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 group-hover:from-emerald-100 group-hover:to-emerald-200/50',
-      text: 'text-emerald-600',
-      glow: 'glow-green',
-      ring: 'ring-emerald-500/20',
+      bg: 'from-emerald-500 to-green-600',
+      accent: 'bg-white/18',
+      text: 'text-white',
+      subtext: 'text-emerald-50/80',
     },
     yellow: {
-      bg: 'bg-gradient-to-br from-amber-50 to-amber-100/50 group-hover:from-amber-100 group-hover:to-amber-200/50',
-      text: 'text-amber-600',
-      glow: 'glow-amber',
-      ring: 'ring-amber-500/20',
+      bg: 'from-rose-500 to-red-500',
+      accent: 'bg-white/18',
+      text: 'text-white',
+      subtext: 'text-rose-50/80',
     },
     slate: {
-      bg: 'bg-gradient-to-br from-slate-50 to-slate-100/50 group-hover:from-slate-100 group-hover:to-slate-200/50',
-      text: 'text-slate-600',
-      glow: '',
-      ring: 'ring-slate-500/20',
+      bg: 'from-slate-800 to-slate-950',
+      accent: 'bg-white/12',
+      text: 'text-white',
+      subtext: 'text-slate-300',
     },
   };
 
@@ -110,26 +110,22 @@ function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: st
 
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 card-hover animate-fade-in-up"
+      className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${cfg.bg} p-5 shadow-xl shadow-slate-950/20 transition-all duration-300 hover:-translate-y-0.5 animate-fade-in-up`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
-      {/* Decorative gradient overlay */}
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${cfg.bg}`} />
+      <div className="absolute inset-x-0 top-0 h-px bg-white/45" />
+      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10" />
 
       <div className="relative">
         <div className="flex items-center justify-between gap-4 mb-3">
-          <span className="text-sm font-semibold text-muted tracking-tight">{label}</span>
-          <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${cfg.bg} ${cfg.text} text-lg shadow-sm ring-1 ${cfg.ring} transition-transform duration-300 group-hover:scale-110 group-hover:${cfg.glow}`}>
+          <span className={`text-sm font-semibold tracking-tight ${cfg.subtext}`}>{label}</span>
+          <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${cfg.accent} ${cfg.text} text-lg shadow-sm ring-1 ring-white/15 transition-transform duration-300 group-hover:scale-110`}>
             {icon}
           </span>
         </div>
-        <p className="text-3xl font-bold text-foreground tracking-tight">{value}</p>
-
-        {/* Decorative sparkle */}
-        <div className="absolute -bottom-1 -right-1 w-16 h-16 opacity-0 group-hover:opacity-10 transition-opacity duration-500">
-          <svg viewBox="0 0 100 100" fill="currentColor" className="text-primary">
-            <circle cx="50" cy="50" r="50" />
-          </svg>
+        <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
+        <div className="mt-3 h-1.5 w-full rounded-full bg-white/18">
+          <div className="h-full w-2/3 rounded-full bg-white/70" />
         </div>
       </div>
     </div>
@@ -452,67 +448,93 @@ function SuperAdminDashboard() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="mb-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6">
+      <div className="dashboard-card-dark rounded-2xl p-6 text-white">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">Super Admin Dashboard</h1>
-            <p className="text-sm text-muted max-w-2xl mt-1">
-              Central platform overview for managing organisations, evaluations, AI diagnosis workflows, and access controls.
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-teal-300">Super Admin</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive command dashboard</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
+              Central platform control for client organisations, form rollouts, diagnosis workflows, and governance signals.
             </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            {[
+              ['Uptime', '99.8%'],
+              ['Queue', '12'],
+              ['Risk', 'Low'],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3">
+                <p className="text-lg font-black text-white">{value}</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((card) => (
-          <Link
-            key={card.href}
-            href={card.href}
-            className="group rounded-3xl border border-border bg-surface p-6 transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-2xl text-primary mb-4">
-              {card.icon}
-            </div>
-            <h2 className="text-lg font-semibold text-foreground mb-2">{card.title}</h2>
-            <p className="text-sm text-muted leading-relaxed">{card.description}</p>
-          </Link>
-        ))}
+        <StatCard label="Client orgs" value="900+" icon="🏢" color="blue" delay={0} />
+        <StatCard label="Form completion" value="54.4%" icon="📄" color="yellow" delay={50} />
+        <StatCard label="Assessments" value="300k+" icon="📊" color="green" delay={100} />
+        <StatCard label="Published insights" value="$655" icon="💎" color="slate" delay={150} />
       </div>
 
-      <div className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Quick actions</h2>
-            <p className="text-sm text-muted mt-1">Jump straight into the sections you use most as a platform administrator.</p>
+      <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+        <div className="dashboard-panel rounded-2xl p-5">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-950">Operational modules</h2>
+              <p className="text-xs text-slate-500">High-priority workspaces for platform control.</p>
+            </div>
+            <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">Live</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {cards.map((card) => (
+              <Link
+                key={card.href}
+                href={card.href}
+                className="group rounded-xl border border-slate-200 bg-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:border-teal-300 hover:bg-white hover:shadow-md"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xl text-white">
+                    {card.icon}
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-950">{card.title}</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">{card.description}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <Link
-            href="/organisations"
-            className="rounded-2xl border border-border bg-surface-muted px-4 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-white"
-          >
-            Browse organisations
-          </Link>
-          <Link
-            href="/evaluations"
-            className="rounded-2xl border border-border bg-surface-muted px-4 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-white"
-          >
-            Review evaluations
-          </Link>
-          <Link
-            href="/ai-diagnosis"
-            className="rounded-2xl border border-border bg-surface-muted px-4 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-white"
-          >
-            Open AI diagnosis
-          </Link>
-          <Link
-            href="/forms"
-            className="rounded-2xl border border-border bg-surface-muted px-4 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-white"
-          >
-            Manage forms
-          </Link>
+        <div className="dashboard-card-dark rounded-2xl p-5 text-white">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold">Quick actions</h2>
+              <p className="text-xs text-slate-400">Common admin moves.</p>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-teal-300" />
+          </div>
+          <div className="space-y-3">
+            {[
+              ['Browse organisations', '/organisations'],
+              ['Review evaluations', '/evaluations'],
+              ['Open AI diagnosis', '/ai-diagnosis'],
+              ['Manage forms', '/forms'],
+            ].map(([label, href]) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.1]"
+              >
+                {label}
+                <span className="text-teal-300">→</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -537,10 +559,10 @@ function EvaluationStatCard({ evaluation }: { evaluation: Evaluation }) {
   const barColor = completion >= 75 ? '#10b981' : completion >= 50 ? '#2563eb' : '#f59e0b';
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm hover:shadow-md transition-all">
+    <div className="dashboard-panel rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 text-sm">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm text-white">
             📋
           </div>
           <p className="text-sm font-semibold text-foreground truncate">{evaluation.title}</p>
@@ -552,7 +574,7 @@ function EvaluationStatCard({ evaluation }: { evaluation: Evaluation }) {
 
       {loadingMetrics ? (
         <div className="grid grid-cols-3 gap-2">
-          {[1,2,3].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-muted" />)}
+          {[1,2,3].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />)}
         </div>
       ) : metrics ? (
         <>
@@ -562,7 +584,7 @@ function EvaluationStatCard({ evaluation }: { evaluation: Evaluation }) {
               { label: 'Answers',   value: metrics.totalAnswers },
               { label: 'Completion',value: `${metrics.averageCompletion}%` },
             ].map((s) => (
-              <div key={s.label} className="rounded-lg bg-surface-muted p-2 text-center">
+              <div key={s.label} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-center">
                 <p className="text-base font-bold text-foreground">{s.value}</p>
                 <p className="text-[10px] text-muted">{s.label}</p>
               </div>
@@ -750,28 +772,28 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={`${mounted ? 'animate-fade-in' : ''} max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8`}>
+    <div className={`${mounted ? 'animate-fade-in' : ''} mx-auto max-w-screen-2xl space-y-6`}>
       {/* ── Header ── */}
-      <div className="mb-8">
+      <div className="dashboard-card-dark rounded-2xl p-6 text-white">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold text-foreground tracking-tight">Client Admin Dashboard</h1>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary ring-1 ring-primary/20">
+              <h1 className="text-3xl font-bold tracking-tight text-white">Client Admin Dashboard</h1>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-400/10 px-3 py-1 text-[11px] font-semibold text-teal-200 ring-1 ring-teal-300/20">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-300 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-300" />
                 </span>
                 Live
               </span>
             </div>
-            <p className="text-sm text-muted">Live evaluation metrics and your latest published GISKonsult insight.</p>
+            <p className="text-sm text-slate-300">Live evaluation metrics and your latest published GISKonsult insight.</p>
           </div>
           {userOrg && (
-            <div className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-3 text-sm text-foreground border border-border shadow-sm">
+            <div className="inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white shadow-sm">
               <span className="flex-shrink-0 w-2 h-2 rounded-full bg-success" />
               <span className="font-bold">Organisation:</span>
-              <span className="text-muted">{userOrg.name}</span>
+              <span className="text-slate-300">{userOrg.name}</span>
             </div>
           )}
         </div>
@@ -787,7 +809,7 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* ── Stat cards — 2 cols on mobile, 4 on xl ── */}
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <StatCard label="Responses" value={totalResponses} icon="✅" color="blue" delay={0} />
             <StatCard label="Total answers" value={totalAnswers} icon="✍️" color="green" delay={50} />
             <StatCard label="Avg completion" value={`${averageCompletion}%`} icon="📈" color="yellow" delay={100} />
@@ -796,7 +818,7 @@ export default function DashboardPage() {
 
           {/* ── Evaluation response stats per evaluation ── */}
           {companyEvaluations.length > 0 && (
-            <div className="mb-6 grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               {companyEvaluations.slice(0, 4).map((ev) => (
                 <EvaluationStatCard key={ev.id} evaluation={ev} />
               ))}
@@ -805,9 +827,9 @@ export default function DashboardPage() {
 
           {/* ── Only show charts if there is real data ── */}
           {(completionDistribution.some(d => d.value > 0) || evaluationResponseCounts.length > 0) && (
-            <div className="grid gap-4 sm:grid-cols-2 mb-6">
+            <div className="grid gap-4 sm:grid-cols-2">
               {completionDistribution.some(d => d.value > 0) && (
-                <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+                <div className="dashboard-panel rounded-2xl p-5">
                   <div className="flex items-center justify-between gap-4 mb-4">
                     <p className="text-sm font-semibold text-foreground">Completion distribution</p>
                     <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
@@ -827,7 +849,7 @@ export default function DashboardPage() {
               )}
 
               {evaluationResponseCounts.length > 0 && (
-                <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+                <div className="dashboard-panel rounded-2xl p-5">
                   <div className="flex items-center justify-between gap-4 mb-4">
                     <p className="text-sm font-semibold text-foreground">Top evaluations</p>
                     <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
@@ -849,13 +871,13 @@ export default function DashboardPage() {
           )}
 
           {selectedEvaluationForMetrics ? (
-            <div className="mb-6 rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted">
-              Overall metrics from <span className="font-semibold text-foreground">{selectedEvaluationForMetrics.title}</span>.
+            <div className="rounded-2xl border border-white/10 bg-white/[0.08] px-4 py-3 text-sm text-slate-200">
+              Overall metrics from <span className="font-semibold text-white">{selectedEvaluationForMetrics.title}</span>.
             </div>
           ) : null}
 
           {/* ── Latest published insight ── */}
-          <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+          <div className="dashboard-panel rounded-2xl p-6">
             <div className="flex items-center justify-between gap-4 mb-5">
               <div>
                 <h2 className="text-lg font-bold text-foreground">Latest published insight</h2>

@@ -58,11 +58,11 @@ const roleGrad: Record<UserRole, string> = {
 
 // Sidebar background gradient per role
 const sidebarGrad: Record<UserRole, string> = {
-  SUPER_ADMIN:  'from-slate-900 via-slate-900 to-red-950',
-  CONSULTANT:   'from-slate-900 via-slate-900 to-amber-950',
-  CLIENT_ADMIN: 'from-slate-900 via-slate-900 to-emerald-950',
-  HOD:          'from-slate-900 via-slate-900 to-violet-950',
-  RESPONDENT:   'from-slate-900 via-slate-900 to-indigo-950',
+  SUPER_ADMIN:  'from-[#121820] via-[#111827] to-[#1f1720]',
+  CONSULTANT:   'from-[#121820] via-[#111827] to-[#211a12]',
+  CLIENT_ADMIN: 'from-[#121820] via-[#111827] to-[#10221f]',
+  HOD:          'from-[#121820] via-[#111827] to-[#1c1830]',
+  RESPONDENT:   'from-[#121820] via-[#111827] to-[#151d32]',
 };
 
 const iconPaths: Record<IconName | 'signout', React.ReactNode> = {
@@ -161,25 +161,25 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
       {/* ── Brand ── */}
       <div className="px-5 pt-6 pb-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${grad} text-sm font-black text-white shadow-lg shadow-black/20`}>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${grad} text-sm font-black text-white shadow-lg shadow-black/20 ring-1 ring-white/10`}>
             PI
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-black text-white tracking-tight">Pro-Insight 360</p>
-            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">Assessment workspace</p>
+            <p className="text-[10px] font-semibold text-teal-200/70 uppercase tracking-widest">Command center</p>
           </div>
         </div>
       </div>
 
       {/* ── User card ── */}
-      <div className="mx-3 mt-4 mb-4 rounded-2xl bg-white/8 border border-white/10 px-4 py-3 backdrop-blur-sm">
+      <div className="mx-3 mt-4 mb-4 rounded-2xl bg-white/[0.06] border border-white/10 px-4 py-3 backdrop-blur-sm shadow-inner">
         <div className="flex items-center gap-3">
           <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${grad} text-xs font-black text-white shadow-md`}>
             {initials}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-bold text-white">{userName}</p>
-            <p className="text-[10px] font-semibold text-white/50">{roleLabels[role]}</p>
+            <p className="text-[10px] font-semibold text-white/45">{roleLabels[role]}</p>
           </div>
           <div className="relative">
             <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-emerald-400 opacity-75" />
@@ -190,7 +190,7 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
 
       {/* ── Nav label ── */}
       <div className="px-5 pb-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Menu</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Navigation</p>
       </div>
 
       {/* ── Nav items ── */}
@@ -206,12 +206,12 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
                 aria-current={isActive ? 'page' : undefined}
                 className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-white/15 text-white shadow-inner'
-                    : 'text-white/60 hover:bg-white/8 hover:text-white'
+                    ? 'bg-teal-400/15 text-white shadow-inner ring-1 ring-teal-300/20'
+                    : 'text-white/55 hover:bg-white/[0.07] hover:text-white'
                 }`}
               >
                 {/* Coloured icon box */}
-                <span className={`shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br ${item.color} shadow-md text-white transition-transform group-hover:scale-105`}>
+                <span className={`shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${item.color} shadow-md text-white transition-transform group-hover:scale-105`}>
                   <NavIcon name={item.icon} />
                 </span>
 
@@ -219,7 +219,7 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
 
                 {/* Active right glow dot */}
                 {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" aria-hidden="true" />
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-300" aria-hidden="true" />
                 )}
               </Link>
             </li>
@@ -235,7 +235,7 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
             localStorage.removeItem('accessToken');
             window.location.href = '/login';
           }}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/50 transition-all hover:bg-red-500/20 hover:text-red-300"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/50 transition-all hover:bg-red-500/20 hover:text-red-200"
         >
           <span className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">
             <NavIcon name="signout" />

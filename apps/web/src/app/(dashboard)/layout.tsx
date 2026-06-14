@@ -57,7 +57,7 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen dashboard-shell">
       <div className="lg:flex">
         {isNavOpen && (
           <button
@@ -69,7 +69,7 @@ export default function DashboardLayout({
         )}
 
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto border-r border-border bg-surface shadow-xl shadow-slate-900/10 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto border-r border-white/10 bg-slate-950 shadow-xl shadow-black/30 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
             isNavOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -77,12 +77,12 @@ export default function DashboardLayout({
         </aside>
 
         <main className="flex-1 min-h-screen overflow-y-auto">
-          <div className="sticky top-0 z-30 border-b border-border bg-white/95 backdrop-blur lg:hidden">
+          <div className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/90 text-white backdrop-blur lg:hidden">
             <div className="flex items-center justify-between max-w-[1440px] mx-auto px-4 py-3 sm:px-6">
               <button
                 type="button"
                 onClick={() => setIsNavOpen(true)}
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-surface-muted"
+                className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-white/15"
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <rect x="1" y="3" width="16" height="1.5" rx="0.75" fill="currentColor" />
@@ -93,13 +93,13 @@ export default function DashboardLayout({
               </button>
 
               <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-foreground">Pro-Insight 360</span>
+                <span className="text-sm font-bold text-white">Pro-Insight 360</span>
                 <span className="h-2.5 w-2.5 rounded-full bg-success" aria-hidden="true" />
               </div>
             </div>
           </div>
 
-          <div className={`max-w-[1440px] mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8 ${mounted ? 'animate-fade-in-up' : ''}`}>
+          <div className={`max-w-[1500px] mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-7 ${mounted ? 'animate-fade-in-up' : ''}`}>
             {children}
           </div>
 
