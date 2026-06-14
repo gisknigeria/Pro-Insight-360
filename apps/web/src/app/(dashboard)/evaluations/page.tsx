@@ -37,6 +37,10 @@ const PIE_COLORS: Record<string, string> = {
   ARCHIVED: '#cbd5e1',
 };
 
+function isFormBucketEvaluation(evaluation: Evaluation) {
+  return ['general', 'forms'].includes(evaluation.title.trim().toLowerCase()) && !evaluation.startDate;
+}
+
 function EvaluationCard({ evaluation, onArchive, onDelete }: {
   evaluation: Evaluation;
   onArchive: () => void;
@@ -149,7 +153,10 @@ export default function EvaluationsPage() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
-      .then(setEvaluations)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setEvaluations(list.filter((evaluation) => !isFormBucketEvaluation(evaluation)));
+      })
       .finally(() => setLoading(false));
   }, []);
 

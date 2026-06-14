@@ -623,10 +623,12 @@ export default function NewFormPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orgId = searchParams.get('orgId') ?? '';
+  const unitId = searchParams.get('unitId') ?? '';
+  const unitName = searchParams.get('unitName') ?? '';
 
   const [organisations, setOrganisations] = useState<Array<{ id: string; name: string }>>([]);
   const [values, setValues] = useState({
-    name: defaultDiagnosticChecklist.title,
+    name: unitName ? `${defaultDiagnosticChecklist.title} - ${unitName}` : defaultDiagnosticChecklist.title,
     description: defaultDiagnosticChecklist.description ?? '',
     organisationId: orgId,
     accessMode: 'REGISTERED',
@@ -666,6 +668,7 @@ export default function NewFormPage() {
         formId: `form-${Date.now()}`,
         title: values.name.trim(),
         description: values.description.trim(),
+        unitContext: unitId || unitName ? { id: unitId, name: unitName } : undefined,
       };
 
       const data = await apiFetch<{ id: string }>('/forms/for-organisation', {
@@ -675,6 +678,8 @@ export default function NewFormPage() {
           title: values.name.trim(),
           definition,
           accessMode: values.accessMode,
+          unitId: unitId || undefined,
+          unitName: unitName || undefined,
         }),
       });
 
@@ -699,7 +704,9 @@ export default function NewFormPage() {
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">Create a new form</h1>
         <p className="mt-2 text-sm text-slate-500">
-          Name the form and select the organisation it belongs to. You will be taken to the form builder next.
+          {unitName
+            ? `Create a diagnostic form for the ${unitName} unit. You will be taken to the form builder next.`
+            : 'Name the form and select the organisation it belongs to. You will be taken to the form builder next.'}
         </p>
       </div>
 
@@ -707,6 +714,12 @@ export default function NewFormPage() {
         {error && (
           <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {unitName && (
+          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-800">
+            This form will be tagged to <strong>{unitName}</strong> and listed under the organisation's Forms tab.
           </div>
         )}
 

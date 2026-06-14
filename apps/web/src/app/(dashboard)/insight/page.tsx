@@ -24,6 +24,17 @@ interface Evaluation {
   organisation: Organisation; _count: { forms: number };
 }
 
+interface OrganisationForm {
+  id: string;
+  title: string;
+  status: string;
+  questionCount: number;
+  evaluationId?: string;
+  organisationId?: string;
+  unitId?: string | null;
+  unitName?: string | null;
+}
+
 interface EvalMetrics {
   totalResponses: number; totalAnswers: number;
   averageCompletion: number; questionCount: number;
@@ -68,9 +79,14 @@ const SEV_CFG: Record<string, { label: string; bg: string; text: string; dot: st
 const STATUS_CFG: Record<string, { label: string; bg: string; text: string }> = {
   DRAFT:    { label: 'Draft',    bg: 'bg-slate-100',  text: 'text-slate-600'   },
   ACTIVE:   { label: 'Active',   bg: 'bg-emerald-100',text: 'text-emerald-700' },
+  PUBLISHED:{ label: 'Published',bg: 'bg-emerald-100',text: 'text-emerald-700' },
   CLOSED:   { label: 'Closed',   bg: 'bg-orange-100', text: 'text-orange-700'  },
   ARCHIVED: { label: 'Archived', bg: 'bg-slate-100',  text: 'text-slate-400'   },
 };
+
+function isFormBucketEvaluation(evaluation: Evaluation) {
+  return ['general', 'forms'].includes(evaluation.title.trim().toLowerCase()) && !evaluation.startDate;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -454,8 +470,8 @@ export default function InsightPage() {
   const [gapItems, setGapItems]       = useState<GapItem[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState('');
-  const [activeTab, setActiveTab]     = useState<'overview' | 'reports' | 'evaluations' | 'forms'>('overview');
-  const [orgForms, setOrgForms]       = useState<Array<{ id: string; title: string; status: string; questionCount: number; evaluationId?: string }>>([]);
+  const [activeTab, setActiveTab]     = useState<'diagnostics' | 'overview' | 'reports' | 'evaluations' | 'forms'>('diagnostics');
+  const [orgForms, setOrgForms]       = useState<OrganisationForm[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -472,25 +488,27 @@ export default function InsightPage() {
           apiFetch<Evaluation[]>('/evaluations'),
           apiFetch<PublishedAnalysis[]>('/published-analyses'),
           apiFetch<GapItem[]>('/gap-analysis').catch(() => [] as GapItem[]),
-          apiFetch<Array<{ id: string; title: string; status: string; questionCount: number; evaluationId?: string }>>('/forms').catch(() => []),
+          apiFetch<OrganisationForm[]>('/forms').catch(() => []),
         ]);
 
         const org = user.organisation;
         setUserOrg(org);
 
         // Filter evals to this org
-        const myEvals = allEvals.filter(e => e.organisation?.id === org.id);
-        setOrgEvals(myEvals);
+        const allOrgEvals = allEvals.filter(e => e.organisation?.id === org.id);
+        const visibleOrgEvals = allOrgEvals.filter(e => !isFormBucketEvaluation(e));
+        setOrgEvals(visibleOrgEvals);
         setPublishedAnalyses(allPublished);
 
-        const myEvalIds = new Set(myEvals.map(e => e.id));
+        const myEvalIds = new Set(allOrgEvals.map(e => e.id));
         setGapItems(allGaps.filter(g => myEvalIds.has(g.evaluation.id)));
-        // Forms linked to this org's evaluations
-        setOrgForms(allForms.filter(f => f.evaluationId && myEvalIds.has(f.evaluationId)));
+        setOrgForms(allForms.filter(f =>
+          f.organisationId === org.id || Boolean(f.evaluationId && myEvalIds.has(f.evaluationId))
+        ));
 
         // Fetch live metrics per evaluation in parallel
         const metricEntries = await Promise.all(
-          myEvals.map(async (ev) => {
+          allOrgEvals.map(async (ev) => {
             try {
               const m = await apiFetch<EvalMetrics>(`/diagnosis/evaluations/${ev.id}/responses`);
               return [ev.id, m] as [string, EvalMetrics];
@@ -555,6 +573,39 @@ export default function InsightPage() {
     return [...new Set(all)];
   }, [publishedAnalyses]);
 
+  const diagnosticCards = useMemo(() => {
+    const projectCards = orgEvals.map(ev => ({
+      id: `project-${ev.id}`,
+      kind: 'Project',
+      title: ev.title,
+      subtitle: ev.organisation.name,
+      status: ev.status,
+      forms: ev._count.forms,
+      questions: null as number | null,
+      diagnosisHref: `/evaluations/${ev.id}/diagnosis`,
+      viewHref: `/evaluations/${ev.id}`,
+      analysed: publishedAnalyses.some(pa => pa.evaluationId === ev.id),
+    }));
+
+    const formCards = orgForms.map(form => {
+      const evaluation = form.evaluationId ? orgEvals.find(ev => ev.id === form.evaluationId) : undefined;
+      return {
+        id: `form-${form.id}`,
+        kind: 'Form',
+        title: form.title,
+        subtitle: form.unitName ? `Unit: ${form.unitName}` : (evaluation?.title ?? userOrg?.name ?? 'Organisation form'),
+        status: form.status,
+        forms: null as number | null,
+        questions: form.questionCount,
+        diagnosisHref: form.evaluationId ? `/evaluations/${form.evaluationId}/diagnosis` : `/forms/${form.id}`,
+        viewHref: form.evaluationId ? `/evaluations/${form.evaluationId}/diagnosis` : `/forms/${form.id}`,
+        analysed: Boolean(form.evaluationId && publishedAnalyses.some(pa => pa.evaluationId === form.evaluationId)),
+      };
+    });
+
+    return [...projectCards, ...formCards];
+  }, [orgEvals, orgForms, publishedAnalyses, userOrg]);
+
   // ─────────────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -596,6 +647,7 @@ export default function InsightPage() {
           <div className="mb-6 border-b border-slate-200">
             <nav className="flex gap-1">
               {([
+                { id: 'diagnostics', label: 'Diagnostics',       icon: '🔍', badge: diagnosticCards.length },
                 { id: 'overview',    label: 'Overview',          icon: '📈' },
                 { id: 'reports',     label: 'Published reports',  icon: '📋', badge: publishedAnalyses.length },
                 { id: 'evaluations', label: 'Projects',           icon: '📁', badge: orgEvals.length },
@@ -617,6 +669,74 @@ export default function InsightPage() {
               ))}
             </nav>
           </div>
+
+          {activeTab === 'diagnostics' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {[
+                  { label: 'Targets', value: diagnosticCards.length, icon: '🔍', grad: 'from-blue-500 to-indigo-600' },
+                  { label: 'Projects', value: orgEvals.length, icon: '📁', grad: 'from-emerald-400 to-green-600' },
+                  { label: 'Forms', value: orgForms.length, icon: '📄', grad: 'from-amber-400 to-orange-600' },
+                  { label: 'Analysed', value: diagnosticCards.filter(card => card.analysed).length, icon: '✓', grad: 'from-slate-500 to-slate-700' },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg text-white shadow-md`}>
+                      {s.icon}
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+                    <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {diagnosticCards.length === 0 ? (
+                <EmptyState icon="🔍" title="No diagnostics yet" description="Projects and forms for diagnosis will appear here." />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {diagnosticCards.map(card => {
+                    const cfg = STATUS_CFG[card.status] ?? STATUS_CFG.DRAFT;
+                    return (
+                      <div key={card.id} className="group relative flex flex-col rounded-3xl border border-slate-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md transition-all overflow-hidden">
+                        <div className={`h-1 ${card.kind === 'Project' ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                        <div className="p-5 flex flex-col flex-1">
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base ${card.kind === 'Project' ? 'bg-blue-50' : 'bg-amber-50'}`}>
+                                {card.kind === 'Project' ? '📁' : '📄'}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-900 truncate">{card.title}</p>
+                                <p className="text-xs text-slate-400 mt-0.5">{card.subtitle}</p>
+                              </div>
+                            </div>
+                            <span className={`shrink-0 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-5">
+                            <span className="rounded-full bg-slate-100 px-2 py-1 font-semibold">{card.kind}</span>
+                            {card.forms !== null && <span>{card.forms} form{card.forms !== 1 ? 's' : ''}</span>}
+                            {card.questions !== null && <span>{card.questions} questions</span>}
+                            {card.analysed && <span className="rounded-full bg-emerald-100 px-2 py-1 font-bold text-emerald-700">Analysed</span>}
+                          </div>
+
+                          <div className="mt-auto flex items-center gap-2">
+                            <Link href={card.diagnosisHref}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors">
+                              Diagnose
+                            </Link>
+                            <Link href={card.viewHref}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
+                              View →
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ─────────────────── OVERVIEW ─────────────────── */}
           {activeTab === 'overview' && (
@@ -991,7 +1111,7 @@ export default function InsightPage() {
                         {ev && (
                           <div className="flex gap-2 mt-4">
                             <Link href={`/evaluations/${ev.id}/diagnosis`}
-                              className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-slate-700 transition-colors">
+                              className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors">
                               📊 View analysis
                             </Link>
                             <Link href={`/evaluations/${ev.id}/diagnosis`}

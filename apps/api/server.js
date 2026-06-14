@@ -1012,13 +1012,16 @@ app.get('/users', async (req, res) => {
 app.get('/forms', async (req, res) => {
   try {
     const forms = await prisma.form.findMany({
-      include: { evaluation: true },
+      include: { evaluation: { include: { organisation: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
     const mapped = forms.map((form) => {
       const definition = getJsonValue(form.definition);
       const description = definition?.description || '';
+      const unit = definition?.unitContext && typeof definition.unitContext === 'object'
+        ? definition.unitContext
+        : null;
       const pages = Array.isArray(definition?.pages) ? definition.pages : [];
       const questionCount = pages.reduce((count, page) => count + (Array.isArray(page.questions) ? page.questions.length : 0), 0);
 
@@ -1029,6 +1032,14 @@ app.get('/forms', async (req, res) => {
         status: form.status,
         accessMode: definition?.accessMode || 'REGISTERED',
         questionCount,
+        evaluationId: form.evaluationId,
+        evaluationTitle: form.evaluation?.title,
+        organisationId: form.evaluation?.organisationId,
+        organisation: form.evaluation?.organisation
+          ? { id: form.evaluation.organisation.id, name: form.evaluation.organisation.name }
+          : null,
+        unitId: unit?.id || null,
+        unitName: unit?.name || null,
         createdAt: form.createdAt,
         updatedAt: form.updatedAt,
       };
@@ -1093,11 +1104,11 @@ app.post('/forms', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMI
 });
 
 // ── Create form directly for an organisation (no evaluation picker needed) ───
-// Auto-creates or reuses a default "General" evaluation for the org so the
-// database constraint is satisfied but the user never sees evaluations.
+// Auto-creates or reuses a hidden "Forms" evaluation for the org so the
+// database constraint is satisfied while forms stay under the Forms tab.
 app.post('/forms/for-organisation', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
-    const { organisationId, title, definition, accessMode } = req.body;
+    const { organisationId, title, definition, accessMode, unitId, unitName } = req.body;
     if (!organisationId || !title) {
       return res.status(400).json({ message: 'organisationId and title are required.' });
     }
@@ -1105,18 +1116,23 @@ app.post('/forms/for-organisation', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLI
     const org = await prisma.organisation.findUnique({ where: { id: organisationId } });
     if (!org) return res.status(404).json({ message: 'Organisation not found.' });
 
-    // Find or create a default evaluation bucket for this org
+    // Find or create a hidden evaluation bucket for organisation-level forms.
     let evaluation = await prisma.evaluation.findFirst({
-      where: { organisationId, title: 'General' },
+      where: { organisationId, title: { in: ['Forms', 'General'] } },
     });
     if (!evaluation) {
       evaluation = await prisma.evaluation.create({
         data: {
           organisationId,
-          title: 'General',
+          title: 'Forms',
           status: 'ACTIVE',
           createdById: req.user.sub,
         },
+      });
+    } else if (evaluation.title === 'General') {
+      evaluation = await prisma.evaluation.update({
+        where: { id: evaluation.id },
+        data: { title: 'Forms' },
       });
     }
 
@@ -1130,6 +1146,12 @@ app.post('/forms/for-organisation', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLI
       accessMode: accessMode || 'REGISTERED',
     };
     if (!formDefinition.accessMode) formDefinition.accessMode = accessMode || 'REGISTERED';
+    if (unitId || unitName) {
+      formDefinition.unitContext = {
+        id: unitId || `${organisationId}::${unitName}`,
+        name: unitName || '',
+      };
+    }
 
     const form = await prisma.form.create({
       data: {
@@ -1149,6 +1171,8 @@ app.post('/forms/for-organisation', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLI
       status: form.status,
       evaluationId: evaluation.id,
       organisationId,
+      unitId: formDefinition.unitContext?.id || null,
+      unitName: formDefinition.unitContext?.name || null,
       createdAt: form.createdAt,
       updatedAt: form.updatedAt,
     });
@@ -1184,6 +1208,8 @@ app.get('/forms/by-organisation/:orgId', authenticate, async (req, res) => {
         questionCount,
         evaluationId: form.evaluationId,
         organisationId: form.evaluation?.organisationId,
+        unitId: def?.unitContext?.id || null,
+        unitName: def?.unitContext?.name || null,
         createdAt: form.createdAt,
         updatedAt: form.updatedAt,
       };

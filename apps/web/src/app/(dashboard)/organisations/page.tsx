@@ -33,6 +33,9 @@ interface Form {
   questionCount: number;
   createdAt: string;
   evaluationId?: string;
+  organisationId?: string;
+  unitId?: string | null;
+  unitName?: string | null;
 }
 
 interface Unit {
@@ -70,6 +73,10 @@ const STATUS_FM: Record<string, { label: string; dot: string; cls: string }> = {
   PUBLISHED: { label: 'Published', dot: 'bg-emerald-500', cls: 'bg-emerald-50 text-emerald-700' },
   CLOSED:    { label: 'Closed',    dot: 'bg-orange-500',  cls: 'bg-orange-50 text-orange-700' },
 };
+
+function isFormBucketEvaluation(evaluation: Evaluation) {
+  return ['general', 'forms'].includes(evaluation.title.trim().toLowerCase()) && !evaluation.startDate;
+}
 
 // ─── Create unit modal ────────────────────────────────────────────────────────
 
@@ -143,10 +150,12 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
   const [tab, setTab] = useState<'forms' | 'units' | 'projects'>('projects');
   const [showUnit, setShowUnit] = useState(false);
 
-  const orgEvals = evaluations.filter(e => e.organisation?.id === org.id);
+  const allOrgEvals = evaluations.filter(e => e.organisation?.id === org.id);
+  const orgEvals = allOrgEvals.filter(e => !isFormBucketEvaluation(e));
   const orgUnits = units.filter(u => u.organisation?.id === org.id);
-  // Forms belonging to this org's evaluations
-  const orgForms = forms.filter(f => orgEvals.some(e => e.id === f.evaluationId));
+  const orgForms = forms.filter(f =>
+    f.organisationId === org.id || allOrgEvals.some(e => e.id === f.evaluationId)
+  );
 
   const tabs = [
     { id: 'projects' as const, label: `Projects (${orgEvals.length})`, icon: '📁' },
@@ -275,7 +284,19 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
           ) : (
             <div className="space-y-2">
               {orgUnits.map(u => (
-                <div key={u.id} className="rounded-xl border border-violet-100 bg-violet-50 overflow-hidden">
+                <div
+                  key={u.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/forms/new?orgId=${org.id}&unitId=${encodeURIComponent(u.id)}&unitName=${encodeURIComponent(u.name)}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      router.push(`/forms/new?orgId=${org.id}&unitId=${encodeURIComponent(u.id)}&unitName=${encodeURIComponent(u.name)}`);
+                    }
+                  }}
+                  className="block w-full rounded-xl border border-violet-100 bg-violet-50 overflow-hidden text-left transition hover:border-violet-300 hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                >
                   <div className="flex items-center gap-3 px-4 py-3">
                     <span className="text-base shrink-0">🏗️</span>
                     <div className="flex-1 min-w-0">
@@ -283,12 +304,10 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                       {u.description && <p className="text-[10px] text-slate-500 truncate">{u.description}</p>}
                     </div>
                     <span className="text-[10px] text-slate-400 shrink-0">{u.staffCount ?? 0} staff</span>
-                    <button type="button"
-                      onClick={() => router.push(`/forms/new?orgId=${org.id}&unitId=${u.id}&unitName=${encodeURIComponent(u.name)}`)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-primary/90 transition shrink-0">
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[10px] font-bold text-white transition shrink-0">
                       + Form
-                    </button>
-                    <button type="button" onClick={() => onDeleteUnit(u.id)}
+                    </span>
+                    <button type="button" onClick={(event) => { event.stopPropagation(); onDeleteUnit(u.id); }}
                       className="rounded-lg p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
                       🗑️
                     </button>
