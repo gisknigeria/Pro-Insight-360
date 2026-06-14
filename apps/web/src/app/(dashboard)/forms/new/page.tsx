@@ -12,7 +12,7 @@ interface EvaluationOption {
   organisation: { id: string; name: string };
 }
 
-const defaultDiagnosticChecklist: FormDefinition = {
+: FormDefinition = {
   formId: `form-${Date.now()}`,
   title: 'DIAGNOSTIC CHECKLIST',
   description: 'Project: Supervising Technical Consultant for GIS and Digital Transformation. Organisation: Oyo State Housing Corporation. GIS KONSULT LTD | STAKEHOLDER INTERVIEW GUIDE: Critical insights from each department.',
@@ -624,11 +624,11 @@ export default function NewFormPage() {
   const searchParams = useSearchParams();
   const orgId = searchParams.get('orgId') ?? '';
 
-  const [evaluations, setEvaluations] = useState<EvaluationOption[]>([]);
+  const [organisations, setOrganisations] = useState<Array<{ id: string; name: string }>>([]);
   const [values, setValues] = useState({
     name: defaultDiagnosticChecklist.title,
     description: defaultDiagnosticChecklist.description ?? '',
-    evaluationId: '',
+    organisationId: orgId,
     accessMode: 'REGISTERED',
   });
   const [loading, setLoading] = useState(true);
@@ -636,49 +636,31 @@ export default function NewFormPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    apiFetch<EvaluationOption[]>('/evaluations')
-      .then(evs => {
-        // If coming from an org, pre-filter to that org's evaluations
-        const filtered = orgId ? evs.filter(e => e.organisation.id === orgId) : evs;
-        setEvaluations(filtered);
-        // Auto-select first evaluation if only one option
-        if (filtered.length === 1) {
-          setValues(v => ({ ...v, evaluationId: filtered[0].id }));
+    apiFetch<Array<{ id: string; name: string }>>('/organisations')
+      .then(orgs => {
+        setOrganisations(orgs);
+        // If no orgId from URL, auto-select first org
+        if (!orgId && orgs.length > 0) {
+          setValues(v => ({ ...v, organisationId: orgs[0].id }));
         }
       })
-      .catch((err) => {
-        console.error('Load evaluations failed:', err);
-        setError('Unable to load evaluations. Please refresh the page.');
-      })
+      .catch(() => setError('Unable to load organisations.'))
       .finally(() => setLoading(false));
   }, [orgId]);
 
-  const canSubmit = values.name.trim();
+  const canSubmit = values.name.trim() && values.organisationId;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError('');
 
     if (!canSubmit) {
-      setError('Please provide a form name.');
+      setError('Please provide a form name and select an organisation.');
       return;
     }
 
     setSaving(true);
     try {
-      // If no evaluation selected, auto-use the first available one or create without
-      let evaluationId = values.evaluationId;
-      if (!evaluationId && evaluations.length > 0) {
-        evaluationId = evaluations[0].id;
-      }
-
-      // If still no evaluation, we need at least one — show a helpful error
-      if (!evaluationId) {
-        setError('No project available. Create a project first, then add a form to it.');
-        setSaving(false);
-        return;
-      }
-
       const definition = {
         ...defaultDiagnosticChecklist,
         formId: `form-${Date.now()}`,
@@ -686,10 +668,10 @@ export default function NewFormPage() {
         description: values.description.trim(),
       };
 
-      const data = await apiFetch<{ id: string }>('/forms', {
+      const data = await apiFetch<{ id: string }>('/forms/for-organisation', {
         method: 'POST',
         body: JSON.stringify({
-          evaluationId,
+          organisationId: values.organisationId,
           title: values.name.trim(),
           definition,
           accessMode: values.accessMode,
@@ -712,41 +694,12 @@ export default function NewFormPage() {
     );
   }
 
-  if (error && evaluations.length === 0) {
-    return (
-      <div className="max-w-3xl mx-auto py-12">
-        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-          {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (evaluations.length === 0) {
-    return (
-      <div className="max-w-3xl mx-auto py-12 text-center">
-        <h1 className="text-2xl font-bold text-slate-900 mb-3">Create a new form</h1>
-        <p className="text-slate-500 mb-6">
-          {orgId
-            ? 'This organisation has no evaluation projects yet. Create a project first, then come back to add a form.'
-            : 'You need at least one evaluation project before you can create a form.'}
-        </p>
-        <Link
-          href={orgId ? `/evaluations/new` : '/evaluations/new'}
-          className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-bold text-amber-300 hover:bg-primary/90 transition"
-        >
-          Create Project First
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-3xl mx-auto space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">Create a new form</h1>
         <p className="mt-2 text-sm text-slate-500">
-          Start by naming the form and selecting an evaluation. You will be taken to the form builder next.
+          Name the form and select the organisation it belongs to. You will be taken to the form builder next.
         </p>
       </div>
 
@@ -758,13 +711,11 @@ export default function NewFormPage() {
         )}
 
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-slate-700">
-            Form name
-          </label>
+          <label htmlFor="name" className="block text-sm font-medium text-slate-700">Form name</label>
           <input
             id="name"
             value={values.name}
-            onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))}
+            onChange={e => setValues(v => ({ ...v, name: e.target.value }))}
             className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             placeholder="e.g. GIS Readiness Assessment"
             required
@@ -772,48 +723,39 @@ export default function NewFormPage() {
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-slate-700">
-            Description
-          </label>
+          <label htmlFor="description" className="block text-sm font-medium text-slate-700">Description</label>
           <textarea
             id="description"
             value={values.description}
-            onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))}
+            onChange={e => setValues(v => ({ ...v, description: e.target.value }))}
             className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200 resize-none"
-            rows={4}
+            rows={3}
             placeholder="What is this form for?"
           />
         </div>
 
         <div>
-          <label htmlFor="evaluationId" className="block text-sm font-medium text-slate-700">
-            Project / Evaluation <span className="text-slate-400 font-normal text-xs">(optional — auto-selects if only one exists)</span>
-          </label>
+          <label htmlFor="orgId" className="block text-sm font-medium text-slate-700">Organisation *</label>
           <select
-            id="evaluationId"
-            value={values.evaluationId}
-            onChange={(event) => setValues((current) => ({ ...current, evaluationId: event.target.value }))}
+            id="orgId"
+            value={values.organisationId}
+            onChange={e => setValues(v => ({ ...v, organisationId: e.target.value }))}
             className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
+            required
           >
-            <option value="">
-              {evaluations.length === 0 ? 'No projects available' : '— Select a project (optional) —'}
-            </option>
-            {evaluations.map((evaluation) => (
-              <option key={evaluation.id} value={evaluation.id}>
-                {evaluation.title} ({evaluation.organisation.name})
-              </option>
+            <option value="">Select an organisation…</option>
+            {organisations.map(org => (
+              <option key={org.id} value={org.id}>{org.name}</option>
             ))}
           </select>
         </div>
 
         <div>
-          <label htmlFor="accessMode" className="block text-sm font-medium text-slate-700">
-            Form access
-          </label>
+          <label htmlFor="accessMode" className="block text-sm font-medium text-slate-700">Form access</label>
           <select
             id="accessMode"
             value={values.accessMode}
-            onChange={(event) => setValues((current) => ({ ...current, accessMode: event.target.value }))}
+            onChange={e => setValues(v => ({ ...v, accessMode: e.target.value }))}
             className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
           >
             <option value="REGISTERED">Registered only</option>
@@ -830,7 +772,7 @@ export default function NewFormPage() {
             {saving ? 'Creating form…' : 'Create form'}
           </button>
           <Link
-            href={orgId ? '/organisations' : '/forms'}
+            href={orgId ? '/organisations' : '/organisations'}
             className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
           >
             Cancel

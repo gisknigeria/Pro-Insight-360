@@ -592,10 +592,10 @@ export default function InsightPage() {
           {/* ── KPI cards ── */}
           <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              { label: 'Projects',         value: orgEvals.length,                icon: '📁', grad: 'from-blue-500 to-indigo-600',   sub: `${orgEvals.filter(e => e.status === 'ACTIVE').length} active` },
-              { label: 'Submitted',        value: aggregated.totalResponses,      icon: '👥', grad: 'from-emerald-500 to-teal-600',   sub: 'total responses' },
-              { label: 'Total answers',    value: aggregated.totalAnswers,        icon: '✏️', grad: 'from-amber-500 to-orange-600',   sub: 'across all forms' },
-              { label: 'Avg completion',   value: `${aggregated.avgCompletion}%`, icon: '📈', grad: 'from-violet-500 to-purple-600',  sub: 'across forms' },
+              { label: 'Forms',          value: orgForms.length,                icon: '📄', grad: 'from-blue-500 to-indigo-600',   sub: `${orgForms.filter(f => f.status === 'PUBLISHED').length} published` },
+              { label: 'Submitted',      value: aggregated.totalResponses,      icon: '👥', grad: 'from-emerald-500 to-teal-600',   sub: 'total responses' },
+              { label: 'Total answers',  value: aggregated.totalAnswers,        icon: '✏️', grad: 'from-amber-500 to-orange-600',   sub: 'across all forms' },
+              { label: 'Avg completion', value: `${aggregated.avgCompletion}%`, icon: '📈', grad: 'from-violet-500 to-purple-600',  sub: 'across forms' },
             ].map(kpi => (
               <div key={kpi.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all">
                 <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${kpi.grad} text-lg shadow-md`}>
@@ -937,50 +937,59 @@ export default function InsightPage() {
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">Your forms</h2>
                   <p className="text-sm text-slate-500">
-                    Forms linked to your organisation's projects. View response data and analysis.
+                    Published forms for your organisation. Click a form to view its responses and analysis.
                   </p>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-white">
-                  {orgForms.length}
+                  {orgForms.filter(f => f.status === 'PUBLISHED').length} published
                 </span>
               </div>
               {orgForms.length === 0 ? (
-                <EmptyState icon="📄" title="No forms yet" description="Forms created for your organisation's projects will appear here." />
+                <EmptyState icon="📄" title="No forms yet" description="Forms created for your organisation will appear here once published." />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {orgForms.map(form => {
                     const ev = orgEvals.find(e => e.id === form.evaluationId);
                     const m = ev ? evalMetrics.get(ev.id) : undefined;
                     const pct = m?.averageCompletion ?? 0;
-                    const STATUS_FM: Record<string, { label: string; bg: string; text: string }> = {
-                      DRAFT:     { label: 'Draft',     bg: 'bg-slate-100',  text: 'text-slate-600' },
-                      PUBLISHED: { label: 'Published', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-                      CLOSED:    { label: 'Closed',    bg: 'bg-orange-50',  text: 'text-orange-700' },
+                    const hasAnalysis = ev ? publishedAnalyses.some(pa => pa.evaluationId === ev.id) : false;
+
+                    const STATUS_FM: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+                      DRAFT:     { label: 'Draft',     bg: 'bg-slate-100',  text: 'text-slate-600',   dot: 'bg-slate-400' },
+                      PUBLISHED: { label: 'Published', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+                      CLOSED:    { label: 'Closed',    bg: 'bg-orange-50',  text: 'text-orange-700',  dot: 'bg-orange-500' },
                     };
                     const sc = STATUS_FM[form.status] ?? STATUS_FM.DRAFT;
+
                     return (
                       <div key={form.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300 hover:shadow-md transition-all">
+                        {/* Header */}
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-base">📄</div>
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-slate-900 truncate">{form.title}</p>
-                              {ev && <p className="text-xs text-slate-400 mt-0.5 truncate">📁 {ev.title}</p>}
+                              <p className="text-xs text-slate-400 mt-0.5">{form.questionCount} questions</p>
                             </div>
                           </div>
-                          <span className={`shrink-0 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>
-                            {sc.label}
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {hasAnalysis && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">✓ Analysed</span>
+                            )}
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />{sc.label}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Response metrics if available */}
+                        {/* Response metrics */}
                         {m ? (
                           <>
                             <div className="grid grid-cols-3 gap-2 mb-3">
                               {[
-                                { label: 'Responses', value: m.totalResponses },
-                                { label: 'Answers',   value: m.totalAnswers },
-                                { label: 'Completion',value: `${m.averageCompletion}%` },
+                                { label: 'Responses',  value: m.totalResponses },
+                                { label: 'Answers',    value: m.totalAnswers },
+                                { label: 'Completion', value: `${m.averageCompletion}%` },
                               ].map(s => (
                                 <div key={s.label} className="rounded-xl bg-slate-50 border border-slate-100 p-2.5 text-center">
                                   <p className="text-base font-bold text-slate-900">{s.value}</p>
@@ -991,23 +1000,22 @@ export default function InsightPage() {
                             <CompletionBar pct={pct} />
                           </>
                         ) : (
-                          <p className="text-xs text-slate-400 mb-3">{form.questionCount} questions</p>
+                          <div className="h-8 animate-pulse rounded-xl bg-slate-100 mb-3" />
                         )}
 
-                        <div className="flex gap-2 mt-4">
-                          {ev && (
+                        {/* Actions — link to diagnosis page for this form's evaluation */}
+                        {ev && (
+                          <div className="flex gap-2 mt-4">
                             <Link href={`/evaluations/${ev.id}/diagnosis`}
                               className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-slate-700 transition-colors">
-                              📊 Analysis
+                              📊 View analysis
                             </Link>
-                          )}
-                          {ev && (
-                            <Link href={`/evaluations/${ev.id}`}
+                            <Link href={`/evaluations/${ev.id}/diagnosis`}
                               className="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
-                              View project →
+                              View responses →
                             </Link>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

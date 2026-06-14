@@ -1092,6 +1092,109 @@ app.post('/forms', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMI
   }
 });
 
+// ── Create form directly for an organisation (no evaluation picker needed) ───
+// Auto-creates or reuses a default "General" evaluation for the org so the
+// database constraint is satisfied but the user never sees evaluations.
+app.post('/forms/for-organisation', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { organisationId, title, definition, accessMode } = req.body;
+    if (!organisationId || !title) {
+      return res.status(400).json({ message: 'organisationId and title are required.' });
+    }
+
+    const org = await prisma.organisation.findUnique({ where: { id: organisationId } });
+    if (!org) return res.status(404).json({ message: 'Organisation not found.' });
+
+    // Find or create a default evaluation bucket for this org
+    let evaluation = await prisma.evaluation.findFirst({
+      where: { organisationId, title: 'General' },
+    });
+    if (!evaluation) {
+      evaluation = await prisma.evaluation.create({
+        data: {
+          organisationId,
+          title: 'General',
+          status: 'ACTIVE',
+          createdById: req.user.sub,
+        },
+      });
+    }
+
+    const formDefinition = definition || {
+      formId: `form-${Date.now()}`,
+      title: title.trim(),
+      description: '',
+      pages: [{ pageId: 'page-1', title: 'Page 1', questions: [] }],
+      conditionalLogic: [],
+      version: 1,
+      accessMode: accessMode || 'REGISTERED',
+    };
+    if (!formDefinition.accessMode) formDefinition.accessMode = accessMode || 'REGISTERED';
+
+    const form = await prisma.form.create({
+      data: {
+        evaluationId: evaluation.id,
+        title: title.trim(),
+        definition: formDefinition,
+        status: 'DRAFT',
+        createdById: req.user.sub,
+      },
+    });
+
+    await syncFormQuestions(form.id, formDefinition);
+
+    res.status(201).json({
+      id: form.id,
+      title: form.title,
+      status: form.status,
+      evaluationId: evaluation.id,
+      organisationId,
+      createdAt: form.createdAt,
+      updatedAt: form.updatedAt,
+    });
+  } catch (error) {
+    console.error('Create form for org failed:', error);
+    res.status(500).json({ message: 'Unable to create form.' });
+  }
+});
+
+// ── List all forms belonging to an organisation (via evaluations) ────────────
+app.get('/forms/by-organisation/:orgId', authenticate, async (req, res) => {
+  try {
+    const { orgId } = req.params;
+    const evaluations = await prisma.evaluation.findMany({
+      where: { organisationId: orgId },
+      select: { id: true },
+    });
+    const evalIds = evaluations.map(e => e.id);
+    const forms = await prisma.form.findMany({
+      where: { evaluationId: { in: evalIds } },
+      include: { evaluation: { select: { id: true, title: true, organisationId: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const mapped = forms.map(form => {
+      const def = getJsonValue(form.definition);
+      const pages = Array.isArray(def?.pages) ? def.pages : [];
+      const questionCount = pages.reduce((n, p) => n + (Array.isArray(p.questions) ? p.questions.length : 0), 0);
+      return {
+        id: form.id,
+        title: form.title,
+        status: form.status,
+        accessMode: def?.accessMode || 'REGISTERED',
+        questionCount,
+        evaluationId: form.evaluationId,
+        organisationId: form.evaluation?.organisationId,
+        createdAt: form.createdAt,
+        updatedAt: form.updatedAt,
+      };
+    });
+    res.json(mapped);
+  } catch (error) {
+    console.error('Fetch forms by org failed:', error);
+    res.status(500).json({ message: 'Unable to fetch forms.' });
+  }
+});
+
 app.put('/forms/:formId', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { formId } = req.params;
