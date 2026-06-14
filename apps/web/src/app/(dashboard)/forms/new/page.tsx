@@ -12,7 +12,7 @@ interface EvaluationOption {
   organisation: { id: string; name: string };
 }
 
-: FormDefinition = {
+const defaultDiagnosticChecklist: FormDefinition = {
   formId: `form-${Date.now()}`,
   title: 'DIAGNOSTIC CHECKLIST',
   description: 'Project: Supervising Technical Consultant for GIS and Digital Transformation. Organisation: Oyo State Housing Corporation. GIS KONSULT LTD | STAKEHOLDER INTERVIEW GUIDE: Critical insights from each department.',
