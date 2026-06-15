@@ -884,6 +884,11 @@ export default function DashboardPage() {
     return responses.filter((response) => response.form.evaluation?.organisation?.id === userOrg.id);
   }, [responses, userOrg]);
 
+  const companyGaps = useMemo(() => {
+    const evaluationIds = new Set(companyEvaluations.map((evaluation) => evaluation.id));
+    return gapSummaries.filter((gap) => evaluationIds.has(gap.evaluation.id));
+  }, [companyEvaluations, gapSummaries]);
+
   const completionDistribution = useMemo<ChartDataPoint[]>(() => {
     const buckets = [
       { name: '0-25%', min: 0, max: 25, value: 0 },
@@ -919,6 +924,38 @@ export default function DashboardPage() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 4);
   }, [companyResponses, companyEvaluations]);
+
+  const projectStatusData = useMemo<ChartDataPoint[]>(() => {
+    const counts: Record<string, number> = {};
+    companyEvaluations.forEach((evaluation) => {
+      counts[evaluation.status || 'UNKNOWN'] = (counts[evaluation.status || 'UNKNOWN'] || 0) + 1;
+    });
+    const entries = Object.entries(counts).map(([name, value]) => ({ name, value }));
+    return entries.length > 0 ? entries : [{ name: 'No projects', value: 0 }];
+  }, [companyEvaluations]);
+
+  const workspaceSummaryData = useMemo<ChartDataPoint[]>(
+    () => [
+      { name: 'Projects', value: companyEvaluations.length },
+      { name: 'Responses', value: companyResponses.length },
+      { name: 'Reports', value: publishedAnalyses.length },
+      { name: 'Gaps', value: companyGaps.length },
+    ],
+    [companyEvaluations.length, companyGaps.length, companyResponses.length, publishedAnalyses.length],
+  );
+
+  const primaryChartData = completionDistribution.some((item) => item.value > 0)
+    ? completionDistribution
+    : projectStatusData;
+  const primaryChartTitle = completionDistribution.some((item) => item.value > 0)
+    ? 'Completion distribution'
+    : 'Project status';
+  const secondaryChartData = evaluationResponseCounts.length > 0
+    ? evaluationResponseCounts
+    : workspaceSummaryData;
+  const secondaryChartTitle = evaluationResponseCounts.length > 0
+    ? 'Top evaluations'
+    : 'Workspace overview';
 
   const totalResponses = latestResponseMetrics?.totalResponses ?? companyResponses.length;
   const totalAnswers = latestResponseMetrics?.totalAnswers ?? companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
@@ -1018,49 +1055,37 @@ export default function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="dashboard-panel rounded-2xl p-5">
               <div className="flex items-center justify-between gap-4 mb-4">
-                <p className="text-sm font-semibold text-foreground">Completion distribution</p>
+                <p className="text-sm font-semibold text-foreground">{primaryChartTitle}</p>
                 <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
               </div>
               <div className="h-52">
-                {completionDistribution.some(d => d.value > 0) ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={completionDistribution} margin={{ top: 8, right: 8, left: -10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                        <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
-                    No completion data yet.
-                  </div>
-                )}
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={primaryChartData} margin={{ top: 8, right: 8, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                    <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
             <div className="dashboard-panel rounded-2xl p-5">
               <div className="flex items-center justify-between gap-4 mb-4">
-                <p className="text-sm font-semibold text-foreground">Top evaluations</p>
+                <p className="text-sm font-semibold text-foreground">{secondaryChartTitle}</p>
                 <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
               </div>
               <div className="h-52">
-                {evaluationResponseCounts.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={evaluationResponseCounts} margin={{ top: 8, right: 8, left: -10, bottom: 40 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={55} />
-                        <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                        <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
-                    No evaluation response data yet.
-                  </div>
-                )}
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={secondaryChartData} margin={{ top: 8, right: 8, left: -10, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={55} />
+                    <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                    <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>

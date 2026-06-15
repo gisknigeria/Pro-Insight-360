@@ -393,7 +393,11 @@ async function generateAiDiagnosis({ evaluation, scores, conflictCount, response
 }
 
 function authenticate(req, res, next) {
-  if (req.path.match(/^\/forms\/[^/]+\/definition$/)) {
+  if (
+    req.path.match(/^\/forms\/[^/]+\/definition$/) ||
+    req.path.match(/^\/organogram-intake-links\/[^/]+$/) ||
+    req.path.match(/^\/organogram-intake-links\/[^/]+\/responses$/)
+  ) {
     return next();
   }
 
