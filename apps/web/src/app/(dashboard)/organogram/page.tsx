@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { isClientAdmin as checkClientAdmin } from '@/lib/auth';
 import OrgChart from '@/components/organogram/OrgChart';
@@ -314,6 +315,18 @@ export default function OrganogramPage() {
             <span className="h-2 w-2 rounded-full bg-teal-500" />
             <span className="text-sm font-bold text-slate-700">{analyses.length} organisation{analyses.length !== 1 ? 's' : ''}</span>
           </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href="/organogram-intake"
+            target="_blank"
+            className="inline-flex items-center justify-center rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100"
+          >
+            Open standalone intake form
+          </Link>
+          <p className="flex items-center text-xs font-medium text-slate-500">
+            Send this to a CEO or HR lead, then paste the generated prompt into ChatGPT or Claude.
+          </p>
         </div>
       </div>
 

@@ -2164,6 +2164,8 @@ app.get('/published-analyses', authenticate, async (req, res) => {
           evaluationId: metadata.evaluationId || null,
           summary: metadata.summary || '',
           analysis: metadata.analysis || null,
+          sidebarPinned: Boolean(metadata.sidebarPinned),
+          sidebarTitle: metadata.sidebarTitle || metadata.analysis?.title || metadata.summary || '',
         };
       })
       .filter((item) => item.recipientId === req.user.sub);
@@ -2194,6 +2196,8 @@ app.get('/published-analyses/all', authenticate, roleGuard(['SUPER_ADMIN', 'CONS
         evaluationId: metadata.evaluationId || null,
         summary: metadata.summary || '',
         analysis: metadata.analysis || null,
+        sidebarPinned: Boolean(metadata.sidebarPinned),
+        sidebarTitle: metadata.sidebarTitle || metadata.analysis?.title || metadata.summary || '',
       };
     });
 
@@ -2205,6 +2209,76 @@ app.get('/published-analyses/all', authenticate, roleGuard(['SUPER_ADMIN', 'CONS
 });
 
 // ── Super admin: update organogram inside a published analysis (AuditLog) ────
+app.get('/published-analyses/sidebar', authenticate, async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      where: { action: 'DIAGNOSIS_PUBLISHED' },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const canViewAll = ['SUPER_ADMIN', 'CONSULTANT'].includes(req.user.role);
+    const items = logs
+      .map((log) => {
+        const metadata = log.metadata && typeof log.metadata === 'object' ? log.metadata : {};
+        return {
+          id: log.id,
+          title: metadata.sidebarTitle || metadata.analysis?.title || metadata.summary || metadata.recipientName || 'Published insight',
+          recipientId: metadata.recipientId,
+          recipientName: metadata.recipientName || metadata.recipientEmail,
+          evaluationId: metadata.evaluationId || null,
+          publishedAt: log.createdAt,
+          sidebarPinned: Boolean(metadata.sidebarPinned),
+        };
+      })
+      .filter((item) => item.sidebarPinned && (canViewAll || item.recipientId === req.user.sub))
+      .slice(0, 12);
+
+    res.json(items);
+  } catch (error) {
+    console.error('Fetch sidebar published analyses failed:', error);
+    res.status(500).json({ message: 'Unable to fetch sidebar insights.' });
+  }
+});
+
+app.patch('/published-analyses/:id/sidebar', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sidebarPinned, sidebarTitle } = req.body;
+
+    const log = await prisma.auditLog.findUnique({ where: { id } });
+    if (!log || log.action !== 'DIAGNOSIS_PUBLISHED') {
+      return res.status(404).json({ message: 'Published analysis not found.' });
+    }
+
+    const metadata = (log.metadata && typeof log.metadata === 'object') ? { ...log.metadata } : {};
+    const canUpdate = ['SUPER_ADMIN', 'CONSULTANT'].includes(req.user.role) || metadata.recipientId === req.user.sub;
+    if (!canUpdate) {
+      return res.status(403).json({ message: 'You cannot update this sidebar item.' });
+    }
+
+    metadata.sidebarPinned = Boolean(sidebarPinned);
+    if (typeof sidebarTitle === 'string' && sidebarTitle.trim()) {
+      metadata.sidebarTitle = sidebarTitle.trim().slice(0, 80);
+    }
+
+    const updated = await prisma.auditLog.update({
+      where: { id },
+      data: { metadata },
+    });
+
+    const updatedMetadata = updated.metadata && typeof updated.metadata === 'object' ? updated.metadata : {};
+    res.json({
+      id: updated.id,
+      sidebarPinned: Boolean(updatedMetadata.sidebarPinned),
+      sidebarTitle: updatedMetadata.sidebarTitle || updatedMetadata.summary || '',
+    });
+  } catch (error) {
+    console.error('Update sidebar published analysis failed:', error);
+    res.status(500).json({ message: 'Unable to update sidebar visibility.' });
+  }
+});
+
 app.patch('/published-analyses/:id/organogram', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT']), async (req, res) => {
   try {
     const { id } = req.params;

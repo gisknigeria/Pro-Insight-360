@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api';
 
 export type UserRole =
   | 'SUPER_ADMIN'
@@ -26,6 +28,13 @@ interface NavItem {
   icon: IconName;
   roles: UserRole[];
   color: string;       // icon accent colour class
+}
+
+interface SidebarInsight {
+  id: string;
+  title: string;
+  recipientName?: string;
+  publishedAt: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -148,10 +157,40 @@ function NavIcon({ name }: { name: IconName | 'signout' }) {
 
 export function SidebarNav({ role, userName }: { role: UserRole; userName: string }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activePublishedId = searchParams.get('published');
+  const [pinnedInsights, setPinnedInsights] = useState<SidebarInsight[]>([]);
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
   const initials = (userName ?? '?').slice(0, 2).toUpperCase();
   const grad = roleGrad[role] ?? 'from-primary to-primary/70';
   const bg   = sidebarGrad[role] ?? 'from-slate-900 to-slate-900';
+  const shouldShowPinnedInsights = useMemo(
+    () => visibleItems.some((item) => item.href === '/insight'),
+    [visibleItems],
+  );
+
+  useEffect(() => {
+    if (!shouldShowPinnedInsights) return;
+
+    let cancelled = false;
+    const loadPinnedInsights = () => {
+      apiFetch<SidebarInsight[]>('/published-analyses/sidebar')
+        .then((items) => {
+          if (!cancelled) setPinnedInsights(items);
+        })
+        .catch(() => {
+          if (!cancelled) setPinnedInsights([]);
+        });
+    };
+
+    loadPinnedInsights();
+    window.addEventListener('published-insights-sidebar-updated', loadPinnedInsights);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('published-insights-sidebar-updated', loadPinnedInsights);
+    };
+  }, [shouldShowPinnedInsights]);
 
   return (
     <nav
@@ -222,6 +261,34 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
                   <span className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-300" aria-hidden="true" />
                 )}
               </Link>
+              {item.href === '/insight' && pinnedInsights.length > 0 && (
+                <ul className="ml-11 mt-1 space-y-1 border-l border-white/10 pl-3" role="list">
+                  {pinnedInsights.map((insight) => {
+                    const insightActive = pathname === '/insight' && activePublishedId === insight.id;
+                    return (
+                      <li key={insight.id}>
+                        <Link
+                          href={`/insight?published=${encodeURIComponent(insight.id)}`}
+                          aria-current={insightActive ? 'page' : undefined}
+                          className={`block rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
+                            insightActive
+                              ? 'bg-teal-400/15 text-teal-100 ring-1 ring-teal-300/15'
+                              : 'text-white/45 hover:bg-white/[0.06] hover:text-white/85'
+                          }`}
+                          title={insight.title}
+                        >
+                          <span className="block truncate">{insight.title}</span>
+                          {role === 'SUPER_ADMIN' && insight.recipientName ? (
+                            <span className="mt-0.5 block truncate text-[10px] font-medium text-white/30">
+                              {insight.recipientName}
+                            </span>
+                          ) : null}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </li>
           );
         })}

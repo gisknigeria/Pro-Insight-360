@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch } from '@/lib/api';
 import { getUserRole } from '@/lib/auth';
@@ -50,6 +51,8 @@ interface PublishedAnalysis {
   id: string; publishedAt: string; publishedBy?: string;
   recipientId: string; recipientName?: string;
   evaluationId?: string | null; summary: string;
+  sidebarPinned?: boolean;
+  sidebarTitle?: string;
   analysis: {
     questions?: Array<{ question: string; answer: string }>;
     executiveSummary?: string;
@@ -153,10 +156,26 @@ function buildOrgRows(nodes?: Array<{ id?: string; label?: string; group?: strin
 
 // ─── Analysis card ────────────────────────────────────────────────────────────
 
-function AnalysisCard({ published, evaluation }: { published: PublishedAnalysis; evaluation?: Evaluation }) {
-  const [expanded, setExpanded] = useState(false);
+function AnalysisCard({
+  published,
+  evaluation,
+  initialExpanded = false,
+  onSidebarPinChange,
+  sidebarSaving,
+}: {
+  published: PublishedAnalysis;
+  evaluation?: Evaluation;
+  initialExpanded?: boolean;
+  onSidebarPinChange?: (published: PublishedAnalysis, pinned: boolean) => void;
+  sidebarSaving?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(initialExpanded);
   const [activeSection, setActiveSection] = useState<'overview' | 'gaps' | 'recommendations' | 'action' | 'charts' | 'org' | 'questions'>('overview');
   const a = published.analysis;
+
+  useEffect(() => {
+    if (initialExpanded) setExpanded(true);
+  }, [initialExpanded]);
 
   const parsedGaps = useMemo(() => (a?.gaps ?? []).map(parseGapSeverity), [a]);
   const orgRows = useMemo(() => buildOrgRows(a?.organogram?.nodes, a?.organogram?.links), [a]);
@@ -208,6 +227,20 @@ function AnalysisCard({ published, evaluation }: { published: PublishedAnalysis;
         </div>
         <span className="text-slate-400 text-sm shrink-0 mt-1">{expanded ? '▲' : '▼'}</span>
       </button>
+      {onSidebarPinChange && (
+        <div className="border-t border-slate-100 px-5 py-3">
+          <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+            <input
+              type="checkbox"
+              checked={Boolean(published.sidebarPinned)}
+              disabled={sidebarSaving}
+              onChange={(event) => onSidebarPinChange(published, event.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 accent-teal-600"
+            />
+            {sidebarSaving ? 'Saving...' : 'Show in sidebar'}
+          </label>
+        </div>
+      )}
 
       {expanded && (
         <div className="border-t border-slate-100">
@@ -697,6 +730,9 @@ export default function InsightPage() {
   const [error, setError]             = useState('');
   const [activeTab, setActiveTab]     = useState<'overview' | 'reports' | 'evaluations' | 'forms'>('overview');
   const [orgForms, setOrgForms]       = useState<OrganisationForm[]>([]);
+  const [sidebarSavingId, setSidebarSavingId] = useState('');
+  const searchParams = useSearchParams();
+  const highlightedPublishedId = searchParams.get('published');
 
   useEffect(() => {
     async function load() {
@@ -758,6 +794,35 @@ export default function InsightPage() {
     }
     load();
   }, []);
+
+  useEffect(() => {
+    if (highlightedPublishedId) setActiveTab('reports');
+  }, [highlightedPublishedId]);
+
+  async function handleSidebarPinChange(published: PublishedAnalysis, pinned: boolean) {
+    setSidebarSavingId(published.id);
+    setPublishedAnalyses(prev => prev.map(item => (
+      item.id === published.id ? { ...item, sidebarPinned: pinned } : item
+    )));
+
+    try {
+      await apiFetch(`/published-analyses/${published.id}/sidebar`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          sidebarPinned: pinned,
+          sidebarTitle: published.sidebarTitle || orgEvals.find(e => e.id === published.evaluationId)?.title || published.summary || 'Published insight',
+        }),
+      });
+      window.dispatchEvent(new Event('published-insights-sidebar-updated'));
+    } catch (err: any) {
+      setPublishedAnalyses(prev => prev.map(item => (
+        item.id === published.id ? { ...item, sidebarPinned: !pinned } : item
+      )));
+      setError(err?.message || 'Unable to update sidebar visibility.');
+    } finally {
+      setSidebarSavingId('');
+    }
+  }
 
   // ── Aggregate stats across all evals ─────────────────────────────────────
 
@@ -1083,7 +1148,14 @@ export default function InsightPage() {
                 <EmptyState icon="📊" title="No published reports yet" description="When the super admin publishes an analysis to your account, it will appear here." />
               ) : (
                 publishedAnalyses.map(pa => (
-                  <AnalysisCard key={pa.id} published={pa} evaluation={orgEvals.find(e => e.id === pa.evaluationId)} />
+                  <AnalysisCard
+                    key={pa.id}
+                    published={pa}
+                    evaluation={orgEvals.find(e => e.id === pa.evaluationId)}
+                    initialExpanded={pa.id === highlightedPublishedId}
+                    onSidebarPinChange={handleSidebarPinChange}
+                    sidebarSaving={sidebarSavingId === pa.id}
+                  />
                 ))
               )}
             </div>
