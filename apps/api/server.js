@@ -1607,6 +1607,254 @@ app.get('/organisations', async (req, res) => {
   }
 });
 
+function buildOrganogramPrompt(intake) {
+  return `You are an organisational design analyst. Convert the intake response below into an organogram JSON object that can be pasted into Pro-Insight 360.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "organogram": {
+    "nodes": [{"id":"1","label":"Role name","group":"Department name"}],
+    "links": [{"source":"Child role label","target":"Parent role label","relation":"reports to"}]
+  }
+}
+
+Rules:
+- Every role from the intake must appear once in nodes.
+- Use role titles as labels. If two roles have the same title, add the holder or department in brackets so labels stay unique.
+- Use department names as groups.
+- For links, source is the direct report and target is the manager.
+- Link source and target values must exactly match node label values.
+- If a reporting line is unclear, leave that role as a root node.
+- Do not include markdown or code fences.
+
+Intake response:
+${JSON.stringify(intake, null, 2)}`;
+}
+
+app.post('/organogram-intake-links', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { organisationId } = req.body;
+    if (!organisationId) {
+      return res.status(400).json({ message: 'organisationId is required.' });
+    }
+
+    const organisation = await prisma.organisation.findUnique({ where: { id: organisationId } });
+    if (!organisation) {
+      return res.status(404).json({ message: 'Organisation not found.' });
+    }
+
+    const token = crypto.randomBytes(20).toString('hex');
+    const link = await prisma.auditLog.create({
+      data: {
+        userId: req.user.sub,
+        action: 'ORGANOGRAM_INTAKE_LINK_CREATED',
+        resourceType: 'Organisation',
+        resourceId: organisation.id,
+        metadata: {
+          token,
+          organisationId: organisation.id,
+          organisationName: organisation.name,
+          organisationSector: organisation.sector || null,
+          createdByEmail: req.user.email,
+        },
+      },
+    });
+
+    res.status(201).json({
+      id: link.id,
+      token,
+      organisation: {
+        id: organisation.id,
+        name: organisation.name,
+        sector: organisation.sector,
+      },
+    });
+  } catch (error) {
+    console.error('Create organogram intake link failed:', error);
+    res.status(500).json({ message: 'Unable to create organogram intake link.' });
+  }
+});
+
+app.get('/organogram-intake-links/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const link = await prisma.auditLog.findFirst({
+      where: {
+        action: 'ORGANOGRAM_INTAKE_LINK_CREATED',
+        metadata: { path: ['token'], equals: token },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!link) {
+      return res.status(404).json({ message: 'Organogram intake link not found.' });
+    }
+
+    const metadata = link.metadata && typeof link.metadata === 'object' ? link.metadata : {};
+    res.json({
+      token,
+      organisation: {
+        id: metadata.organisationId,
+        name: metadata.organisationName,
+        sector: metadata.organisationSector || null,
+      },
+    });
+  } catch (error) {
+    console.error('Fetch organogram intake link failed:', error);
+    res.status(500).json({ message: 'Unable to load organogram intake link.' });
+  }
+});
+
+app.post('/organogram-intake-links/:token/responses', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { intake } = req.body;
+    if (!intake || typeof intake !== 'object') {
+      return res.status(400).json({ message: 'intake payload is required.' });
+    }
+
+    const link = await prisma.auditLog.findFirst({
+      where: {
+        action: 'ORGANOGRAM_INTAKE_LINK_CREATED',
+        metadata: { path: ['token'], equals: token },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!link) {
+      return res.status(404).json({ message: 'Organogram intake link not found.' });
+    }
+
+    const linkMetadata = link.metadata && typeof link.metadata === 'object' ? link.metadata : {};
+    const response = await prisma.auditLog.create({
+      data: {
+        action: 'ORGANOGRAM_INTAKE_SUBMITTED',
+        resourceType: 'Organisation',
+        resourceId: linkMetadata.organisationId,
+        metadata: {
+          token,
+          organisationId: linkMetadata.organisationId,
+          organisationName: linkMetadata.organisationName,
+          intake,
+          submittedBy: intake.submittedBy || null,
+        },
+      },
+    });
+
+    res.status(201).json({ id: response.id, message: 'Organogram response submitted.' });
+  } catch (error) {
+    console.error('Submit organogram intake failed:', error);
+    res.status(500).json({ message: 'Unable to submit organogram response.' });
+  }
+});
+
+app.get('/organogram-intake-responses', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      where: { action: 'ORGANOGRAM_INTAKE_SUBMITTED' },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const responses = logs.map((log) => {
+      const metadata = log.metadata && typeof log.metadata === 'object' ? log.metadata : {};
+      const intake = metadata.intake || {};
+      return {
+        id: log.id,
+        organisationId: metadata.organisationId,
+        organisationName: metadata.organisationName,
+        submittedAt: log.createdAt,
+        submittedBy: metadata.submittedBy || intake.submittedBy || null,
+        intake,
+        prompt: buildOrganogramPrompt(intake),
+        publishedAt: metadata.publishedAt || null,
+      };
+    });
+
+    res.json(responses);
+  } catch (error) {
+    console.error('Fetch organogram intake responses failed:', error);
+    res.status(500).json({ message: 'Unable to fetch organogram responses.' });
+  }
+});
+
+app.post('/organogram-intake-responses/:id/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { organogram } = req.body;
+    if (!organogram || !Array.isArray(organogram.nodes) || !Array.isArray(organogram.links)) {
+      return res.status(400).json({ message: 'organogram.nodes and organogram.links arrays are required.' });
+    }
+
+    const responseLog = await prisma.auditLog.findUnique({ where: { id } });
+    if (!responseLog || responseLog.action !== 'ORGANOGRAM_INTAKE_SUBMITTED') {
+      return res.status(404).json({ message: 'Organogram response not found.' });
+    }
+
+    const metadata = responseLog.metadata && typeof responseLog.metadata === 'object' ? { ...responseLog.metadata } : {};
+    const organisationId = metadata.organisationId;
+    const organisation = await prisma.organisation.findUnique({ where: { id: organisationId } });
+    if (!organisation) {
+      return res.status(404).json({ message: 'Organisation not found.' });
+    }
+
+    const recipients = await prisma.user.findMany({
+      where: { organisationId, role: 'CLIENT_ADMIN', isActive: true },
+    });
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ message: 'No active client admin exists under this organisation yet.' });
+    }
+
+    const analysis = {
+      executiveSummary: `Organogram published for ${organisation.name}.`,
+      strengths: [],
+      weaknesses: [],
+      opportunities: [],
+      recommendations: [],
+      gaps: [],
+      actionPlan: [],
+      charts: [],
+      organogram,
+      source: 'organogram-intake',
+    };
+
+    for (const recipient of recipients) {
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user.sub,
+          action: 'DIAGNOSIS_PUBLISHED',
+          resourceType: 'Organogram',
+          resourceId: responseLog.id,
+          metadata: {
+            recipientId: recipient.id,
+            recipientEmail: recipient.email,
+            recipientName: recipient.name || recipient.email,
+            organisationId,
+            organisationName: organisation.name,
+            evaluationId: null,
+            publishedById: req.user.sub,
+            publishedByEmail: req.user.email,
+            summary: analysis.executiveSummary,
+            analysis,
+            publishedAt: new Date().toISOString(),
+          },
+        },
+      });
+    }
+
+    metadata.publishedAt = new Date().toISOString();
+    metadata.publishedByEmail = req.user.email;
+    metadata.publishedOrganogram = organogram;
+    await prisma.auditLog.update({ where: { id }, data: { metadata } });
+
+    res.json({ message: `Organogram published to ${recipients.length} client admin account${recipients.length === 1 ? '' : 's'}.` });
+  } catch (error) {
+    console.error('Publish organogram intake response failed:', error);
+    res.status(500).json({ message: 'Unable to publish organogram.' });
+  }
+});
+
 app.get('/departments', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
