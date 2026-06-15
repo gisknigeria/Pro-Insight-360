@@ -512,6 +512,7 @@ function SuperAdminInsightPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL');
+  const [pinnedShortcutIds, setPinnedShortcutIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function load() {
@@ -533,6 +534,11 @@ function SuperAdminInsightPage() {
       }
     }
     load();
+  }, []);
+
+  useEffect(() => {
+    const shortcuts = JSON.parse(localStorage.getItem('pinnedInsightShortcuts') || '[]') as Array<{ id: string }>;
+    setPinnedShortcutIds(new Set(shortcuts.map((item) => item.id)));
   }, []);
 
   const publishedEvalIds = useMemo(() => new Set(publishedAnalyses.map(pa => pa.evaluationId).filter(Boolean)), [publishedAnalyses]);
@@ -600,6 +606,55 @@ function SuperAdminInsightPage() {
     { id: 'CLOSED', label: 'Closed', count: items.filter(item => item.status === 'CLOSED').length },
     { id: 'ARCHIVED', label: 'Archived', count: items.filter(item => item.status === 'ARCHIVED').length },
   ].filter(filter => filter.id === 'ALL' || filter.count > 0);
+
+  function toggleInsightShortcut(item: InsightItem, pinned: boolean) {
+    if (!item.diagnosisHref) {
+      setError('This item does not have a diagnosis page yet.');
+      return;
+    }
+
+    const shortcutId = `${item.kind}-${item.id}`;
+    const existing = JSON.parse(localStorage.getItem('pinnedInsightShortcuts') || '[]') as Array<{ id: string; title: string; href: string; recipientName?: string; publishedAt: string; source: string }>;
+    const next = pinned
+      ? [
+          ...existing.filter((shortcut) => shortcut.id !== shortcutId),
+          {
+            id: shortcutId,
+            title: item.title,
+            href: item.diagnosisHref,
+            recipientName: item.organisationName,
+            publishedAt: item.createdAt || new Date().toISOString(),
+            source: 'shortcut',
+          },
+        ]
+      : existing.filter((shortcut) => shortcut.id !== shortcutId);
+
+    localStorage.setItem('pinnedInsightShortcuts', JSON.stringify(next));
+    setPinnedShortcutIds(new Set(next.map((shortcut) => shortcut.id)));
+    window.dispatchEvent(new Event('insight-shortcuts-updated'));
+  }
+
+  async function deleteInsightItem(item: InsightItem) {
+    const label = item.kind === 'PROJECT' ? 'project' : 'form';
+    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
+
+    await apiFetch(item.kind === 'PROJECT' ? `/evaluations/${item.id}` : `/forms/${item.id}`, { method: 'DELETE' });
+    if (item.kind === 'PROJECT') {
+      setEvaluations(prev => prev.filter(evaluation => evaluation.id !== item.id));
+    } else {
+      setForms(prev => prev.filter(form => form.id !== item.id));
+    }
+
+    const shortcutId = `${item.kind}-${item.id}`;
+    const existing = JSON.parse(localStorage.getItem('pinnedInsightShortcuts') || '[]') as Array<{ id: string }>;
+    localStorage.setItem('pinnedInsightShortcuts', JSON.stringify(existing.filter(shortcut => shortcut.id !== shortcutId)));
+    setPinnedShortcutIds(prev => {
+      const next = new Set(prev);
+      next.delete(shortcutId);
+      return next;
+    });
+    window.dispatchEvent(new Event('insight-shortcuts-updated'));
+  }
 
   return (
     <div className="min-h-screen bg-slate-50/50">
@@ -677,6 +732,8 @@ function SuperAdminInsightPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map(item => {
                 const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.DRAFT;
+                const shortcutId = `${item.kind}-${item.id}`;
+                const isPinned = pinnedShortcutIds.has(shortcutId);
                 return (
                   <div key={`${item.kind}-${item.id}`} className="group relative flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
                     <div className={`h-1 ${item.kind === 'FORM' ? 'bg-amber-400' : item.status === 'ACTIVE' ? 'bg-emerald-400' : item.status === 'CLOSED' ? 'bg-orange-400' : 'bg-slate-200'}`} />
@@ -689,7 +746,16 @@ function SuperAdminInsightPage() {
                             <p className="mt-0.5 truncate text-xs text-slate-400">{item.organisationName}</p>
                           </div>
                         </div>
-                        <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => deleteInsightItem(item)}
+                            className="rounded-lg border border-red-100 bg-white px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
 
                       <div className="mb-5 flex flex-wrap items-center gap-3 text-xs text-slate-400">
@@ -707,6 +773,16 @@ function SuperAdminInsightPage() {
                         {item.diagnosisHref ? <Link href={item.diagnosisHref} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/10">Diagnose</Link> : <span className="flex-1 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-400">No diagnosis yet</span>}
                         <Link href={item.viewHref} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">View →</Link>
                       </div>
+                      <label className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={isPinned}
+                          disabled={!item.diagnosisHref}
+                          onChange={(event) => toggleInsightShortcut(item, event.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 accent-teal-600"
+                        />
+                        Show in sidebar
+                      </label>
                     </div>
                   </div>
                 );

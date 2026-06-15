@@ -803,7 +803,6 @@ export default function DashboardPage() {
   const [responses, setResponses] = useState<ResponseItem[]>([]);
   const [gapSummaries, setGapSummaries] = useState<GapSummary[]>([]);
   const [publishedAnalyses, setPublishedAnalyses] = useState<PublishedAnalysis[]>([]);
-  const [latestResponseMetrics, setLatestResponseMetrics] = useState<DiagnosisResponseMetrics | null>(null);
   const [selectedEvaluationForMetrics, setSelectedEvaluationForMetrics] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -860,10 +859,6 @@ export default function DashboardPage() {
 
         setSelectedEvaluationForMetrics(selectedEvaluation || null);
 
-        if (selectedEvaluation) {
-          const metrics = await apiFetch<DiagnosisResponseMetrics>(`/diagnosis/evaluations/${selectedEvaluation.id}/responses`);
-          setLatestResponseMetrics(metrics);
-        }
       } catch (fetchError: any) {
         setError(fetchError?.message || 'Unable to load dashboard data.');
       } finally {
@@ -957,11 +952,11 @@ export default function DashboardPage() {
     ? 'Top evaluations'
     : 'Workspace overview';
 
-  const totalResponses = latestResponseMetrics?.totalResponses ?? companyResponses.length;
-  const totalAnswers = latestResponseMetrics?.totalAnswers ?? companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
-  const averageCompletion = latestResponseMetrics?.averageCompletion ?? (companyResponses.length > 0
+  const totalResponses = companyResponses.length;
+  const totalAnswers = companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
+  const averageCompletion = companyResponses.length > 0
     ? Math.round(companyResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / companyResponses.length)
-    : 0);
+    : 0;
   const filteredPublishedAnalyses = publishedAnalyses
     .filter((analysis) => analysis.evaluationId && companyEvaluations.some((evaluation) => evaluation.id === analysis.evaluationId))
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
@@ -1042,16 +1037,8 @@ export default function DashboardPage() {
             <StatCard label="Reports" value={publishedAnalyses.length} icon={<DashboardIcon name="report" />} color="slate" delay={150} />
           </div>
 
-          {/* ── Evaluation response stats per evaluation ── */}
-          {companyEvaluations.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {companyEvaluations.slice(0, 4).map((ev) => (
-                <EvaluationStatCard key={ev.id} evaluation={ev} />
-              ))}
-            </div>
-          )}
 
-          {/* ── Only show charts if there is real data ── */}
+  {/* ── Only show charts if there is real data ── */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="dashboard-panel rounded-2xl p-5">
               <div className="flex items-center justify-between gap-4 mb-4">
@@ -1089,6 +1076,17 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+          
+          {/* ── Evaluation response stats per evaluation ── */}
+          {companyEvaluations.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {companyEvaluations.slice(0, 4).map((ev) => (
+                <EvaluationStatCard key={ev.id} evaluation={ev} />
+              ))}
+            </div>
+          )}
+
+        
 
           {selectedEvaluationForMetrics ? (
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">

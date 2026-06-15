@@ -142,15 +142,25 @@ interface OrgCardProps {
   analysis: PublishedAnalysis;
   isSelected: boolean;
   onSelect: () => void;
+  onDelete: () => void;
 }
 
-function OrgCard({ analysis, isSelected, onSelect }: OrgCardProps) {
+function OrgCard({ analysis, isSelected, onSelect, onDelete }: OrgCardProps) {
   const nodeCount = analysis.analysis?.organogram?.nodes?.length ?? 0;
   const deptCount = new Set(analysis.analysis?.organogram?.nodes?.map(n => n.group).filter(Boolean)).size;
 
   return (
-    <button type="button" onClick={onSelect}
-      className={`w-full text-left rounded-2xl border p-4 transition-all ${
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      className={`w-full rounded-2xl border p-4 transition-all ${
         isSelected
           ? 'border-blue-400 bg-blue-50 shadow-md'
           : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'
@@ -170,13 +180,25 @@ function OrgCard({ analysis, isSelected, onSelect }: OrgCardProps) {
             </p>
           </div>
         </div>
-        {isSelected && <span className="shrink-0 text-blue-600 font-bold text-xs">▶ Viewing</span>}
+        <div className="flex shrink-0 items-center gap-2">
+          {isSelected && <span className="text-blue-600 font-bold text-xs">Viewing</span>}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete();
+            }}
+            className="rounded-lg border border-red-100 bg-white px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
+          >
+            Delete
+          </button>
+        </div>
       </div>
       <div className="flex gap-3 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1">👤 {nodeCount} roles</span>
         <span className="inline-flex items-center gap-1">🏢 {deptCount} depts</span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -282,6 +304,20 @@ export default function OrganogramPage() {
     }));
     setEditing(false);
     setSaveMsg('Organogram saved and published to client.');
+    setTimeout(() => setSaveMsg(''), 4000);
+  }
+
+  async function deletePublishedAnalysis(id: string) {
+    if (!window.confirm('Delete this published organogram?')) return;
+
+    await apiFetch(`/published-analyses/${id}`, { method: 'DELETE' });
+    setAnalyses(prev => {
+      const next = prev.filter(item => item.id !== id);
+      if (selectedId === id) setSelectedId(next[0]?.id ?? '');
+      return next;
+    });
+    setEditing(false);
+    setSaveMsg('Published organogram deleted.');
     setTimeout(() => setSaveMsg(''), 4000);
   }
 
@@ -579,7 +615,8 @@ export default function OrganogramPage() {
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 mb-2">Client organisations</p>
             {analyses.map(a => (
               <OrgCard key={a.id} analysis={a} isSelected={selectedId === a.id}
-                onSelect={() => { setSelectedId(a.id); setEditing(false); }} />
+                onSelect={() => { setSelectedId(a.id); setEditing(false); }}
+                onDelete={() => deletePublishedAnalysis(a.id)} />
             ))}
           </div>
 

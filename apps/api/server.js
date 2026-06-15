@@ -1425,7 +1425,7 @@ app.get('/responses', async (req, res) => {
     const responses = await prisma.response.findMany({
       where: query,
       include: {
-        form: { include: { evaluation: true } },
+        form: { include: { evaluation: { include: { organisation: true } } } },
         respondent: true,
         answers: true,
       },
@@ -2528,6 +2528,22 @@ app.patch('/published-analyses/:id/sidebar', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Update sidebar published analysis failed:', error);
     res.status(500).json({ message: 'Unable to update sidebar visibility.' });
+  }
+});
+
+app.delete('/published-analyses/:id', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const log = await prisma.auditLog.findUnique({ where: { id } });
+    if (!log || log.action !== 'DIAGNOSIS_PUBLISHED') {
+      return res.status(404).json({ message: 'Published analysis not found.' });
+    }
+
+    await prisma.auditLog.delete({ where: { id } });
+    res.json({ message: 'Published analysis deleted.' });
+  } catch (error) {
+    console.error('Delete published analysis failed:', error);
+    res.status(500).json({ message: 'Unable to delete published analysis.' });
   }
 });
 

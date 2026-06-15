@@ -35,6 +35,8 @@ interface SidebarInsight {
   title: string;
   recipientName?: string;
   publishedAt: string;
+  href?: string;
+  source?: 'published' | 'shortcut';
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -174,21 +176,31 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
 
     let cancelled = false;
     const loadPinnedInsights = () => {
+      const shortcuts = role === 'SUPER_ADMIN'
+        ? JSON.parse(localStorage.getItem('pinnedInsightShortcuts') || '[]') as SidebarInsight[]
+        : [];
       apiFetch<SidebarInsight[]>('/published-analyses/sidebar')
         .then((items) => {
-          if (!cancelled) setPinnedInsights(items);
+          if (!cancelled) {
+            setPinnedInsights([
+              ...shortcuts,
+              ...items.map((item) => ({ ...item, source: 'published' as const })),
+            ]);
+          }
         })
         .catch(() => {
-          if (!cancelled) setPinnedInsights([]);
+          if (!cancelled) setPinnedInsights(shortcuts);
         });
     };
 
     loadPinnedInsights();
     window.addEventListener('published-insights-sidebar-updated', loadPinnedInsights);
+    window.addEventListener('insight-shortcuts-updated', loadPinnedInsights);
 
     return () => {
       cancelled = true;
       window.removeEventListener('published-insights-sidebar-updated', loadPinnedInsights);
+      window.removeEventListener('insight-shortcuts-updated', loadPinnedInsights);
     };
   }, [shouldShowPinnedInsights]);
 
@@ -264,11 +276,14 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
               {item.href === '/insight' && pinnedInsights.length > 0 && (
                 <ul className="ml-11 mt-1 space-y-1 border-l border-white/10 pl-3" role="list">
                   {pinnedInsights.map((insight) => {
-                    const insightActive = pathname === '/insight' && activePublishedId === insight.id;
+                    const href = insight.href ?? `/insight?published=${encodeURIComponent(insight.id)}`;
+                    const insightActive = insight.href
+                      ? pathname === insight.href
+                      : pathname === '/insight' && activePublishedId === insight.id;
                     return (
                       <li key={insight.id}>
                         <Link
-                          href={`/insight?published=${encodeURIComponent(insight.id)}`}
+                          href={href}
                           aria-current={insightActive ? 'page' : undefined}
                           className={`block rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
                             insightActive
