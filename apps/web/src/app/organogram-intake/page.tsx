@@ -6,9 +6,11 @@ type Department = { id: string; name: string; purpose: string };
 type Role = {
   id: string;
   title: string;
+  rank: string;
   holder: string;
   departmentId: string;
   reportsToId: string;
+  reportingLine: string;
   responsibilities: string;
   headcount: string;
 };
@@ -31,7 +33,32 @@ const DEFAULT_DEPARTMENTS: Department[] = [
 ];
 
 const DEFAULT_ROLES: Role[] = [
-  { id: 'role-1', title: '', holder: '', departmentId: '', reportsToId: '', responsibilities: '', headcount: '1' },
+  { id: 'role-1', title: '', rank: '', holder: '', departmentId: '', reportsToId: '', reportingLine: 'Solid reporting line', responsibilities: '', headcount: '1' },
+];
+
+const RANK_OPTIONS = [
+  'Board Chairman',
+  'Board Member',
+  'Managing Director / CEO',
+  'Executive Director',
+  'Director',
+  'General Manager',
+  'Deputy General Manager',
+  'Head of Department',
+  'Manager',
+  'Supervisor / Team Lead',
+  'Officer / Specialist',
+  'Support Staff',
+  'Other',
+];
+
+const REPORTING_LINE_OPTIONS = [
+  'Solid reporting line',
+  'Dotted reporting line',
+  'Board oversight',
+  'Advisory relationship',
+  'Matrix reporting',
+  'Temporary / acting reporting line',
 ];
 
 function nextId(prefix: string) {
@@ -136,9 +163,11 @@ export default function OrganogramIntakePage() {
           return {
             id: role.id,
             title: role.title.trim(),
+            rank: role.rank.trim() || null,
             holder: role.holder.trim() || null,
             department: department?.name.trim() || 'Unassigned',
             reportsTo: reportsTo?.title.trim() || null,
+            reportingLine: role.reportsToId ? role.reportingLine : 'Top role / no direct manager',
             responsibilities: role.responsibilities.trim() || null,
             headcount: Number(role.headcount) || 1,
           };
@@ -324,6 +353,13 @@ export default function OrganogramIntakePage() {
                           </div>
                           <div className="grid gap-4 md:grid-cols-2">
                             <TextField label="Role title" value={role.title} onChange={(value) => updateRole(role.id, { title: value })} placeholder="Example: Chief Finance Officer" />
+                            <label className="block">
+                              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Rank / level</span>
+                              <select value={role.rank} onChange={(event) => updateRole(role.id, { rank: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100">
+                                <option value="">Select rank</option>
+                                {RANK_OPTIONS.map((rank) => <option key={rank} value={rank}>{rank}</option>)}
+                              </select>
+                            </label>
                             <TextField label="Current role holder" value={role.holder} onChange={(value) => updateRole(role.id, { holder: value })} placeholder="Optional" />
                             <label className="block">
                               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Department</span>
@@ -337,6 +373,12 @@ export default function OrganogramIntakePage() {
                               <select value={role.reportsToId} onChange={(event) => updateRole(role.id, { reportsToId: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100">
                                 <option value="">No direct manager / top role</option>
                                 {roles.filter((item) => item.id !== role.id && item.title.trim()).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+                              </select>
+                            </label>
+                            <label className="block">
+                              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Link / relationship type</span>
+                              <select value={role.reportingLine} onChange={(event) => updateRole(role.id, { reportingLine: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100">
+                                {REPORTING_LINE_OPTIONS.map((line) => <option key={line} value={line}>{line}</option>)}
                               </select>
                             </label>
                             <TextField label="Headcount" type="number" value={role.headcount} onChange={(value) => updateRole(role.id, { headcount: value })} placeholder="1" />

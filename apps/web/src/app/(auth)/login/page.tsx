@@ -1,12 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedLoginEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
+  const resetMailto = useMemo(() => {
+    const subject = encodeURIComponent('Password reset request - Pro-Insight 360');
+    const body = encodeURIComponent(`Hello,\n\nPlease help me reset my Pro-Insight 360 password.\n\nAccount email: ${email || '[enter your email]'}\n\nThank you.`);
+    return `mailto:support@giskonsult.com?subject=${subject}&body=${body}`;
+  }, [email]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +44,12 @@ export default function LoginPage() {
       if (!res.ok) {
         setError(data.message ?? 'Something went wrong. Please try again.');
         return;
+      }
+
+      if (rememberMe) {
+        localStorage.setItem('rememberedLoginEmail', email);
+      } else {
+        localStorage.removeItem('rememberedLoginEmail');
       }
 
       localStorage.setItem('accessToken', data.accessToken);
@@ -134,6 +156,37 @@ export default function LoginPage() {
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-base">🔒</span>
                   </div>
                 </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(event) => setRememberMe(event.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 accent-teal-600"
+                    />
+                    Remember me
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen((open) => !open)}
+                    className="text-sm font-bold text-teal-700 hover:text-teal-800"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
+                {forgotOpen && (
+                  <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900">
+                    <p className="font-bold">Need a password reset?</p>
+                    <p className="mt-1 text-teal-800/80">
+                      Use your account email above, then send a reset request to the platform administrator.
+                    </p>
+                    <a href={resetMailto} className="mt-3 inline-flex rounded-lg bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800">
+                      Send reset request
+                    </a>
+                  </div>
+                )}
               </div>
 
               <button

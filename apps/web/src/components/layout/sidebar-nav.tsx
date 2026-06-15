@@ -35,16 +35,14 @@ interface SidebarInsight {
   title: string;
   recipientName?: string;
   publishedAt: string;
-  href?: string;
-  source?: 'published' | 'shortcut';
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',               href: '/dashboard',    icon: 'dashboard',  roles: ['SUPER_ADMIN','CONSULTANT','CLIENT_ADMIN','HOD','RESPONDENT'], color: 'from-blue-400 to-blue-600' },
-  { label: 'Client Orgs',    href: '/organisations',icon: 'building',   roles: ['SUPER_ADMIN'],  color: 'from-violet-400 to-violet-600' },
+  { label: 'Client',    href: '/organisations',icon: 'building',   roles: ['SUPER_ADMIN'],  color: 'from-violet-400 to-violet-600' },
   { label: 'Insights',                href: '/insight',      icon: 'search',     roles: ['SUPER_ADMIN'],  color: 'from-cyan-400 to-sky-600' },
+  { label: 'Organogram',   href: '/organogram',   icon: 'tree',       roles: ['SUPER_ADMIN'],  color: 'from-teal-400 to-teal-600' },
   { label: 'My Forms',                href: '/my-forms',     icon: 'form',       roles: ['HOD','RESPONDENT'], color: 'from-amber-400 to-amber-600' },
-  { label: 'Structural Organogram',   href: '/organogram',   icon: 'tree',       roles: ['SUPER_ADMIN'],  color: 'from-teal-400 to-teal-600' },
   { label: 'Analytics',    href: '/ai-diagnosis', icon: 'analytics',  roles: ['SUPER_ADMIN'],  color: 'from-fuchsia-400 to-purple-600' },
   { label: 'Insights',                href: '/insight',      icon: 'search',     roles: ['CLIENT_ADMIN'], color: 'from-cyan-400 to-sky-600' },
   { label: 'Organogram',              href: '/organogram',   icon: 'tree',       roles: ['CLIENT_ADMIN'], color: 'from-teal-400 to-teal-600' },
@@ -176,31 +174,23 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
 
     let cancelled = false;
     const loadPinnedInsights = () => {
-      const shortcuts = role === 'SUPER_ADMIN'
-        ? JSON.parse(localStorage.getItem('pinnedInsightShortcuts') || '[]') as SidebarInsight[]
-        : [];
       apiFetch<SidebarInsight[]>('/published-analyses/sidebar')
         .then((items) => {
           if (!cancelled) {
-            setPinnedInsights([
-              ...shortcuts,
-              ...items.map((item) => ({ ...item, source: 'published' as const })),
-            ]);
+            setPinnedInsights(items);
           }
         })
         .catch(() => {
-          if (!cancelled) setPinnedInsights(shortcuts);
+          if (!cancelled) setPinnedInsights([]);
         });
     };
 
     loadPinnedInsights();
     window.addEventListener('published-insights-sidebar-updated', loadPinnedInsights);
-    window.addEventListener('insight-shortcuts-updated', loadPinnedInsights);
 
     return () => {
       cancelled = true;
       window.removeEventListener('published-insights-sidebar-updated', loadPinnedInsights);
-      window.removeEventListener('insight-shortcuts-updated', loadPinnedInsights);
     };
   }, [shouldShowPinnedInsights]);
 
@@ -276,10 +266,8 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
               {item.href === '/insight' && pinnedInsights.length > 0 && (
                 <ul className="ml-11 mt-1 space-y-1 border-l border-white/10 pl-3" role="list">
                   {pinnedInsights.map((insight) => {
-                    const href = insight.href ?? `/insight?published=${encodeURIComponent(insight.id)}`;
-                    const insightActive = insight.href
-                      ? pathname === insight.href
-                      : pathname === '/insight' && activePublishedId === insight.id;
+                    const href = `/insight?published=${encodeURIComponent(insight.id)}`;
+                    const insightActive = pathname === '/insight' && activePublishedId === insight.id;
                     return (
                       <li key={insight.id}>
                         <Link
