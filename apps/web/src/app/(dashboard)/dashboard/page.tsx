@@ -168,30 +168,34 @@ function iconForModuleTitle(title: string) {
    ✨ Premium StatCard with glow & animation
    ═══════════════════════════════════════════ */
 function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: string; value: string | number; icon: ReactNode; color?: 'blue' | 'green' | 'yellow' | 'slate'; delay?: number }) {
-  const colorConfig: Record<string, { bg: string; accent: string; text: string; subtext: string }> = {
+  const colorConfig: Record<string, { bg: string; accent: string; text: string; subtext: string; ring: string }> = {
     blue: {
-      bg: 'from-cyan-500 to-teal-500',
-      accent: 'bg-white/18',
+      bg: 'from-slate-900 via-slate-800 to-blue-950',
+      accent: 'bg-blue-400/12',
       text: 'text-white',
-      subtext: 'text-cyan-50/80',
+      subtext: 'text-blue-100/75',
+      ring: 'ring-blue-300/15',
     },
     green: {
-      bg: 'from-emerald-500 to-green-600',
-      accent: 'bg-white/18',
+      bg: 'from-slate-900 via-slate-800 to-emerald-950',
+      accent: 'bg-emerald-400/12',
       text: 'text-white',
-      subtext: 'text-emerald-50/80',
+      subtext: 'text-emerald-100/75',
+      ring: 'ring-emerald-300/15',
     },
     yellow: {
-      bg: 'from-rose-500 to-red-500',
-      accent: 'bg-white/18',
+      bg: 'from-slate-900 via-slate-800 to-amber-950',
+      accent: 'bg-amber-400/12',
       text: 'text-white',
-      subtext: 'text-rose-50/80',
+      subtext: 'text-amber-100/75',
+      ring: 'ring-amber-300/15',
     },
     slate: {
-      bg: 'from-slate-800 to-slate-950',
+      bg: 'from-slate-950 via-slate-900 to-zinc-950',
       accent: 'bg-white/12',
       text: 'text-white',
-      subtext: 'text-slate-300',
+      subtext: 'text-slate-300/80',
+      ring: 'ring-white/10',
     },
   };
 
@@ -199,22 +203,22 @@ function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: st
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${cfg.bg} p-5 shadow-xl shadow-slate-950/20 transition-all duration-300 hover:-translate-y-0.5 animate-fade-in-up`}
+      className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${cfg.bg} p-5 shadow-lg shadow-slate-950/15 ring-1 ${cfg.ring} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl animate-fade-in-up`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
-      <div className="absolute inset-x-0 top-0 h-px bg-white/45" />
-      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10" />
+      <div className="absolute inset-x-0 top-0 h-px bg-white/25" />
+      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full border border-white/10 bg-white/[0.04]" />
 
       <div className="relative">
         <div className="flex items-center justify-between gap-4 mb-3">
           <span className={`text-sm font-semibold tracking-tight ${cfg.subtext}`}>{label}</span>
-          <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${cfg.accent} ${cfg.text} text-lg shadow-sm ring-1 ring-white/15 transition-transform duration-300 group-hover:scale-110`}>
+          <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${cfg.accent} ${cfg.text} text-lg shadow-sm ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105`}>
             {typeof icon === 'string' ? iconForStatLabel(label) : icon}
           </span>
         </div>
         <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
-        <div className="mt-3 h-1.5 w-full rounded-full bg-white/18">
-          <div className="h-full w-2/3 rounded-full bg-white/70" />
+        <div className="mt-3 h-px w-full rounded-full bg-white/15">
+          <div className="h-px w-2/3 rounded-full bg-white/55" />
         </div>
       </div>
     </div>
@@ -527,7 +531,7 @@ function SuperAdminDashboard() {
           apiFetch<Organisation[]>('/organisations').catch(() => []),
           apiFetch<Evaluation[]>('/evaluations').catch(() => []),
           apiFetch<Array<{ id: string }>>('/forms').catch(() => []),
-          apiFetch<PublishedAnalysis[]>('/published-analyses').catch(() => []),
+          apiFetch<PublishedAnalysis[]>('/published-analyses/all').catch(() => []),
         ]);
         if (!active) return;
         const statusCounts = evaluations.reduce<Record<string, number>>((acc, evaluation) => {
@@ -559,25 +563,25 @@ function SuperAdminDashboard() {
   const cards = [
     {
       title: 'Organisations',
-      description: 'View and manage client organisations, sectors, and evaluation memberships.',
+      description: 'Manage client portfolios, sector profiles, account ownership, and evaluation access.',
       href: '/organisations',
       icon: <DashboardIcon name="building" />,
     },
     {
       title: 'Evaluations',
-      description: 'Track evaluation progress, status, and AI review readiness across clients.',
+      description: 'Monitor project status, response readiness, diagnostic progress, and delivery milestones.',
       href: '/evaluations',
       icon: <DashboardIcon name="clipboard" />,
     },
     {
       title: 'AI Diagnosis',
-      description: 'Launch or review AI diagnosis workflows and monitor analysis health.',
+      description: 'Review evidence, validate scores, identify organisational gaps, and prepare executive-ready findings.',
       href: '/ai-diagnosis',
       icon: <DashboardIcon name="bot" />,
     },
     {
       title: 'Forms & Templates',
-      description: 'Manage form templates and assessment designs for client rollouts.',
+      description: 'Design assessment instruments, standardise templates, and manage rollout-ready forms.',
       href: '/forms',
       icon: <DashboardIcon name="form" />,
     },
@@ -590,20 +594,20 @@ function SuperAdminDashboard() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-teal-600">Super Admin</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive command dashboard</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive Dashboard</h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
-              Central platform control for client organisations, form rollouts, diagnosis workflows, and governance signals.
+              Centralised platform for managing client organisations, form rollouts, diagnostic workflows, implementation tracking, and governance reporting.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
               ['Forms', loadingStats ? '...' : String(stats.forms)],
               ['Projects', loadingStats ? '...' : String(stats.evaluations)],
-              ['Reports', loadingStats ? '...' : String(stats.reports)],
+              ['Insights', loadingStats ? '...' : String(stats.reports)],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-lg font-black text-slate-950">{value}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
+              <div key={label} className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 shadow-sm">
+                <p className="text-lg font-black text-white">{value}</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
               </div>
             ))}
           </div>
@@ -611,7 +615,7 @@ function SuperAdminDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Client orgs" value={loadingStats ? '...' : stats.organisations} icon={<DashboardIcon name="building" />} color="blue" delay={0} />
+        <StatCard label="Client organisations" value={loadingStats ? '...' : stats.organisations} icon={<DashboardIcon name="building" />} color="blue" delay={0} />
         <StatCard label="Forms" value={loadingStats ? '...' : stats.forms} icon={<DashboardIcon name="form" />} color="yellow" delay={50} />
         <StatCard label="Projects" value={loadingStats ? '...' : stats.evaluations} icon={<DashboardIcon name="chart" />} color="green" delay={100} />
         <StatCard label="Published insights" value={loadingStats ? '...' : stats.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
@@ -622,7 +626,7 @@ function SuperAdminDashboard() {
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-950">Platform volume</h2>
-              <p className="text-xs text-slate-500">Live records across organisations, forms, projects, and reports.</p>
+              <p className="text-xs text-slate-500">Live platform records across organisations, forms, projects, and published insights.</p>
             </div>
             <Pill label="Real data" color="green" />
           </div>
