@@ -3,7 +3,28 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Legend,
+  Line,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import OrgChart from '@/components/organogram/OrgChart';
 import ConsultantDashboard from '@/components/dashboards/ConsultantDashboard';
 import HODDashboard from '@/components/dashboards/HODDashboard';
@@ -14,6 +35,9 @@ import { getUserRole } from '@/lib/auth';
 interface Organisation {
   id: string;
   name: string;
+  sector?: string | null;
+  status?: string;
+  _count?: { users?: number; evaluations?: number };
 }
 
 interface UserSummary {
@@ -35,13 +59,55 @@ interface ResponseItem {
   id: string;
   questionCount: number;
   completionPercentage: number;
+  submittedAt?: string | null;
+  createdAt?: string;
   respondent: { id: string };
   form: { id: string; title: string; evaluation: { id: string; organisation: Organisation } | null };
+}
+
+interface FormSummary {
+  id: string;
+  title: string;
+  status?: string;
+  questionCount: number;
+  organisationId?: string | null;
+  organisation?: Organisation | null;
+  evaluationId?: string | null;
+  evaluationTitle?: string;
+  unitName?: string | null;
+  createdAt?: string;
+}
+
+interface UserItem {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  organisation: Organisation;
+  createdAt?: string;
 }
 
 interface ChartDataPoint {
   name: string;
   value: number;
+}
+
+interface OrgDashboardSummary {
+  id: string;
+  name: string;
+  sector: string;
+  users: number;
+  evaluations: number;
+  activeEvaluations: number;
+  forms: number;
+  responses: number;
+  answers: number;
+  reports: number;
+  averageCompletion: number;
+  questionBank: number;
+  completionLabel: string;
+  lastActivity: string | null;
 }
 
 interface DiagnosisResponseMetrics {
@@ -513,45 +579,34 @@ function EmptyDashboard({ message }: { message: string }) {
 }
 
 function SuperAdminDashboard() {
-  const [stats, setStats] = useState({
-    organisations: 0,
-    evaluations: 0,
-    forms: 0,
-    reports: 0,
-    moduleData: [] as ChartDataPoint[],
-    statusData: [] as ChartDataPoint[],
-  });
+  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [forms, setForms] = useState<FormSummary[]>([]);
+  const [reports, setReports] = useState<PublishedAnalysis[]>([]);
+  const [responses, setResponses] = useState<ResponseItem[]>([]);
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState('ALL');
   const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     let active = true;
     async function loadStats() {
       try {
-        const [organisations, evaluations, forms, reports] = await Promise.all([
+        const [orgData, evaluationData, formData, reportData, responseData, userData] = await Promise.all([
           apiFetch<Organisation[]>('/organisations').catch(() => []),
           apiFetch<Evaluation[]>('/evaluations').catch(() => []),
-          apiFetch<Array<{ id: string }>>('/forms').catch(() => []),
+          apiFetch<FormSummary[]>('/forms').catch(() => []),
           apiFetch<PublishedAnalysis[]>('/published-analyses/all').catch(() => []),
+          apiFetch<ResponseItem[]>('/responses').catch(() => []),
+          apiFetch<UserItem[]>('/users').catch(() => []),
         ]);
         if (!active) return;
-        const statusCounts = evaluations.reduce<Record<string, number>>((acc, evaluation) => {
-          const status = evaluation.status ? evaluation.status.replace(/_/g, ' ') : 'Unknown';
-          acc[status] = (acc[status] || 0) + 1;
-          return acc;
-        }, {});
-        setStats({
-          organisations: organisations.length,
-          evaluations: evaluations.length,
-          forms: forms.length,
-          reports: reports.length,
-          moduleData: [
-            { name: 'Organisations', value: organisations.length },
-            { name: 'Forms', value: forms.length },
-            { name: 'Projects', value: evaluations.length },
-            { name: 'Reports', value: reports.length },
-          ],
-          statusData: Object.entries(statusCounts).map(([name, value]) => ({ name, value })),
-        });
+        setOrganisations(orgData);
+        setEvaluations(evaluationData);
+        setForms(formData);
+        setReports(reportData);
+        setResponses(responseData);
+        setUsers(userData);
       } finally {
         if (active) setLoadingStats(false);
       }
@@ -560,175 +615,531 @@ function SuperAdminDashboard() {
     return () => { active = false; };
   }, []);
 
-  const cards = [
-    {
-      title: 'Organisations',
-      description: 'Manage client portfolios, sector profiles, account ownership, and evaluation access.',
-      href: '/organisations',
-      icon: <DashboardIcon name="building" />,
-    },
-    {
-      title: 'Evaluations',
-      description: 'Monitor project status, response readiness, diagnostic progress, and delivery milestones.',
-      href: '/evaluations',
-      icon: <DashboardIcon name="clipboard" />,
-    },
-    {
-      title: 'AI Diagnosis',
-      description: 'Review evidence, validate scores, identify organisational gaps, and prepare executive-ready findings.',
-      href: '/ai-diagnosis',
-      icon: <DashboardIcon name="bot" />,
-    },
-    {
-      title: 'Forms & Templates',
-      description: 'Design assessment instruments, standardise templates, and manage rollout-ready forms.',
-      href: '/forms',
-      icon: <DashboardIcon name="form" />,
-    },
-  ];
-  const pieColors = ['#14b8a6', '#2563eb', '#f97316', '#64748b', '#dc2626'];
+  const orgSummaries = useMemo<OrgDashboardSummary[]>(() => {
+    return organisations.map((org) => {
+      const orgEvaluations = evaluations.filter((evaluation) => evaluation.organisation?.id === org.id);
+      const evaluationIds = new Set(orgEvaluations.map((evaluation) => evaluation.id));
+      const orgForms = forms.filter((form) => form.organisationId === org.id || form.organisation?.id === org.id || (form.evaluationId ? evaluationIds.has(form.evaluationId) : false));
+      const orgResponses = responses.filter((response) => response.form.evaluation?.organisation?.id === org.id);
+      const orgUsers = users.filter((user) => user.organisation?.id === org.id);
+      const orgReports = reports.filter((report) => report.evaluationId ? evaluationIds.has(report.evaluationId) : false);
+      const answers = orgResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
+      const averageCompletion = orgResponses.length
+        ? Math.round(orgResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / orgResponses.length)
+        : 0;
+      const lastDates = [
+        ...orgEvaluations.map((evaluation) => evaluation.createdAt),
+        ...orgReports.map((report) => report.publishedAt),
+        ...orgResponses.map((response) => response.submittedAt || response.createdAt),
+      ].filter(Boolean) as string[];
+      const lastActivity = lastDates.length
+        ? lastDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
+        : null;
+
+      return {
+        id: org.id,
+        name: org.name,
+        sector: org.sector || 'Unclassified',
+        users: orgUsers.length || org._count?.users || 0,
+        evaluations: orgEvaluations.length,
+        activeEvaluations: orgEvaluations.filter((evaluation) => evaluation.status === 'ACTIVE').length,
+        forms: orgForms.length,
+        responses: orgResponses.length,
+        answers,
+        reports: orgReports.length,
+        averageCompletion,
+        questionBank: orgForms.reduce((sum, form) => sum + (form.questionCount || 0), 0),
+        completionLabel: averageCompletion >= 75 ? 'Strong' : averageCompletion >= 50 ? 'Moderate' : averageCompletion > 0 ? 'Needs push' : 'No responses',
+        lastActivity,
+      };
+    }).sort((a, b) => b.responses - a.responses || b.evaluations - a.evaluations);
+  }, [evaluations, forms, organisations, reports, responses, users]);
+
+  const selectedSummary = useMemo<OrgDashboardSummary>(() => {
+    if (selectedOrgId !== 'ALL') {
+      return orgSummaries.find((summary) => summary.id === selectedOrgId) || {
+        id: selectedOrgId,
+        name: 'Selected organisation',
+        sector: 'Unclassified',
+        users: 0,
+        evaluations: 0,
+        activeEvaluations: 0,
+        forms: 0,
+        responses: 0,
+        answers: 0,
+        reports: 0,
+        averageCompletion: 0,
+        questionBank: 0,
+        completionLabel: 'No responses',
+        lastActivity: null,
+      };
+    }
+
+    const totals = orgSummaries.reduce((acc, summary) => ({
+      ...acc,
+      users: acc.users + summary.users,
+      evaluations: acc.evaluations + summary.evaluations,
+      activeEvaluations: acc.activeEvaluations + summary.activeEvaluations,
+      forms: acc.forms + summary.forms,
+      responses: acc.responses + summary.responses,
+      answers: acc.answers + summary.answers,
+      reports: acc.reports + summary.reports,
+      questionBank: acc.questionBank + summary.questionBank,
+    }), {
+      id: 'ALL',
+      name: 'General overview',
+      sector: 'All sectors',
+      users: 0,
+      evaluations: 0,
+      activeEvaluations: 0,
+      forms: 0,
+      responses: 0,
+      answers: 0,
+      reports: 0,
+      averageCompletion: 0,
+      questionBank: 0,
+      completionLabel: 'Portfolio',
+      lastActivity: null,
+    });
+    const weightedCompletion = orgSummaries.reduce((sum, summary) => sum + (summary.averageCompletion * summary.responses), 0);
+    totals.averageCompletion = totals.responses ? Math.round(weightedCompletion / totals.responses) : 0;
+    totals.lastActivity = orgSummaries.map((summary) => summary.lastActivity).filter(Boolean).sort((a, b) => new Date(b as string).getTime() - new Date(a as string).getTime())[0] || null;
+    return totals;
+  }, [orgSummaries, selectedOrgId]);
+
+  const scopedEvaluationIds = useMemo(() => {
+    if (selectedOrgId === 'ALL') return new Set(evaluations.map((evaluation) => evaluation.id));
+    return new Set(evaluations.filter((evaluation) => evaluation.organisation?.id === selectedOrgId).map((evaluation) => evaluation.id));
+  }, [evaluations, selectedOrgId]);
+
+  const scopedResponses = useMemo(() => {
+    if (selectedOrgId === 'ALL') return responses;
+    return responses.filter((response) => response.form.evaluation?.organisation?.id === selectedOrgId);
+  }, [responses, selectedOrgId]);
+
+  const scopedForms = useMemo(() => {
+    if (selectedOrgId === 'ALL') return forms;
+    return forms.filter((form) => form.organisationId === selectedOrgId || form.organisation?.id === selectedOrgId || (form.evaluationId ? scopedEvaluationIds.has(form.evaluationId) : false));
+  }, [forms, scopedEvaluationIds, selectedOrgId]);
+
+  const scopedEvaluations = useMemo(() => {
+    if (selectedOrgId === 'ALL') return evaluations;
+    return evaluations.filter((evaluation) => evaluation.organisation?.id === selectedOrgId);
+  }, [evaluations, selectedOrgId]);
+
+  const scopedReports = useMemo(() => {
+    if (selectedOrgId === 'ALL') return reports;
+    return reports.filter((report) => report.evaluationId ? scopedEvaluationIds.has(report.evaluationId) : false);
+  }, [reports, scopedEvaluationIds, selectedOrgId]);
+
+  const statusData = useMemo<ChartDataPoint[]>(() => {
+    const counts = scopedEvaluations.reduce<Record<string, number>>((acc, evaluation) => {
+      const status = evaluation.status ? evaluation.status.replace(/_/g, ' ') : 'Unknown';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [scopedEvaluations]);
+
+  const completionDistribution = useMemo<ChartDataPoint[]>(() => {
+    const buckets = [
+      { name: '0-25%', min: 0, max: 25, value: 0 },
+      { name: '26-50%', min: 26, max: 50, value: 0 },
+      { name: '51-75%', min: 51, max: 75, value: 0 },
+      { name: '76-100%', min: 76, max: 100, value: 0 },
+    ];
+    scopedResponses.forEach((response) => {
+      const bucket = buckets.find((item) => response.completionPercentage >= item.min && response.completionPercentage <= item.max);
+      if (bucket) bucket.value += 1;
+    });
+    return buckets.map(({ name, value }) => ({ name, value }));
+  }, [scopedResponses]);
+
+  const monthlyTrendData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (5 - index));
+      return {
+        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+        name: date.toLocaleDateString(undefined, { month: 'short' }),
+        responses: 0,
+        projects: 0,
+        reports: 0,
+      };
+    });
+    const byKey = Object.fromEntries(months.map((month) => [month.key, month]));
+    scopedResponses.forEach((response) => {
+      const rawDate = response.submittedAt || response.createdAt;
+      if (!rawDate) return;
+      const date = new Date(rawDate);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (byKey[key]) byKey[key].responses += 1;
+    });
+    scopedEvaluations.forEach((evaluation) => {
+      const date = new Date(evaluation.createdAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (byKey[key]) byKey[key].projects += 1;
+    });
+    scopedReports.forEach((report) => {
+      const date = new Date(report.publishedAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (byKey[key]) byKey[key].reports += 1;
+    });
+    return months;
+  }, [scopedEvaluations, scopedReports, scopedResponses]);
+
+  const orgComparisonData = useMemo(() => {
+    return orgSummaries.slice(0, 8).map((summary) => ({
+      name: summary.name.length > 16 ? `${summary.name.slice(0, 16)}...` : summary.name,
+      responses: summary.responses,
+      projects: summary.evaluations,
+      completion: summary.averageCompletion,
+    }));
+  }, [orgSummaries]);
+
+  const sectorData = useMemo<ChartDataPoint[]>(() => {
+    const source = selectedOrgId === 'ALL' ? orgSummaries : orgSummaries.filter((summary) => summary.id === selectedOrgId);
+    const counts = source.reduce<Record<string, number>>((acc, summary) => {
+      acc[summary.sector] = (acc[summary.sector] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [orgSummaries, selectedOrgId]);
+
+  const formDepthData = useMemo(() => {
+    return scopedForms
+      .slice()
+      .sort((a, b) => (b.questionCount || 0) - (a.questionCount || 0))
+      .slice(0, 7)
+      .map((form) => ({
+        name: form.title.length > 18 ? `${form.title.slice(0, 18)}...` : form.title,
+        questions: form.questionCount || 0,
+        responses: scopedResponses.filter((response) => response.form.id === form.id).length,
+      }));
+  }, [scopedForms, scopedResponses]);
+
+  const maturityRadarData = useMemo(() => {
+    const activeRate = selectedSummary.evaluations ? Math.round((selectedSummary.activeEvaluations / selectedSummary.evaluations) * 100) : 0;
+    const responseDepth = selectedSummary.forms ? Math.min(100, Math.round((selectedSummary.responses / selectedSummary.forms) * 20)) : 0;
+    const reportCoverage = selectedSummary.evaluations ? Math.min(100, Math.round((selectedSummary.reports / selectedSummary.evaluations) * 100)) : 0;
+    const userCoverage = selectedSummary.users ? Math.min(100, selectedSummary.users * 10) : 0;
+
+    return [
+      { subject: 'Completion', score: selectedSummary.averageCompletion },
+      { subject: 'Response depth', score: responseDepth },
+      { subject: 'Active work', score: activeRate },
+      { subject: 'Insight coverage', score: reportCoverage },
+      { subject: 'User coverage', score: userCoverage },
+    ];
+  }, [selectedSummary]);
+
+  const moduleData = useMemo(() => [
+    { name: 'Organisations', value: selectedOrgId === 'ALL' ? orgSummaries.length : 1 },
+    { name: 'Users', value: selectedSummary.users },
+    { name: 'Forms', value: selectedSummary.forms },
+    { name: 'Projects', value: selectedSummary.evaluations },
+    { name: 'Responses', value: selectedSummary.responses },
+    { name: 'Reports', value: selectedSummary.reports },
+  ], [orgSummaries.length, selectedOrgId, selectedSummary]);
+
+  const leaderRows = selectedOrgId === 'ALL'
+    ? orgSummaries.slice(0, 6)
+    : orgSummaries.filter((summary) => summary.id === selectedOrgId);
+  const pieColors = ['#0f766e', '#2563eb', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
+  const viewLabel = selectedOrgId === 'ALL' ? 'General overview' : selectedSummary.name;
 
   return (
-    <div className="space-y-6">
-      <div className="dashboard-card-dark rounded-2xl p-6 text-slate-900">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-teal-600">Super Admin</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive Dashboard</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
-              Centralised platform for managing client organisations, form rollouts, diagnostic workflows, implementation tracking, and governance reporting.
+    <div className="super-admin-dashboard space-y-5">
+      <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive Portfolio Dashboard</h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">
+              Switch from the full platform picture into any client organisation and compare activity, completion, form depth, report coverage, and response quality in one view.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            {[
-              ['Forms', loadingStats ? '...' : String(stats.forms)],
-              ['Projects', loadingStats ? '...' : String(stats.evaluations)],
-              ['Insights', loadingStats ? '...' : String(stats.reports)],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 shadow-sm">
-                <p className="text-lg font-black text-white">{value}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
-              </div>
-            ))}
+          <label className="min-w-[280px] text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+            Dashboard scope
+            <select
+              value={selectedOrgId}
+              onChange={(event) => setSelectedOrgId(event.target.value)}
+              className="mt-2 w-full border border-slate-700 bg-slate-900 px-3 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-cyan-300"
+            >
+              <option value="ALL">General overview - all organisations</option>
+              {organisations.map((org) => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Client organisations" value={loadingStats ? '...' : selectedOrgId === 'ALL' ? orgSummaries.length : 1} icon={<DashboardIcon name="building" />} color="blue" delay={0} />
+        <StatCard label="Responses captured" value={loadingStats ? '...' : selectedSummary.responses} icon={<DashboardIcon name="check" />} color="green" delay={50} />
+        <StatCard label="Avg completion" value={loadingStats ? '...' : `${selectedSummary.averageCompletion}%`} icon={<DashboardIcon name="chart" />} color="yellow" delay={100} />
+        <StatCard label="Published insights" value={loadingStats ? '...' : selectedSummary.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+        <div className="dashboard-panel border-slate-300 p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-950">Activity trend for {viewLabel}</h2>
+              <p className="text-xs text-slate-500">Responses, projects, and published insight output across the last six months.</p>
+            </div>
+            <Pill label="Timeline" color="green" />
+          </div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={monthlyTrendData} margin={{ top: 12, right: 18, left: -8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Area type="monotone" dataKey="responses" fill="#0f766e" fillOpacity={0.18} stroke="#0f766e" strokeWidth={2} />
+                <Bar dataKey="projects" fill="#2563eb" radius={[0, 0, 0, 0]} />
+                <Line type="monotone" dataKey="reports" stroke="#f97316" strokeWidth={3} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="dashboard-panel border-slate-300 p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-950">Portfolio maturity signal</h2>
+              <p className="text-xs text-slate-500">A practical proxy from completion, coverage, active work, and user footprint.</p>
+            </div>
+            <Pill label={selectedSummary.completionLabel} color="amber" />
+          </div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={maturityRadarData} outerRadius={92}>
+                <PolarGrid stroke="#cbd5e1" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#334155', fontSize: 10 }} />
+                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
+                <Radar name="Score" dataKey="score" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.22} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+              </RadarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Client organisations" value={loadingStats ? '...' : stats.organisations} icon={<DashboardIcon name="building" />} color="blue" delay={0} />
-        <StatCard label="Forms" value={loadingStats ? '...' : stats.forms} icon={<DashboardIcon name="form" />} color="yellow" delay={50} />
-        <StatCard label="Projects" value={loadingStats ? '...' : stats.evaluations} icon={<DashboardIcon name="chart" />} color="green" delay={100} />
-        <StatCard label="Published insights" value={loadingStats ? '...' : stats.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="dashboard-panel rounded-2xl p-5">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-950">Platform volume</h2>
-              <p className="text-xs text-slate-500">Live platform records across organisations, forms, projects, and published insights.</p>
-            </div>
-            <Pill label="Real data" color="green" />
-          </div>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <div className="dashboard-panel border-slate-300 p-5">
+          <h2 className="text-base font-bold text-slate-950">What exists in scope</h2>
+          <p className="mb-4 text-xs text-slate-500">Record volume by operational object.</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.moduleData} margin={{ top: 12, right: 12, left: -8, bottom: 10 }}>
+              <BarChart data={moduleData} margin={{ top: 8, right: 10, left: -12, bottom: 35 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={52} />
                 <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                <Bar dataKey="value" fill="#14b8a6" radius={[8, 8, 0, 0]} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                <Bar dataKey="value" fill="#0891b2" radius={[0, 0, 0, 0]}>
+                  {moduleData.map((entry, index) => (
+                    <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="dashboard-panel rounded-2xl p-5">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-950">Project status</h2>
-              <p className="text-xs text-slate-500">Evaluation workflow split by current status.</p>
-            </div>
-            <Pill label="Projects" color="blue" />
-          </div>
-          {stats.statusData.length > 0 ? (
+        <div className="dashboard-panel border-slate-300 p-5">
+          <h2 className="text-base font-bold text-slate-950">Evaluation status mix</h2>
+          <p className="mb-4 text-xs text-slate-500">Shows where active delivery attention is sitting.</p>
+          {statusData.length > 0 ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={stats.statusData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={86} paddingAngle={3}>
-                    {stats.statusData.map((entry, index) => (
+                  <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={46} outerRadius={86} paddingAngle={0}>
+                    {statusData.map((entry, index) => (
                       <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                  <Legend iconType="circle" wrapperStyle={{ color: '#334155', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                  <Legend iconType="square" wrapperStyle={{ color: '#334155', fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
-              No project status data yet.
+            <div className="flex h-64 items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No project status data yet.</div>
+          )}
+        </div>
+
+        <div className="dashboard-panel border-slate-300 p-5">
+          <h2 className="text-base font-bold text-slate-950">Completion distribution</h2>
+          <p className="mb-4 text-xs text-slate-500">Response quality split by submitted completion band.</p>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={completionDistribution} margin={{ top: 8, right: 10, left: -12, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                <Area type="monotone" dataKey="value" stroke="#f97316" fill="#fed7aa" fillOpacity={0.75} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="dashboard-panel border-slate-300 p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-950">Organisation comparison</h2>
+              <p className="text-xs text-slate-500">Which clients are generating responses, projects, and stronger completion.</p>
             </div>
+            <Pill label="Ranked" color="blue" />
+          </div>
+          {selectedOrgId === 'ALL' ? (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={orgComparisonData} margin={{ top: 12, right: 16, left: -8, bottom: 45 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={62} />
+                  <YAxis yAxisId="left" allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#475569', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar yAxisId="left" dataKey="responses" fill="#0f766e" radius={[0, 0, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="projects" fill="#2563eb" radius={[0, 0, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="completion" stroke="#dc2626" strokeWidth={3} dot={{ r: 3 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                ['Users onboarded', selectedSummary.users],
+                ['Forms deployed', selectedSummary.forms],
+                ['Question bank', selectedSummary.questionBank],
+                ['Answers collected', selectedSummary.answers],
+                ['Active projects', selectedSummary.activeEvaluations],
+                ['Latest activity', selectedSummary.lastActivity ? new Date(selectedSummary.lastActivity).toLocaleDateString() : 'None'],
+              ].map(([label, value]) => (
+                <div key={label} className="border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
+                  <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="dashboard-panel border-slate-300 p-5">
+          <h2 className="text-base font-bold text-slate-950">Sector footprint</h2>
+          <p className="mb-4 text-xs text-slate-500">Client portfolio spread by recorded sector.</p>
+          {sectorData.length > 0 ? (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={sectorData} dataKey="value" nameKey="name" outerRadius={94}>
+                    {sectorData.map((entry, index) => (
+                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                  <Legend iconType="square" wrapperStyle={{ color: '#334155', fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex h-72 items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No sector data yet.</div>
           )}
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
-        <div className="dashboard-panel rounded-2xl p-5">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-slate-950">Operational modules</h2>
-              <p className="text-xs text-slate-500">High-priority workspaces for platform control.</p>
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="dashboard-panel border-slate-300 p-5">
+          <h2 className="text-base font-bold text-slate-950">Form depth and uptake</h2>
+          <p className="mb-4 text-xs text-slate-500">Largest instruments compared with responses received.</p>
+          {formDepthData.length > 0 ? (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={formDepthData} layout="vertical" margin={{ top: 8, right: 16, left: 25, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis type="number" allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} width={90} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="questions" fill="#7c3aed" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="responses" fill="#0f766e" radius={[0, 0, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">Live</span>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {cards.map((card) => (
-              <Link
-                key={card.href}
-                href={card.href}
-                className="group rounded-xl border border-slate-200 bg-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:border-teal-300 hover:bg-white hover:shadow-md"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xl text-white">
-                    {iconForModuleTitle(card.title)}
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-950">{card.title}</h2>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-500">{card.description}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          ) : (
+            <div className="flex h-72 items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No form data yet.</div>
+          )}
         </div>
 
-        <div className="dashboard-panel rounded-2xl p-5 text-slate-900">
-          <div className="mb-5 flex items-center justify-between">
+        <div className="dashboard-panel border-slate-300 p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold">Quick actions</h2>
-              <p className="text-xs text-slate-500">Common admin moves.</p>
+              <h2 className="text-base font-bold text-slate-950">Organisation summaries</h2>
+              <p className="text-xs text-slate-500">Fast scan of the portfolio or selected organisation.</p>
             </div>
-            <span className="h-2 w-2 rounded-full bg-teal-500" />
+            <Pill label={selectedOrgId === 'ALL' ? 'All clients' : 'Selected'} color="green" />
           </div>
-          <div className="space-y-3">
-            {[
-              ['Browse organisations', '/organisations'],
-              ['Review evaluations', '/evaluations'],
-              ['Open AI diagnosis', '/ai-diagnosis'],
-              ['Manage forms', '/forms'],
-            ].map(([label, href]) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 transition hover:border-teal-300 hover:bg-white"
-              >
-                {label}
-                <DashboardIcon name="arrowRight" className="h-4 w-4 text-teal-600" />
-              </Link>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                  <th className="py-3 pr-4 font-bold">Organisation</th>
+                  <th className="py-3 pr-4 font-bold">Sector</th>
+                  <th className="py-3 pr-4 font-bold">Projects</th>
+                  <th className="py-3 pr-4 font-bold">Responses</th>
+                  <th className="py-3 pr-4 font-bold">Completion</th>
+                  <th className="py-3 pr-4 font-bold">Reports</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderRows.map((summary) => (
+                  <tr key={summary.id} className="border-b border-slate-100">
+                    <td className="py-3 pr-4 font-bold text-slate-950">{summary.name}</td>
+                    <td className="py-3 pr-4 text-slate-500">{summary.sector}</td>
+                    <td className="py-3 pr-4 text-slate-700">{summary.evaluations}</td>
+                    <td className="py-3 pr-4 text-slate-700">{summary.responses}</td>
+                    <td className="py-3 pr-4">
+                      <span className="font-bold text-slate-950">{summary.averageCompletion}%</span>
+                      <span className="ml-2 text-xs text-slate-500">{summary.completionLabel}</span>
+                    </td>
+                    <td className="py-3 pr-4 text-slate-700">{summary.reports}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ['Browse organisations', '/organisations', 'building'],
+          ['Review evaluations', '/evaluations', 'clipboard'],
+          ['Open AI diagnosis', '/ai-diagnosis', 'bot'],
+          ['Manage forms', '/forms', 'form'],
+        ].map(([label, href, icon]) => (
+          <Link
+            key={href}
+            href={href}
+            className="group flex items-center justify-between border border-slate-300 bg-white px-4 py-4 text-sm font-bold text-slate-900 shadow-sm transition hover:border-slate-950"
+          >
+            <span className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-slate-950 text-white">
+                <DashboardIcon name={icon as DashboardIconName} className="h-4 w-4" />
+              </span>
+              {label}
+            </span>
+            <DashboardIcon name="arrowRight" className="h-4 w-4 text-teal-700" />
+          </Link>
+        ))}
       </div>
     </div>
   );

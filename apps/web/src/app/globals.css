@@ -226,6 +226,11 @@ img {
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
+.super-admin-dashboard,
+.super-admin-dashboard * {
+  border-radius: 0 !important;
+}
+
 .skeleton {
   background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
   background-size: 200% 100%;
