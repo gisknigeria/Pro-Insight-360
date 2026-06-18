@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AppIcon } from '@/components/ui/app-icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,15 +93,21 @@ function CreateUnitModal({ orgId, orgName, onClose, onCreated }: {
     if (!name.trim()) { setErr('Unit name required.'); return; }
     setSaving(true); setErr('');
     try {
-      const created = await apiFetch<Unit>('/units', { method: 'POST', body: JSON.stringify({ organisationId: orgId, name: name.trim(), description: desc.trim() }) });
-      onCreated(created);
+      await apiFetch('/departments', { method: 'POST', body: JSON.stringify({ organisationId: orgId, name: name.trim(), description: desc.trim() }) });
+      onCreated({
+        id: `${orgId}::${name.trim()}`,
+        name: name.trim(),
+        description: desc.trim(),
+        organisation: { id: orgId, name: orgName },
+        staffCount: 0,
+      });
     } catch (e: any) { setErr(e?.message || 'Failed.'); }
     finally { setSaving(false); }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-slate-200">
+      <div className="w-full max-w-sm bg-white shadow-2xl border border-slate-200">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <p className="font-bold text-slate-900 text-sm">Create unit — {orgName}</p>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
@@ -109,21 +116,21 @@ function CreateUnitModal({ orgId, orgName, onClose, onCreated }: {
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1.5">Unit name *</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Finance & Accounts"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none" />
+              className="w-full border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none" />
           </div>
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1.5">Description (optional)</label>
             <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none resize-none" />
+              className="w-full border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none resize-none" />
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+              className="flex-1 border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
               Cancel
             </button>
             <button type="button" onClick={save} disabled={saving}
-              className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-50 transition">
+              className="flex-1 bg-primary py-2.5 text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-50 transition">
               {saving ? 'Creating…' : 'Create unit'}
             </button>
           </div>
@@ -147,24 +154,68 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
   onAddUnit: (unit: Unit) => void;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<'forms' | 'units' | 'projects'>('projects');
+  const [tab, setTab] = useState<'forms' | 'units'>('forms');
   const [showUnit, setShowUnit] = useState(false);
+  const [expandedUnitId, setExpandedUnitId] = useState<string | null>(null);
+  const [questionMap, setQuestionMap] = useState<Record<string, string[]>>({});
 
   const allOrgEvals = evaluations.filter(e => e.organisation?.id === org.id);
   const orgEvals = allOrgEvals.filter(e => !isFormBucketEvaluation(e));
-  const orgUnits = units.filter(u => u.organisation?.id === org.id);
   const orgForms = forms.filter(f =>
     f.organisationId === org.id || allOrgEvals.some(e => e.id === f.evaluationId)
   );
 
+  const orgUnits = useMemo(() => {
+    const map = new Map<string, Unit>();
+    units.filter(u => u.organisation?.id === org.id).forEach(u => map.set(u.id, u));
+    orgForms.filter(form => form.unitId || form.unitName).forEach((form) => {
+      const unitKey = form.unitId || `${org.id}::${form.unitName}`;
+      if (!map.has(unitKey)) {
+        map.set(unitKey, {
+          id: unitKey,
+          name: form.unitName || 'Unassigned unit',
+          description: 'Department captured from linked questionnaire forms.',
+          organisation: { id: org.id, name: org.name },
+          staffCount: 0,
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [org.id, org.name, orgForms, units]);
+
   const tabs = [
-    { id: 'projects' as const, label: `Projects (${orgEvals.length})`, icon: '📁' },
-    { id: 'forms'   as const, label: `Forms (${orgForms.length})`,    icon: '📋' },
-    { id: 'units'   as const, label: `Units (${orgUnits.length})`,     icon: '🏗️' },
+    { id: 'forms' as const, label: `Forms (${orgForms.length + orgEvals.length})`, icon: 'form' },
+    { id: 'units' as const, label: `Units (${orgUnits.length})`, icon: 'sitemap' },
   ];
 
+  async function loadQuestions(formId: string) {
+    if (questionMap[formId]) return;
+    try {
+      const definition = await apiFetch<{ pages?: Array<{ questions?: Array<{ label?: string }> }> }>(`/forms/${formId}/definition`);
+      const questions = (definition.pages ?? []).flatMap((page) => page.questions ?? []).map((question) => question.label || 'Untitled question');
+      setQuestionMap((current) => ({ ...current, [formId]: questions }));
+    } catch {
+      setQuestionMap((current) => ({ ...current, [formId]: [] }));
+    }
+  }
+
+  function getUnitForms(unit: Unit) {
+    return orgForms.filter((form) => form.unitId === unit.id || form.unitName === unit.name);
+  }
+
+  function toggleUnit(unit: Unit) {
+    const next = expandedUnitId === unit.id ? null : unit.id;
+    setExpandedUnitId(next);
+    if (next) getUnitForms(unit).forEach((form) => void loadQuestions(form.id));
+  }
+
+  function publicFormUrl(formId: string) {
+    if (typeof window === 'undefined') return `/public/forms/${formId}`;
+    return `${window.location.origin}/public/forms/${formId}`;
+  }
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className="border border-slate-200 bg-white shadow-sm overflow-hidden">
       {/* Colour strip */}
       <div className={`h-1 bg-gradient-to-r ${sectorGrad(org.sector)}`} />
 
@@ -176,13 +227,13 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => setShowUnit(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-100 transition">
-            + Unit
+            className="inline-flex items-center gap-1.5 border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-100 transition">
+            <AppIcon name="plus" className="h-3.5 w-3.5" /> Unit
           </button>
           <button type="button"
             onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 transition shadow-sm">
-            + Form
+            className="inline-flex items-center gap-1.5 bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 transition shadow-sm">
+            <AppIcon name="plus" className="h-3.5 w-3.5" /> Form
           </button>
         </div>
       </div>
@@ -194,7 +245,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
               tab === t.id ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}>
-            <span>{t.icon}</span>{t.label}
+            <AppIcon name={t.icon as 'form' | 'sitemap'} className="h-3.5 w-3.5" />{t.label}
           </button>
         ))}
       </div>
@@ -202,7 +253,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
       {/* Content */}
       <div className="p-4">
         {/* Projects */}
-        {tab === 'projects' && (
+        {tab === 'forms' && orgEvals.length > 0 && (
           orgEvals.length === 0 ? (
             <p className="py-6 text-center text-sm text-slate-400">No projects yet.</p>
           ) : (
@@ -210,19 +261,19 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
               {orgEvals.map(ev => {
                 const cfg = STATUS_EV[ev.status] ?? STATUS_EV.DRAFT;
                 return (
-                  <div key={ev.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <span className="text-base shrink-0">📁</span>
+                  <div key={ev.id} className="flex items-center gap-3 border border-slate-200 bg-slate-50 px-4 py-3">
+                    <AppIcon name="folder" className="h-4 w-4 shrink-0 text-blue-700" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">{ev.title}</p>
                       <p className="text-[10px] text-slate-400">{ev._count.forms} form{ev._count.forms !== 1 ? 's' : ''}</p>
                     </div>
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.cls}`}>{cfg.label}</span>
+                    <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold ${cfg.cls}`}>{cfg.label}</span>
                     <Link href={`/evaluations/${ev.id}`}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0">
+                      className="border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0">
                       View →
                     </Link>
                     <button type="button" onClick={() => onDeleteEval(ev.id)}
-                      className="rounded-lg p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
+                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
                       🗑️
                     </button>
                   </div>
@@ -234,12 +285,12 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
 
         {/* Forms */}
         {tab === 'forms' && (
-          orgForms.length === 0 ? (
+          orgForms.length === 0 && orgEvals.length === 0 ? (
             <div className="py-6 text-center">
               <p className="text-sm text-slate-400 mb-3">No forms yet.</p>
               <button type="button" onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition">
-                + Create first form
+                className="inline-flex items-center gap-1.5 bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition">
+                <AppIcon name="plus" className="h-3.5 w-3.5" /> Create first form
               </button>
             </div>
           ) : (
@@ -247,21 +298,21 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
               {orgForms.map(f => {
                 const cfg = STATUS_FM[f.status] ?? STATUS_FM.DRAFT;
                 return (
-                  <div key={f.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <span className="text-base shrink-0">📋</span>
+                  <div key={f.id} className="flex items-center gap-3 border border-slate-200 bg-slate-50 px-4 py-3">
+                    <AppIcon name="form" className="h-4 w-4 shrink-0 text-emerald-700" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">{f.title}</p>
                       <p className="text-[10px] text-slate-400">{f.questionCount} questions</p>
                     </div>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.cls}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />{cfg.label}
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold ${cfg.cls}`}>
+                      <span className={`h-1.5 w-1.5 ${cfg.dot}`} />{cfg.label}
                     </span>
                     <Link href={`/forms/${f.id}`}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0">
+                      className="border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0">
                       Edit →
                     </Link>
                     <button type="button" onClick={() => onDeleteForm(f.id)}
-                      className="rounded-lg p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
+                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
                       🗑️
                     </button>
                   </div>
@@ -277,25 +328,28 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
             <div className="py-6 text-center">
               <p className="text-sm text-slate-400 mb-3">No units yet.</p>
               <button type="button" onClick={() => setShowUnit(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 transition">
+                className="inline-flex items-center gap-1.5 bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 transition">
                 + Create first unit
               </button>
             </div>
           ) : (
             <div className="space-y-2">
-              {orgUnits.map(u => (
+              {orgUnits.map(u => {
+                const unitForms = getUnitForms(u);
+                const isOpen = expandedUnitId === u.id;
+                return (
                 <div
                   key={u.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.push(`/forms/new?orgId=${org.id}&unitId=${encodeURIComponent(u.id)}&unitName=${encodeURIComponent(u.name)}`)}
+                  onClick={() => toggleUnit(u)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      router.push(`/forms/new?orgId=${org.id}&unitId=${encodeURIComponent(u.id)}&unitName=${encodeURIComponent(u.name)}`);
+                      toggleUnit(u);
                     }
                   }}
-                  className="block w-full rounded-xl border border-violet-100 bg-violet-50 overflow-hidden text-left transition hover:border-violet-300 hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                  className="block w-full border border-violet-100 bg-violet-50 overflow-hidden text-left transition hover:border-violet-300 hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-300"
                 >
                   <div className="flex items-center gap-3 px-4 py-3">
                     <span className="text-base shrink-0">🏗️</span>
@@ -304,16 +358,91 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                       {u.description && <p className="text-[10px] text-slate-500 truncate">{u.description}</p>}
                     </div>
                     <span className="text-[10px] text-slate-400 shrink-0">{u.staffCount ?? 0} staff</span>
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[10px] font-bold text-white transition shrink-0">
+                    <span className="inline-flex items-center gap-1 bg-primary px-2.5 py-1.5 text-[10px] font-bold text-white transition shrink-0">
                       + Form
                     </span>
                     <button type="button" onClick={(event) => { event.stopPropagation(); onDeleteUnit(u.id); }}
-                      className="rounded-lg p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
+                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
                       🗑️
                     </button>
                   </div>
+                  {isOpen && (
+                    <div className="border-t border-violet-100 bg-white p-4">
+                      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                        <div className="bg-violet-50 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-violet-700">Purpose</p>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-700">{u.description || `${u.name} supports ${org.name}'s operations, data collection, and department-level readiness review.`}</p>
+                        </div>
+                        <div className="bg-slate-50 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">People</p>
+                          <p className="mt-1 text-lg font-black text-slate-950">{u.staffCount ?? 0}</p>
+                          <p className="text-[10px] text-slate-500">staff/contact records</p>
+                        </div>
+                        <div className="bg-emerald-50 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Questionnaires</p>
+                          <p className="mt-1 text-lg font-black text-slate-950">{unitForms.length}</p>
+                          <p className="text-[10px] text-slate-500">linked to this unit</p>
+                        </div>
+                      </div>
+
+                      {unitForms.length === 0 ? (
+                        <div className="bg-slate-50 p-4 text-center">
+                          <p className="mb-3 text-sm text-slate-500">No questionnaire has been created for this unit yet.</p>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              router.push(`/forms/new?orgId=${org.id}&unitId=${encodeURIComponent(u.id)}&unitName=${encodeURIComponent(u.name)}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition"
+                          >
+                            <AppIcon name="plus" className="h-3.5 w-3.5" /> Create form
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {unitForms.map((form) => (
+                            <div key={form.id} className="border border-slate-200 bg-slate-50 p-3">
+                              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                  <p className="text-sm font-bold text-slate-950">{form.title}</p>
+                                  <p className="mt-1 text-xs text-slate-500">{form.questionCount} questions - share link: {publicFormUrl(form.id)}</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Link href={`/evaluations/${form.evaluationId}/diagnosis`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100">
+                                    <AppIcon name="chart" className="h-3.5 w-3.5" /> Insight
+                                  </Link>
+                                  <Link href={`/forms/${form.id}`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 bg-white px-3 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100">
+                                    <AppIcon name="edit" className="h-3.5 w-3.5" /> Edit
+                                  </Link>
+                                  <Link href={`/public/forms/${form.id}`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100">
+                                    <AppIcon name="link" className="h-3.5 w-3.5" /> Share
+                                  </Link>
+                                </div>
+                              </div>
+                              <div className="mt-3 bg-white p-3">
+                                <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-slate-500">Questions under this form</p>
+                                {(questionMap[form.id] ?? []).length > 0 ? (
+                                  <ul className="grid gap-1 sm:grid-cols-2">
+                                    {questionMap[form.id].slice(0, 10).map((question, index) => (
+                                      <li key={`${form.id}-${index}`} className="flex gap-2 text-xs text-slate-700">
+                                        <span className="font-black text-primary">{index + 1}.</span>
+                                        <span>{question}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-xs text-slate-500">No questions found yet. Use Edit to add questionnaire questions.</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
+              );})}
             </div>
           )
         )}
@@ -409,17 +538,17 @@ export default function OrganisationsPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Clients</p>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Organisations</h1>
-            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">{orgs.length}</span>
+            <span className="inline-flex items-center justify-center bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">{orgs.length}</span>
           </div>
           <p className="mt-1 text-sm text-slate-500">Manage client organisations, forms, units and projects.</p>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => router.push('/forms/new')}
-            className="inline-flex items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-800 hover:bg-amber-100 transition shadow-sm">
+            className="inline-flex items-center gap-2 border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-800 hover:bg-amber-100 transition shadow-sm">
             + Create Form
           </button>
           <Link href="/organisations/new"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-primary/80 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all">
             + Organisation
           </Link>
         </div>
@@ -430,13 +559,13 @@ export default function OrganisationsPage() {
       {/* Search */}
       <div className="mb-5">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search organisations…"
-          className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          className="w-full max-w-sm border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
       </div>
 
       {/* Two-panel layout */}
       {loading ? (
         <div className="space-y-2">
-          {[1,2,3,4].map(i => <div key={i} className="h-14 rounded-xl bg-white border border-slate-200 animate-pulse" />)}
+          {[1,2,3,4].map(i => <div key={i} className="h-14 bg-white border border-slate-200 animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState icon="🏢" title="No organisations" description="Create your first client organisation." actionLabel="Create Organisation" onAction={() => router.push('/organisations/new')} />
@@ -448,14 +577,14 @@ export default function OrganisationsPage() {
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-2">Client list</p>
             {filtered.map(org => (
               <div key={org.id}
-                className={`group flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
+                className={`group flex items-center gap-3 border px-4 py-3 cursor-pointer transition-all ${
                   selectedId === org.id
                     ? 'border-primary/50 bg-primary/5 shadow-sm'
                     : 'border-slate-200 bg-white hover:border-primary/30 hover:bg-slate-50'
                 }`}
                 onClick={() => setSelectedId(org.id)}>
                 {/* Sector colour dot */}
-                <div className={`h-8 w-8 shrink-0 rounded-lg bg-gradient-to-br ${sectorGrad(org.sector)} flex items-center justify-center text-white text-xs font-black shadow`}>
+                <div className={`h-8 w-8 shrink-0 bg-gradient-to-br ${sectorGrad(org.sector)} flex items-center justify-center text-white text-xs font-black shadow`}>
                   {org.name.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -463,10 +592,10 @@ export default function OrganisationsPage() {
                   <p className="text-[10px] text-slate-400">{org.sector || 'No sector'} · {org._count.evaluations} project{org._count.evaluations !== 1 ? 's' : ''}</p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`h-1.5 w-1.5 rounded-full ${org.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                  <span className={`h-1.5 w-1.5 ${org.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                   <button type="button"
                     onClick={e => { e.stopPropagation(); deleteOrg(org.id); }}
-                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
                     aria-label="Delete organisation">
                     🗑️
                   </button>
@@ -490,7 +619,7 @@ export default function OrganisationsPage() {
                 onAddUnit={addUnit}
               />
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+              <div className="border border-dashed border-slate-300 bg-white p-10 text-center">
                 <span className="text-4xl mb-3 block">🏢</span>
                 <p className="text-sm font-semibold text-slate-500">Select an organisation from the list</p>
               </div>

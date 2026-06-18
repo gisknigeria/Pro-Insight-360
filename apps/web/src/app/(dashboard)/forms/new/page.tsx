@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { AppIcon } from '@/components/ui/app-icons';
 import type { FormDefinition } from '@/components/form-builder/form-builder.types';
 
 interface EvaluationOption {
@@ -632,6 +633,7 @@ export default function NewFormPage() {
     description: defaultDiagnosticChecklist.description ?? '',
     organisationId: orgId,
     accessMode: 'REGISTERED',
+    shareLabel: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -668,6 +670,7 @@ export default function NewFormPage() {
         formId: `form-${Date.now()}`,
         title: values.name.trim(),
         description: values.description.trim(),
+        shareLabel: values.shareLabel.trim() || undefined,
         unitContext: unitId || unitName ? { id: unitId, name: unitName } : undefined,
       };
 
@@ -694,7 +697,7 @@ export default function NewFormPage() {
   if (loading) {
     return (
       <div className="text-center py-16">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+        <div className="inline-block animate-spin h-10 w-10 border-b-2 border-primary" />
       </div>
     );
   }
@@ -710,15 +713,15 @@ export default function NewFormPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-6 border border-slate-200 bg-white p-6 shadow-sm">
         {error && (
-          <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {unitName && (
-          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-800">
+          <div className="border border-violet-200 bg-violet-50 p-4 text-sm text-violet-800">
             This form will be tagged to <strong>{unitName}</strong> and listed under the organisation's Forms tab.
           </div>
         )}
@@ -729,7 +732,7 @@ export default function NewFormPage() {
             id="name"
             value={values.name}
             onChange={e => setValues(v => ({ ...v, name: e.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
+            className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             placeholder="e.g. GIS Readiness Assessment"
             required
           />
@@ -741,7 +744,7 @@ export default function NewFormPage() {
             id="description"
             value={values.description}
             onChange={e => setValues(v => ({ ...v, description: e.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200 resize-none"
+            className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200 resize-none"
             rows={3}
             placeholder="What is this form for?"
           />
@@ -753,7 +756,7 @@ export default function NewFormPage() {
             id="orgId"
             value={values.organisationId}
             onChange={e => setValues(v => ({ ...v, organisationId: e.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
+            className="mt-2 w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             required
           >
             <option value="">Select an organisation…</option>
@@ -769,24 +772,43 @@ export default function NewFormPage() {
             id="accessMode"
             value={values.accessMode}
             onChange={e => setValues(v => ({ ...v, accessMode: e.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
+            className="mt-2 w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
           >
             <option value="REGISTERED">Registered only</option>
             <option value="PUBLIC">Public access</option>
           </select>
         </div>
 
+        <div className="border border-emerald-200 bg-emerald-50 p-4">
+          <div className="flex items-start gap-3">
+            <AppIcon name="link" className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+            <div className="min-w-0 flex-1">
+              <label htmlFor="shareLabel" className="block text-sm font-bold text-emerald-900">Share link label</label>
+              <p className="mt-1 text-xs leading-relaxed text-emerald-800">
+                Add a friendly note for this questionnaire link. After creation, the public share link will be available as /public/forms/[form-id].
+              </p>
+              <input
+                id="shareLabel"
+                value={values.shareLabel}
+                onChange={e => setValues(v => ({ ...v, shareLabel: e.target.value }))}
+                className="mt-3 w-full border border-emerald-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                placeholder="e.g. Share this questionnaire with department respondents"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="submit"
             disabled={!canSubmit || saving}
-            className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-bold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition"
+            className="inline-flex items-center justify-center bg-primary px-5 py-3 text-sm font-bold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition"
           >
             {saving ? 'Creating form…' : 'Create form'}
           </button>
           <Link
             href={orgId ? '/organisations' : '/organisations'}
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
+            className="inline-flex items-center justify-center border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
           >
             Cancel
           </Link>

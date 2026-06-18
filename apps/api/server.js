@@ -950,7 +950,8 @@ app.post('/departments', async (req, res) => {
       return res.status(400).json({ message: 'Department name is required.' });
     }
 
-    const email = `${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.')}@pro-insight.local`;
+    const orgSuffix = organisationId ? `.${String(organisationId).slice(0, 8)}` : '';
+    const email = `${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.')}${orgSuffix}@pro-insight.local`;
     const tempPassword = crypto.randomBytes(16).toString('hex');
     const passwordHash = await bcrypt.hash(tempPassword, 10);
     const setupToken = crypto.randomBytes(32).toString('hex');
