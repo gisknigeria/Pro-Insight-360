@@ -1,9 +1,10 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AppIcon } from '@/components/ui/app-icons';
 import { apiFetch } from '@/lib/api';
 import { getUserRole } from '@/lib/auth';
 import OrgChart from '@/components/organogram/OrgChart';
@@ -12,7 +13,7 @@ import {
   Cell, RadarChart as RechartRadar, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface Organisation { id: string; name: string; }
 
@@ -74,7 +75,7 @@ interface GapItem {
   recommendedAction: string; who: string; when: string;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CHART_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#f97316'];
 
@@ -97,7 +98,7 @@ function isFormBucketEvaluation(evaluation: Evaluation) {
   return ['general', 'forms'].includes(evaluation.title.trim().toLowerCase()) && !evaluation.startDate;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SeverityBadge({ severity }: { severity: string }) {
   const cfg = SEV_CFG[severity] ?? SEV_CFG.MEDIUM;
@@ -118,21 +119,21 @@ function CompletionBar({ pct }: { pct: number }) {
   );
 }
 
-// ─── Gap severity parser ──────────────────────────────────────────────────────
+// â”€â”€â”€ Gap severity parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function parseGapSeverity(gapText: string): { severity: string; text: string } {
   const upper = gapText.toUpperCase();
-  if (upper.startsWith('CRITICAL:') || upper.startsWith('CRITICAL —') || upper.startsWith('CRITICAL -')) {
-    return { severity: 'CRITICAL', text: gapText.replace(/^CRITICAL[:\s—-]+/i, '').trim() };
+  if (upper.startsWith('CRITICAL:') || upper.startsWith('CRITICAL â€”') || upper.startsWith('CRITICAL -')) {
+    return { severity: 'CRITICAL', text: gapText.replace(/^CRITICAL[:\sâ€”-]+/i, '').trim() };
   }
-  if (upper.startsWith('HIGH:') || upper.startsWith('HIGH —') || upper.startsWith('HIGH -')) {
-    return { severity: 'HIGH', text: gapText.replace(/^HIGH[:\s—-]+/i, '').trim() };
+  if (upper.startsWith('HIGH:') || upper.startsWith('HIGH â€”') || upper.startsWith('HIGH -')) {
+    return { severity: 'HIGH', text: gapText.replace(/^HIGH[:\sâ€”-]+/i, '').trim() };
   }
-  if (upper.startsWith('MEDIUM:') || upper.startsWith('MEDIUM —') || upper.startsWith('MEDIUM -')) {
-    return { severity: 'MEDIUM', text: gapText.replace(/^MEDIUM[:\s—-]+/i, '').trim() };
+  if (upper.startsWith('MEDIUM:') || upper.startsWith('MEDIUM â€”') || upper.startsWith('MEDIUM -')) {
+    return { severity: 'MEDIUM', text: gapText.replace(/^MEDIUM[:\sâ€”-]+/i, '').trim() };
   }
-  if (upper.startsWith('LOW:') || upper.startsWith('LOW —') || upper.startsWith('LOW -')) {
-    return { severity: 'LOW', text: gapText.replace(/^LOW[:\s—-]+/i, '').trim() };
+  if (upper.startsWith('LOW:') || upper.startsWith('LOW â€”') || upper.startsWith('LOW -')) {
+    return { severity: 'LOW', text: gapText.replace(/^LOW[:\sâ€”-]+/i, '').trim() };
   }
   return { severity: 'MEDIUM', text: gapText };
 }
@@ -154,7 +155,7 @@ function buildOrgRows(nodes?: Array<{ id?: string; label?: string; group?: strin
   return rows;
 }
 
-// ─── Analysis card ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Analysis card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AnalysisCard({
   published,
@@ -189,28 +190,28 @@ function AnalysisCard({
   if (!a) return null;
 
   const sectionTabs = [
-    { id: 'overview' as const,        label: 'Overview',         emoji: '📋' },
-    { id: 'gaps' as const,            label: `Gaps (${parsedGaps.length})`, emoji: '⚠️' },
-    { id: 'recommendations' as const, label: 'Recommendations',  emoji: '💡' },
-    { id: 'action' as const,          label: `Action Plan (${a.actionPlan?.length ?? 0})`, emoji: '🗂' },
-    { id: 'charts' as const,          label: `Charts (${a.charts?.length ?? 0})`, emoji: '📊' },
-    ...(orgRows.length > 0 ? [{ id: 'org' as const, label: 'Organogram', emoji: '🏢' }] : []),
-    ...(a.questions && a.questions.length > 0 ? [{ id: 'questions' as const, label: `Responses (${a.questions.length})`, emoji: '💬' }] : []),
+    { id: 'overview' as const,        label: 'Overview',         emoji: 'ðŸ“‹' },
+    { id: 'gaps' as const,            label: `Gaps (${parsedGaps.length})`, emoji: 'âš ï¸' },
+    { id: 'recommendations' as const, label: 'Recommendations',  emoji: 'ðŸ’¡' },
+    { id: 'action' as const,          label: `Action Plan (${a.actionPlan?.length ?? 0})`, emoji: 'ðŸ—‚' },
+    { id: 'charts' as const,          label: `Charts (${a.charts?.length ?? 0})`, emoji: 'ðŸ“Š' },
+    ...(orgRows.length > 0 ? [{ id: 'org' as const, label: 'Organogram', emoji: 'ðŸ¢' }] : []),
+    ...(a.questions && a.questions.length > 0 ? [{ id: 'questions' as const, label: `Responses (${a.questions.length})`, emoji: 'ðŸ’¬' }] : []),
   ];
 
   return (
     <div className={`rounded-3xl border transition-all overflow-hidden bg-white ${expanded ? 'border-blue-300 shadow-xl' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
       {/* Header */}
       <button type="button" className="flex w-full items-start gap-4 p-5 text-left" onClick={() => setExpanded(v => !v)}>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-xl shadow-md">📊</div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-xl shadow-md">ðŸ“Š</div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <p className="text-sm font-bold text-slate-900 truncate">{evaluation?.title ?? published.summary ?? 'Published analysis'}</p>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">✓ Published</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">âœ“ Published</span>
           </div>
           <p className="text-xs text-slate-500">
             {new Date(published.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-            {published.publishedBy ? ` · ${published.publishedBy}` : ''}
+            {published.publishedBy ? ` Â· ${published.publishedBy}` : ''}
           </p>
           {a.executiveSummary && !expanded && (
             <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{a.executiveSummary}</p>
@@ -225,7 +226,7 @@ function AnalysisCard({
             </div>
           )}
         </div>
-        <span className="text-slate-400 text-sm shrink-0 mt-1">{expanded ? '▲' : '▼'}</span>
+        <span className="text-slate-400 text-sm shrink-0 mt-1">{expanded ? 'â–²' : 'â–¼'}</span>
       </button>
       {onSidebarPinChange && (
         <div className="border-t border-slate-100 px-5 py-3">
@@ -258,7 +259,7 @@ function AnalysisCard({
           </div>
 
           <div className="p-5">
-            {/* ── OVERVIEW ── */}
+            {/* â”€â”€ OVERVIEW â”€â”€ */}
             {activeSection === 'overview' && (
               <div className="space-y-5">
                 {a.executiveSummary && (
@@ -276,7 +277,7 @@ function AnalysisCard({
                       <ul className="space-y-2">
                         {a.strengths.map((s, i) => (
                           <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
-                            <span className="text-emerald-500 shrink-0 mt-0.5 font-bold">✓</span>{s}
+                            <span className="text-emerald-500 shrink-0 mt-0.5 font-bold">âœ“</span>{s}
                           </li>
                         ))}
                       </ul>
@@ -290,7 +291,7 @@ function AnalysisCard({
                       <ul className="space-y-2">
                         {a.weaknesses.map((s, i) => (
                           <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
-                            <span className="text-red-400 shrink-0 mt-0.5 font-bold">✕</span>{s}
+                            <span className="text-red-400 shrink-0 mt-0.5 font-bold">âœ•</span>{s}
                           </li>
                         ))}
                       </ul>
@@ -304,7 +305,7 @@ function AnalysisCard({
                       <ul className="space-y-2">
                         {a.opportunities.map((s, i) => (
                           <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
-                            <span className="text-amber-500 shrink-0 mt-0.5 font-bold">→</span>{s}
+                            <span className="text-amber-500 shrink-0 mt-0.5 font-bold">â†’</span>{s}
                           </li>
                         ))}
                       </ul>
@@ -315,14 +316,14 @@ function AnalysisCard({
                   <div className="flex justify-end pt-2">
                     <Link href={`/evaluations/${evaluation.id}/diagnosis`}
                       className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-sm">
-                      View full diagnosis →
+                      View full diagnosis â†’
                     </Link>
                   </div>
                 )}
               </div>
             )}
 
-            {/* ── GAPS ── */}
+            {/* â”€â”€ GAPS â”€â”€ */}
             {activeSection === 'gaps' && (
               <div className="space-y-4">
                 {/* Severity summary badges */}
@@ -385,7 +386,7 @@ function AnalysisCard({
               </div>
             )}
 
-            {/* ── RECOMMENDATIONS ── */}
+            {/* â”€â”€ RECOMMENDATIONS â”€â”€ */}
             {activeSection === 'recommendations' && a.recommendations && (
               <div className="space-y-3">
                 {a.recommendations.map((r, i) => (
@@ -397,7 +398,7 @@ function AnalysisCard({
               </div>
             )}
 
-            {/* ── ACTION PLAN ── */}
+            {/* â”€â”€ ACTION PLAN â”€â”€ */}
             {activeSection === 'action' && a.actionPlan && (
               <div className="space-y-3">
                 {a.actionPlan.map((item, i) => (
@@ -417,7 +418,7 @@ function AnalysisCard({
                       </div>
                       <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 sm:col-span-1 col-span-full">
                         <p className="font-bold text-slate-600 mb-0.5">How</p>
-                        <p className="text-slate-600 leading-relaxed">{item.how || '—'}</p>
+                        <p className="text-slate-600 leading-relaxed">{item.how || 'â€”'}</p>
                       </div>
                     </div>
                   </div>
@@ -425,7 +426,7 @@ function AnalysisCard({
               </div>
             )}
 
-            {/* ── CHARTS ── */}
+            {/* â”€â”€ CHARTS â”€â”€ */}
             {activeSection === 'charts' && a.charts && (
               <div className="grid gap-5 sm:grid-cols-2">
                 {a.charts.map((chart, ci) => {
@@ -457,7 +458,7 @@ function AnalysisCard({
               </div>
             )}
 
-            {/* ── ORGANOGRAM ── */}
+            {/* â”€â”€ ORGANOGRAM â”€â”€ */}
             {activeSection === 'org' && orgRows.length > 0 && (
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
@@ -472,14 +473,14 @@ function AnalysisCard({
                 <div className="mt-4 flex flex-wrap gap-2">
                   {[...new Set(a.organogram?.nodes?.map(n => n.group).filter(Boolean))].map((dept, i) => (
                     <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                      🏢 {dept}
+                      ðŸ¢ {dept}
                     </span>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* ── QUESTIONS / RESPONSES ── */}
+            {/* â”€â”€ QUESTIONS / RESPONSES â”€â”€ */}
             {activeSection === 'questions' && a.questions && (
               <div className="space-y-3">
                 <p className="text-xs text-slate-500 font-medium">{a.questions.length} questions answered by respondents.</p>
@@ -499,7 +500,7 @@ function AnalysisCard({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type InsightItem =
   | { kind: 'PROJECT'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref: string; viewHref: string; hasAnalysis: boolean; unitName?: string | null; questionCount?: number; }
@@ -579,27 +580,33 @@ function SuperAdminInsightPage() {
 
   const filtered = useMemo(() => {
     if (activeFilter === 'ALL') return items;
-    if (activeFilter === 'PROJECTS') return items.filter(item => item.kind === 'PROJECT');
-    if (activeFilter === 'FORMS') return items.filter(item => item.kind === 'FORM');
-    return items.filter(item => item.status === activeFilter);
+    if (activeFilter === 'PUBLISHED') return items.filter(item => item.hasAnalysis);
+    if (activeFilter === 'DRAFT') return items.filter(item => !item.hasAnalysis);
+    return items;
   }, [items, activeFilter]);
 
-  const statusData = useMemo(() => {
-    const counts = new Map<string, number>();
-    items.forEach(item => counts.set(item.status, (counts.get(item.status) ?? 0) + 1));
-    return Array.from(counts, ([name, value]) => ({ name, value }));
-  }, [items]);
+  const insightTabs = [
+    { id: 'ALL', label: 'All', count: items.length, helper: 'Projects and forms together' },
+    { id: 'PUBLISHED', label: 'Published', count: items.filter(item => item.hasAnalysis).length, helper: 'Has client-facing insight' },
+    { id: 'DRAFT', label: 'Draft', count: items.filter(item => !item.hasAnalysis).length, helper: 'Needs insight work' },
+  ];
 
-  const filters = [
-    { id: 'ALL', label: 'All', count: items.length },
-    { id: 'PROJECTS', label: 'Projects', count: items.filter(item => item.kind === 'PROJECT').length },
-    { id: 'FORMS', label: 'Forms', count: items.filter(item => item.kind === 'FORM').length },
-    { id: 'ACTIVE', label: 'Active', count: items.filter(item => item.status === 'ACTIVE').length },
-    { id: 'PUBLISHED', label: 'Published', count: items.filter(item => item.status === 'PUBLISHED').length },
-    { id: 'DRAFT', label: 'Draft', count: items.filter(item => item.status === 'DRAFT').length },
-    { id: 'CLOSED', label: 'Closed', count: items.filter(item => item.status === 'CLOSED').length },
-    { id: 'ARCHIVED', label: 'Archived', count: items.filter(item => item.status === 'ARCHIVED').length },
-  ].filter(filter => filter.id === 'ALL' || filter.count > 0);
+  const organisationSectors = useMemo(() => {
+    const groups = new Map<string, InsightItem[]>();
+    filtered.forEach(item => {
+      const key = item.organisationName || 'Unassigned organisation';
+      groups.set(key, [...(groups.get(key) ?? []), item]);
+    });
+
+    return Array.from(groups, ([organisationName, sectorItems]) => ({
+      organisationName,
+      items: sectorItems,
+      projects: sectorItems.filter(item => item.kind === 'PROJECT').length,
+      forms: sectorItems.filter(item => item.kind === 'FORM').length,
+      published: sectorItems.filter(item => item.hasAnalysis).length,
+      draft: sectorItems.filter(item => !item.hasAnalysis).length,
+    })).sort((a, b) => a.organisationName.localeCompare(b.organisationName));
+  }, [filtered]);
 
   async function deleteInsightItem(item: InsightItem) {
     const label = item.kind === 'PROJECT' ? 'project' : 'form';
@@ -618,12 +625,12 @@ function SuperAdminInsightPage() {
     <div className="min-h-screen bg-slate-50/50">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary">Super Admin · Insights</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary">Super Admin / Insights</p>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Insights</h1>
             <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">{items.length}</span>
           </div>
-          <p className="mt-1.5 text-sm text-slate-500">Review every project and direct organisation form that can be diagnosed.</p>
+          <p className="mt-1.5 text-sm text-slate-500">Review every organisation's projects and forms, then open Insight to create or update the analysis.</p>
         </div>
       </div>
 
@@ -631,108 +638,119 @@ function SuperAdminInsightPage() {
         <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-medium text-red-700">{error}</div>
       ) : (
         <>
-          <div className="mb-8 grid gap-4 xl:grid-cols-[1fr_300px]">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {[
-                { label: 'Total', value: items.length, icon: '📊', grad: 'from-blue-500 to-indigo-600' },
-                { label: 'Projects', value: evaluations.length, icon: '📁', grad: 'from-cyan-500 to-blue-600' },
-                { label: 'Forms', value: forms.length, icon: '📄', grad: 'from-amber-400 to-orange-600' },
-                { label: 'Analysed', value: items.filter(item => item.hasAnalysis).length, icon: '✅', grad: 'from-emerald-400 to-green-600' },
-              ].map(s => (
-                <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>{s.icon}</div>
-                  <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-                  <p className="mt-0.5 text-xs font-medium text-slate-500">{s.label}</p>
+          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {[
+              { label: 'Organisations', value: organisationSectors.length, icon: 'building' as const, grad: 'from-blue-500 to-indigo-600' },
+              { label: 'All work', value: items.length, icon: 'chart' as const, grad: 'from-cyan-500 to-blue-600' },
+              { label: 'Published insights', value: items.filter(item => item.hasAnalysis).length, icon: 'check' as const, grad: 'from-emerald-400 to-green-600' },
+              { label: 'Draft insights', value: items.filter(item => !item.hasAnalysis).length, icon: 'edit' as const, grad: 'from-amber-400 to-orange-600' },
+            ].map(s => (
+              <div key={s.label} className="border border-slate-200 bg-white p-5 shadow-sm">
+                <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center bg-gradient-to-br ${s.grad} text-white shadow-md`}>
+                  <AppIcon name={s.icon} className="h-5 w-5 text-white" />
                 </div>
-              ))}
-            </div>
-
-            {statusData.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-400">Status summary</p>
-                <div className="space-y-3">
-                  {statusData.map(row => {
-                    const cfg = STATUS_CFG[row.name] ?? STATUS_CFG.DRAFT;
-                    const width = items.length ? Math.max(8, Math.round((row.value / items.length) * 100)) : 0;
-                    return (
-                      <div key={row.name}>
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <span className={`font-bold ${cfg.text}`}>{cfg.label}</span>
-                          <span className="font-semibold text-slate-500">{row.value}</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-slate-100"><div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} /></div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+                <p className="mt-0.5 text-xs font-medium text-slate-500">{s.label}</p>
               </div>
-            )}
+            ))}
           </div>
 
-          <div className="mb-6 flex flex-wrap gap-2">
-            {filters.map(filter => (
+          <div className="mb-6 grid gap-3 md:grid-cols-3">
+            {insightTabs.map(filter => (
               <button key={filter.id} type="button" onClick={() => setActiveFilter(filter.id)}
-                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${activeFilter === filter.id ? 'bg-primary text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-primary/30'}`}
+                className={`flex items-center justify-between gap-3 px-4 py-3 text-left transition-all ${activeFilter === filter.id ? 'bg-primary text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-700 hover:border-primary/30'}`}
               >
-                {filter.label}
-                <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${activeFilter === filter.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>{filter.count}</span>
+                <span>
+                  <span className="block text-sm font-bold">{filter.label}</span>
+                  <span className={`block text-xs ${activeFilter === filter.id ? 'text-white/80' : 'text-slate-500'}`}>{filter.helper}</span>
+                </span>
+                <span className={`px-2 py-1 text-xs font-bold ${activeFilter === filter.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{filter.count}</span>
               </button>
             ))}
           </div>
 
           {loading ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="animate-pulse space-y-4 rounded-3xl border border-slate-200 bg-white p-5"><div className="h-4 w-3/4 rounded bg-slate-200" /><div className="h-3 w-1/2 rounded bg-slate-100" /><div className="h-20 rounded-2xl bg-slate-100" /></div>)}
+              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="animate-pulse space-y-4 border border-slate-200 bg-white p-5"><div className="h-4 w-3/4 bg-slate-200" /><div className="h-3 w-1/2 bg-slate-100" /><div className="h-20 bg-slate-100" /></div>)}
             </div>
           ) : filtered.length === 0 ? (
-            <EmptyState icon="📊" title="No insight items found" description="Projects and direct organisation forms will appear here once they are created." />
+            <EmptyState icon="chart" title="No insight items found" description="Projects and direct organisation forms will appear here once they are created." />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map(item => {
-                const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.DRAFT;
-                return (
-                  <div key={`${item.kind}-${item.id}`} className="group relative flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
-                    <div className={`h-1 ${item.kind === 'FORM' ? 'bg-amber-400' : item.status === 'ACTIVE' ? 'bg-emerald-400' : item.status === 'CLOSED' ? 'bg-orange-400' : 'bg-slate-200'}`} />
-                    <div className="flex flex-1 flex-col p-5">
-                      <div className="mb-3 flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base ${item.kind === 'FORM' ? 'bg-amber-50 text-amber-700' : 'bg-primary/10 text-primary'}`}>{item.kind === 'FORM' ? '📄' : '📁'}</div>
-                          <div className="min-w-0">
-                            <Link href={item.viewHref} className="block truncate text-sm font-bold text-slate-900 transition-colors hover:text-primary">{item.title}</Link>
-                            <p className="mt-0.5 truncate text-xs text-slate-400">{item.organisationName}</p>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
-                          <button
-                            type="button"
-                            onClick={() => deleteInsightItem(item)}
-                            className="rounded-lg border border-red-100 bg-white px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="mb-5 flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                        <span>{item.kind === 'FORM' ? 'Form' : 'Project'}</span>
-                        {item.kind === 'PROJECT' ? <span>{item.formCount} form{item.formCount !== 1 ? 's' : ''}</span> : <span>{item.questionCount ?? 0} question{item.questionCount !== 1 ? 's' : ''}</span>}
-                        {item.unitName ? <span>Unit: {item.unitName}</span> : null}
-                      </div>
-
-                      <div className="mb-4 grid grid-cols-2 gap-2">
-                        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Type</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? 'Direct form' : 'Evaluation'}</p></div>
-                        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Analysis</p><p className={`mt-1 text-sm font-bold ${item.hasAnalysis ? 'text-emerald-700' : 'text-slate-500'}`}>{item.hasAnalysis ? 'Published' : 'Pending'}</p></div>
-                      </div>
-
-                      <div className="mt-auto flex items-center gap-2">
-                        {item.diagnosisHref ? <Link href={item.diagnosisHref} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/10">Diagnose</Link> : <span className="flex-1 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-400">No diagnosis yet</span>}
-                        <Link href={item.viewHref} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">View →</Link>
+            <div className="space-y-6">
+              {organisationSectors.map(sector => (
+                <section key={sector.organisationName} className="border border-slate-200 bg-white shadow-sm">
+                  <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-900 p-5 text-white md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center bg-white/10 text-white">
+                        <AppIcon name="building" className="h-5 w-5 text-white" />
+                      </span>
+                      <div>
+                        <h2 className="text-lg font-bold text-white">{sector.organisationName}</h2>
+                        <p className="text-sm text-slate-300">Organisation insight sector</p>
                       </div>
                     </div>
+                    <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.items.length}</b>All</span>
+                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.projects}</b>Projects</span>
+                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.forms}</b>Forms</span>
+                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.published}</b>Published</span>
+                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.draft}</b>Draft</span>
+                    </div>
                   </div>
-                );
-              })}
+
+                  <div className="grid gap-4 p-5 lg:grid-cols-2 xl:grid-cols-3">
+                    {sector.items.map(item => {
+                      const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.DRAFT;
+                      return (
+                        <div key={`${item.kind}-${item.id}`} className="group relative flex flex-col border border-slate-200 bg-white shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
+                          <div className={`h-1 ${item.hasAnalysis ? 'bg-emerald-500' : item.kind === 'FORM' ? 'bg-amber-400' : 'bg-blue-500'}`} />
+                          <div className="flex flex-1 flex-col p-5">
+                            <div className="mb-3 flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 flex-1 items-center gap-3">
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center ${item.kind === 'FORM' ? 'bg-amber-50 text-amber-700' : 'bg-primary/10 text-primary'}`}>
+                                  <AppIcon name={item.kind === 'FORM' ? 'file' : 'folder'} className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <Link href={item.viewHref} className="block truncate text-sm font-bold text-slate-900 transition-colors hover:text-primary">{item.title}</Link>
+                                  <p className="mt-0.5 truncate text-xs text-slate-400">{item.kind === 'FORM' ? 'Direct form' : 'Project'}</p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => deleteInsightItem(item)}
+                                className="border border-red-100 bg-white px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
+                              >
+                                Delete
+                              </button>
+                            </div>
+
+                            <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                              <span className={`px-2 py-1 font-bold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                              <span className={`px-2 py-1 font-bold ${item.hasAnalysis ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                {item.hasAnalysis ? 'Published insight' : 'Draft insight'}
+                              </span>
+                              {item.kind === 'PROJECT' ? <span>{item.formCount} form{item.formCount !== 1 ? 's' : ''}</span> : <span>{item.questionCount ?? 0} question{item.questionCount !== 1 ? 's' : ''}</span>}
+                              {item.unitName ? <span>Unit: {item.unitName}</span> : null}
+                            </div>
+
+                            <div className="mb-4 grid grid-cols-2 gap-2">
+                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Type</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? 'Direct form' : 'Evaluation'}</p></div>
+                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Insight state</p><p className={`mt-1 text-sm font-bold ${item.hasAnalysis ? 'text-emerald-700' : 'text-amber-700'}`}>{item.hasAnalysis ? 'Published' : 'Draft'}</p></div>
+                            </div>
+
+                            <div className="mt-auto flex items-center gap-2">
+                              {item.diagnosisHref ? <Link href={item.diagnosisHref} className="flex-1 inline-flex items-center justify-center gap-1.5 border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/10">Insight</Link> : <span className="flex-1 inline-flex items-center justify-center border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-400">No insight yet</span>}
+                              <Link href={item.viewHref} className="flex-1 inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-primary to-primary/80 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
+                                View <AppIcon name="chevronRight" className="h-4 w-4 text-white" />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
           )}
         </>
@@ -846,7 +864,7 @@ export default function InsightPage() {
     }
   }
 
-  // ── Aggregate stats across all evals ─────────────────────────────────────
+  // â”€â”€ Aggregate stats across all evals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const aggregated = useMemo(() => {
     let totalResponses = 0, totalAnswers = 0, completionSum = 0, count = 0;
@@ -860,7 +878,7 @@ export default function InsightPage() {
       completionSum  += m.averageCompletion;
       count++;
       formData.push({
-        name: ev.title.length > 20 ? ev.title.slice(0, 20) + '…' : ev.title,
+        name: ev.title.length > 20 ? ev.title.slice(0, 20) + 'â€¦' : ev.title,
         responses: m.totalResponses,
         completion: m.averageCompletion,
       });
@@ -874,7 +892,7 @@ export default function InsightPage() {
     };
   }, [orgEvals, evalMetrics]);
 
-  // ── Gap severity chart ────────────────────────────────────────────────────
+  // â”€â”€ Gap severity chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const gapSeverityData = useMemo(() => {
     const counts: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
@@ -882,7 +900,7 @@ export default function InsightPage() {
     return Object.entries(counts).map(([name, value]) => ({ name, value, fill: SEV_CFG[name]?.bar ?? '#94a3b8' }));
   }, [gapItems]);
 
-  // ── AI gaps from published analyses ──────────────────────────────────────
+  // â”€â”€ AI gaps from published analyses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const aiGaps = useMemo(() => {
     const all: string[] = [];
@@ -892,7 +910,7 @@ export default function InsightPage() {
     return [...new Set(all)];
   }, [publishedAnalyses]);
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (role === 'SUPER_ADMIN') {
     return <SuperAdminInsightPage />;
@@ -902,18 +920,18 @@ export default function InsightPage() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <div className="h-10 w-10 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin mb-4" />
-        <p className="text-sm text-slate-500">Loading your insights…</p>
+        <p className="text-sm text-slate-500">Loading your insightsâ€¦</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-50/50">
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <div className="mb-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-1">Client Admin · Insights</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-1">Client Admin Â· Insights</p>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Company insights</h1>
             <p className="mt-1.5 text-sm text-slate-500">Real-time response stats, gap analysis, and published reports for your organisation.</p>
           </div>
@@ -930,17 +948,17 @@ export default function InsightPage() {
         <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 font-medium">{error}</div>
       ) : (
         <>
-          {/* ── KPI cards ── */}
+          {/* â”€â”€ KPI cards â”€â”€ */}
          
 
-          {/* ── Tabs ── */}
+          {/* â”€â”€ Tabs â”€â”€ */}
           <div className="mb-6 border-b border-slate-200">
             <nav className="flex gap-1">
               {([
-                { id: 'overview',    label: 'Overview',          icon: '📈' },
-                { id: 'reports',     label: 'Published reports',  icon: '📋', badge: publishedAnalyses.length },
-                { id: 'evaluations', label: 'Projects',           icon: '📁', badge: orgEvals.length },
-                { id: 'forms',       label: 'Forms',              icon: '📄', badge: orgForms.length },
+                { id: 'overview',    label: 'Overview',          icon: 'ðŸ“ˆ' },
+                { id: 'reports',     label: 'Published reports',  icon: 'ðŸ“‹', badge: publishedAnalyses.length },
+                { id: 'evaluations', label: 'Projects',           icon: 'ðŸ“', badge: orgEvals.length },
+                { id: 'forms',       label: 'Forms',              icon: 'ðŸ“„', badge: orgForms.length },
               ] as const).map(tab => (
                 <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
@@ -959,7 +977,7 @@ export default function InsightPage() {
             </nav>
           </div>
 
-          {/* ─────────────────── OVERVIEW ─────────────────── */}
+          {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ OVERVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Response stats + completion chart */}
@@ -993,7 +1011,7 @@ export default function InsightPage() {
                         <div key={i}>
                           <div className="flex justify-between text-xs mb-1">
                             <span className="text-slate-700 font-medium truncate max-w-[65%]">{f.name}</span>
-                            <span className="text-slate-500 font-semibold">{f.responses} responses · {f.completion}%</span>
+                            <span className="text-slate-500 font-semibold">{f.responses} responses Â· {f.completion}%</span>
                           </div>
                           <CompletionBar pct={f.completion} />
                         </div>
@@ -1001,7 +1019,7 @@ export default function InsightPage() {
                     </div>
                   ) : (
                     <div className="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center">
-                      <p className="text-sm text-slate-400">Loading evaluation data…</p>
+                      <p className="text-sm text-slate-400">Loading evaluation dataâ€¦</p>
                     </div>
                   )}
                 </div>
@@ -1029,7 +1047,7 @@ export default function InsightPage() {
                     </div>
                   ) : (
                     <div className="flex h-64 items-center justify-center rounded-2xl bg-slate-50 text-sm text-slate-400">
-                      No data yet — evaluations are loading.
+                      No data yet â€” evaluations are loading.
                     </div>
                   )}
 
@@ -1055,7 +1073,7 @@ export default function InsightPage() {
                 </div>
               </div>
 
-              {/* ── Gaps section ── */}
+              {/* â”€â”€ Gaps section â”€â”€ */}
               {(gapItems.length > 0 || aiGaps.length > 0) && (
                 <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div className="flex items-center justify-between gap-4 mb-5">
@@ -1082,7 +1100,7 @@ export default function InsightPage() {
                                   <SeverityBadge severity={gap.severity} />
                                 </div>
                                 <p className="text-xs text-slate-600 mb-1.5">{gap.recommendedAction}</p>
-                                <p className="text-xs text-slate-400">Owner: <strong>{gap.who}</strong> · {gap.when}</p>
+                                <p className="text-xs text-slate-400">Owner: <strong>{gap.who}</strong> Â· {gap.when}</p>
                               </div>
                             ))}
                           </div>
@@ -1132,7 +1150,7 @@ export default function InsightPage() {
               {publishedAnalyses.length > 0 && (
                 <div className="rounded-3xl border border-blue-200 bg-blue-50/50 p-6 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-base shadow-md">📊</span>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-base shadow-md">ðŸ“Š</span>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-slate-900">Latest published analysis</p>
                       <p className="text-xs text-slate-500">
@@ -1141,7 +1159,7 @@ export default function InsightPage() {
                     </div>
                     <button type="button" onClick={() => setActiveTab('reports')}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-sm">
-                      See all →
+                      See all â†’
                     </button>
                   </div>
                   {publishedAnalyses[0].analysis?.executiveSummary && (
@@ -1154,7 +1172,7 @@ export default function InsightPage() {
             </div>
           )}
 
-          {/* ─────────────────── REPORTS ─────────────────── */}
+          {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ REPORTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {activeTab === 'reports' && (
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-4">
@@ -1167,7 +1185,7 @@ export default function InsightPage() {
                 </span>
               </div>
               {publishedAnalyses.length === 0 ? (
-                <EmptyState icon="📊" title="No published reports yet" description="When the super admin publishes an analysis to your account, it will appear here." />
+                <EmptyState icon="ðŸ“Š" title="No published reports yet" description="When the super admin publishes an analysis to your account, it will appear here." />
               ) : (
                 publishedAnalyses.map(pa => (
                   <AnalysisCard
@@ -1183,7 +1201,7 @@ export default function InsightPage() {
             </div>
           )}
 
-          {/* ─────────────────── PROJECTS ─────────────────── */}
+          {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PROJECTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {activeTab === 'evaluations' && (
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-4">
@@ -1196,7 +1214,7 @@ export default function InsightPage() {
                 </span>
               </div>
               {orgEvals.length === 0 ? (
-                <EmptyState icon="📁" title="No projects yet" description="Projects created for your organisation will appear here." />
+                <EmptyState icon="ðŸ“" title="No projects yet" description="Projects created for your organisation will appear here." />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {orgEvals.map(ev => {
@@ -1208,7 +1226,7 @@ export default function InsightPage() {
                       <div key={ev.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300 hover:shadow-md transition-all">
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-base">📁</div>
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-base">ðŸ“</div>
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-slate-900 truncate">{ev.title}</p>
                               <p className="text-xs text-slate-400 mt-0.5">
@@ -1218,7 +1236,7 @@ export default function InsightPage() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {hasAnalysis && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">✓ Analysed</span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">âœ“ Analysed</span>
                             )}
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>{sc.label}</span>
                           </div>
@@ -1247,11 +1265,11 @@ export default function InsightPage() {
                         <div className="flex gap-2 mt-4">
                           <Link href={`/evaluations/${ev.id}/diagnosis`}
                             className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors">
-                            📊 Analysis
+                            ðŸ“Š Analysis
                           </Link>
                           <Link href={`/evaluations/${ev.id}`}
                             className="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
-                            View →
+                            View â†’
                           </Link>
                         </div>
                       </div>
@@ -1262,7 +1280,7 @@ export default function InsightPage() {
             </div>
           )}
 
-          {/* ─────────────────── FORMS ─────────────────── */}
+          {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ FORMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {activeTab === 'forms' && (
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-4">
@@ -1277,7 +1295,7 @@ export default function InsightPage() {
                 </span>
               </div>
               {orgForms.length === 0 ? (
-                <EmptyState icon="📄" title="No forms yet" description="Forms created for your organisation will appear here once published." />
+                <EmptyState icon="ðŸ“„" title="No forms yet" description="Forms created for your organisation will appear here once published." />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {orgForms.map(form => {
@@ -1298,7 +1316,7 @@ export default function InsightPage() {
                         {/* Header */}
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-base">📄</div>
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-base">ðŸ“„</div>
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-slate-900 truncate">{form.title}</p>
                               <p className="text-xs text-slate-400 mt-0.5">{form.questionCount} questions</p>
@@ -1306,7 +1324,7 @@ export default function InsightPage() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {hasAnalysis && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">✓ Analysed</span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">âœ“ Analysed</span>
                             )}
                             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>
                               <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />{sc.label}
@@ -1335,16 +1353,16 @@ export default function InsightPage() {
                           <div className="h-8 animate-pulse rounded-xl bg-slate-100 mb-3" />
                         )}
 
-                        {/* Actions — link to diagnosis page for this form's evaluation */}
+                        {/* Actions â€” link to diagnosis page for this form's evaluation */}
                         {ev && (
                           <div className="flex gap-2 mt-4">
                             <Link href={`/evaluations/${ev.id}/diagnosis`}
                               className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors">
-                              📊 View analysis
+                              ðŸ“Š View analysis
                             </Link>
                             <Link href={`/evaluations/${ev.id}/diagnosis`}
                               className="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
-                              View responses →
+                              View responses â†’
                             </Link>
                           </div>
                         )}
