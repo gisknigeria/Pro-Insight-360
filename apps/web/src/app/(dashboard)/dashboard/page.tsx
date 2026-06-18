@@ -1213,6 +1213,25 @@ function SuperAdminDashboard() {
     { name: 'Reports', value: selectedSummary.reports },
   ], [orgSummaries.length, selectedOrgId, selectedSummary]);
 
+  const selectedOrgLatestReport = useMemo(() => {
+    if (selectedOrgId === 'ALL') return null;
+    return scopedReports
+      .slice()
+      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0] || null;
+  }, [scopedReports, selectedOrgId]);
+
+  const selectedOrgLatestEvaluation = useMemo(() => {
+    if (!selectedOrgLatestReport?.evaluationId) return undefined;
+    return scopedEvaluations.find((evaluation) => evaluation.id === selectedOrgLatestReport.evaluationId);
+  }, [scopedEvaluations, selectedOrgLatestReport]);
+
+  const selectedOrgWorkspaceData = useMemo<ChartDataPoint[]>(() => [
+    { name: 'Projects', value: selectedSummary.evaluations },
+    { name: 'Responses', value: selectedSummary.responses },
+    { name: 'Forms', value: selectedSummary.forms },
+    { name: 'Reports', value: selectedSummary.reports },
+  ], [selectedSummary]);
+
   const leaderRows = selectedOrgId === 'ALL'
     ? orgSummaries.slice(0, 6)
     : orgSummaries.filter((summary) => summary.id === selectedOrgId);
@@ -1252,6 +1271,44 @@ function SuperAdminDashboard() {
         <StatCard label="Avg completion" value={loadingStats ? '...' : `${selectedSummary.averageCompletion}%`} icon={<DashboardIcon name="chart" />} color="yellow" delay={100} />
         <StatCard label="Published insights" value={loadingStats ? '...' : selectedSummary.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
       </div>
+
+      {selectedOrgId !== 'ALL' && (
+        <div className="space-y-4">
+          <div className="border border-slate-300 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">Selected organisation analysis</p>
+                <h2 className="mt-1 text-xl font-black text-slate-950">Latest published analysis for {selectedSummary.name}</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Super admin preview of what this organisation will see: professional summary, gaps, recommendations, action plan, and every chart published in the analysis.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Pill label={`${scopedReports.length} published`} color={scopedReports.length > 0 ? 'green' : 'amber'} />
+                <Pill label={selectedSummary.completionLabel} color="blue" />
+              </div>
+            </div>
+
+            {selectedOrgLatestReport ? (
+              <LatestPublishedAnalysis published={selectedOrgLatestReport} evaluation={selectedOrgLatestEvaluation} />
+            ) : (
+              <div className="border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                <DashboardIcon name="chart" className="mx-auto h-9 w-9 text-slate-500" />
+                <p className="mt-3 text-sm font-bold text-slate-900">No published analysis for this organisation yet.</p>
+                <p className="mt-1 text-sm text-slate-500">The insight charts below use live organization data until a published analysis is available.</p>
+              </div>
+            )}
+          </div>
+
+          <OrganizationInsightCharts
+            publishedAnalyses={scopedReports}
+            evaluations={scopedEvaluations}
+            completionDistribution={completionDistribution}
+            projectStatusData={statusData}
+            workspaceSummaryData={selectedOrgWorkspaceData}
+          />
+        </div>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="dashboard-panel border-slate-300 p-5">
