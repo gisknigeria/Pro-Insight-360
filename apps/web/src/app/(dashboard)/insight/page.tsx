@@ -513,6 +513,7 @@ function SuperAdminInsightPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL');
+  const [expandedOrganisation, setExpandedOrganisation] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -677,30 +678,43 @@ function SuperAdminInsightPage() {
             <EmptyState icon="chart" title="No insight items found" description="Projects and direct organisation forms will appear here once they are created." />
           ) : (
             <div className="space-y-6">
-              {organisationSectors.map(sector => (
+              {organisationSectors.map(sector => {
+                const isOpen = expandedOrganisation === sector.organisationName;
+                return (
                 <section key={sector.organisationName} className="border border-slate-200 bg-white shadow-sm">
-                  <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-900 p-5 text-white md:flex-row md:items-center md:justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedOrganisation(isOpen ? null : sector.organisationName)}
+                    className="flex w-full flex-col gap-4 border-b border-slate-100 bg-slate-900 p-5 text-left text-white transition-colors hover:bg-slate-800 md:flex-row md:items-center md:justify-between"
+                    aria-expanded={isOpen}
+                  >
                     <div className="flex items-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center bg-white/10 text-white">
                         <AppIcon name="building" className="h-5 w-5 text-white" />
                       </span>
                       <div>
                         <h2 className="text-lg font-bold text-white">{sector.organisationName}</h2>
-                        <p className="text-sm text-slate-300">Organisation insight sector</p>
+                        <p className="text-sm text-slate-300">{isOpen ? 'Click to close this organization' : 'Click to view projects and forms'}</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-5 gap-2 text-center text-xs">
-                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.items.length}</b>All</span>
-                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.projects}</b>Projects</span>
-                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.forms}</b>Forms</span>
-                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.published}</b>Published</span>
-                      <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.draft}</b>Draft</span>
+                    <div className="flex flex-col gap-3 md:items-end">
+                      <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.items.length}</b>All</span>
+                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.projects}</b>Projects</span>
+                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.forms}</b>Forms</span>
+                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.published}</b>Published</span>
+                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.draft}</b>Draft</span>
+                      </div>
+                      <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-200">
+                        {isOpen ? 'Close' : 'Open'}
+                        <AppIcon name="chevronRight" className={`h-4 w-4 text-white transition-transform ${isOpen ? '-rotate-90' : 'rotate-90'}`} />
+                      </span>
                     </div>
-                  </div>
+                  </button>
 
+                  {isOpen && (
                   <div className="grid gap-4 p-5 lg:grid-cols-2 xl:grid-cols-3">
                     {sector.items.map(item => {
-                      const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.DRAFT;
                       return (
                         <div key={`${item.kind}-${item.id}`} className="group relative flex flex-col border border-slate-200 bg-white shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
                           <div className={`h-1 ${item.hasAnalysis ? 'bg-emerald-500' : item.kind === 'FORM' ? 'bg-amber-400' : 'bg-blue-500'}`} />
@@ -725,7 +739,6 @@ function SuperAdminInsightPage() {
                             </div>
 
                             <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                              <span className={`px-2 py-1 font-bold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
                               <span className={`px-2 py-1 font-bold ${item.hasAnalysis ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                                 {item.hasAnalysis ? 'Published insight' : 'Draft insight'}
                               </span>
@@ -735,7 +748,7 @@ function SuperAdminInsightPage() {
 
                             <div className="mb-4 grid grid-cols-2 gap-2">
                               <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Type</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? 'Direct form' : 'Evaluation'}</p></div>
-                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Insight state</p><p className={`mt-1 text-sm font-bold ${item.hasAnalysis ? 'text-emerald-700' : 'text-amber-700'}`}>{item.hasAnalysis ? 'Published' : 'Draft'}</p></div>
+                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">{item.kind === 'FORM' ? 'Questions' : 'Forms'}</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? (item.questionCount ?? 0) : item.formCount}</p></div>
                             </div>
 
                             <div className="mt-auto flex items-center gap-2">
@@ -749,8 +762,10 @@ function SuperAdminInsightPage() {
                       );
                     })}
                   </div>
+                  )}
                 </section>
-              ))}
+                );
+              })}
             </div>
           )}
         </>
