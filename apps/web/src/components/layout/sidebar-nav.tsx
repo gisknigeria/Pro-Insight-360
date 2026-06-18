@@ -35,6 +35,7 @@ interface SidebarInsight {
   id: string;
   title: string;
   recipientName?: string;
+  evaluationId?: string | null;
   publishedAt: string;
 }
 
@@ -202,7 +203,9 @@ export function SidebarNav({ role, userName }: { role: UserRole; userName: strin
               {item.href === '/insight' && pinnedInsights.length > 0 && (
                 <ul className="ml-11 mt-1 space-y-1 border-l border-white/10 pl-3" role="list">
                   {pinnedInsights.map((insight) => {
-                    const href = `/insight?published=${encodeURIComponent(insight.id)}`;
+                    const href = insight.evaluationId
+                      ? `/evaluations/${insight.evaluationId}/diagnosis`
+                      : `/insight?published=${encodeURIComponent(insight.id)}`;
                     const insightActive = pathname === '/insight' && activePublishedId === insight.id;
                     return (
                       <li key={insight.id}>

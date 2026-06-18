@@ -503,8 +503,8 @@ function AnalysisCard({
 // â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type InsightItem =
-  | { kind: 'PROJECT'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref: string; viewHref: string; hasAnalysis: boolean; unitName?: string | null; questionCount?: number; }
-  | { kind: 'FORM'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: boolean; unitName?: string | null; questionCount?: number; };
+  | { kind: 'PROJECT'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref: string; viewHref: string; hasAnalysis: boolean; publishedAnalysis?: PublishedAnalysis; unitName?: string | null; questionCount?: number; }
+  | { kind: 'FORM'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: boolean; publishedAnalysis?: PublishedAnalysis; unitName?: string | null; questionCount?: number; };
 
 function SuperAdminInsightPage() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
@@ -514,6 +514,7 @@ function SuperAdminInsightPage() {
   const [error, setError] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [expandedOrganisation, setExpandedOrganisation] = useState<string | null>(null);
+  const [sidebarSavingId, setSidebarSavingId] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -538,6 +539,13 @@ function SuperAdminInsightPage() {
   }, []);
 
   const publishedEvalIds = useMemo(() => new Set(publishedAnalyses.map(pa => pa.evaluationId).filter(Boolean)), [publishedAnalyses]);
+  const publishedByEvalId = useMemo(() => {
+    const map = new Map<string, PublishedAnalysis>();
+    publishedAnalyses.forEach(pa => {
+      if (pa.evaluationId && !map.has(pa.evaluationId)) map.set(pa.evaluationId, pa);
+    });
+    return map;
+  }, [publishedAnalyses]);
   const evalById = useMemo(() => new Map(evaluations.map(ev => [ev.id, ev])), [evaluations]);
 
   const items = useMemo<InsightItem[]>(() => {
@@ -552,6 +560,7 @@ function SuperAdminInsightPage() {
       diagnosisHref: `/evaluations/${ev.id}/diagnosis`,
       viewHref: `/evaluations/${ev.id}`,
       hasAnalysis: publishedEvalIds.has(ev.id),
+      publishedAnalysis: publishedByEvalId.get(ev.id),
     }));
 
     const formItems: InsightItem[] = forms.map(form => {
@@ -567,6 +576,7 @@ function SuperAdminInsightPage() {
         diagnosisHref: form.evaluationId ? `/evaluations/${form.evaluationId}/diagnosis` : undefined,
         viewHref: `/forms/${form.id}`,
         hasAnalysis: Boolean(form.evaluationId && publishedEvalIds.has(form.evaluationId)),
+        publishedAnalysis: form.evaluationId ? publishedByEvalId.get(form.evaluationId) : undefined,
         unitName: form.unitName,
         questionCount: form.questionCount,
       };
@@ -577,7 +587,7 @@ function SuperAdminInsightPage() {
       const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return bTime - aTime;
     });
-  }, [evaluations, forms, evalById, publishedEvalIds]);
+  }, [evaluations, forms, evalById, publishedByEvalId, publishedEvalIds]);
 
   const filtered = useMemo(() => {
     if (activeFilter === 'ALL') return items;
@@ -619,6 +629,34 @@ function SuperAdminInsightPage() {
       setForms(prev => prev.filter(form => form.id !== item.id));
     }
 
+  }
+
+  async function handleSuperAdminSidebarPinChange(item: InsightItem, pinned: boolean) {
+    if (!item.publishedAnalysis) return;
+
+    const published = item.publishedAnalysis;
+    setSidebarSavingId(published.id);
+    setPublishedAnalyses(prev => prev.map(analysis => (
+      analysis.id === published.id ? { ...analysis, sidebarPinned: pinned } : analysis
+    )));
+
+    try {
+      await apiFetch(`/published-analyses/${published.id}/sidebar`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          sidebarPinned: pinned,
+          sidebarTitle: published.sidebarTitle || item.title || published.summary || 'Published insight',
+        }),
+      });
+      window.dispatchEvent(new Event('published-insights-sidebar-updated'));
+    } catch (err: any) {
+      setPublishedAnalyses(prev => prev.map(analysis => (
+        analysis.id === published.id ? { ...analysis, sidebarPinned: !pinned } : analysis
+      )));
+      setError(err?.message || 'Unable to update sidebar visibility.');
+    } finally {
+      setSidebarSavingId('');
+    }
   }
 
   return (
@@ -742,6 +780,19 @@ function SuperAdminInsightPage() {
                               {item.kind === 'PROJECT' ? <span>{item.formCount} form{item.formCount !== 1 ? 's' : ''}</span> : <span>{item.questionCount ?? 0} question{item.questionCount !== 1 ? 's' : ''}</span>}
                               {item.unitName ? <span>Unit: {item.unitName}</span> : null}
                             </div>
+
+                            {item.publishedAnalysis ? (
+                              <label className="mb-4 flex items-center justify-between gap-3 bg-slate-900 px-3 py-2 text-xs font-bold text-white">
+                                <span>Add under Insight menu</span>
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(item.publishedAnalysis.sidebarPinned)}
+                                  disabled={sidebarSavingId === item.publishedAnalysis.id}
+                                  onChange={(event) => handleSuperAdminSidebarPinChange(item, event.target.checked)}
+                                  className="h-4 w-4 accent-teal-400"
+                                />
+                              </label>
+                            ) : null}
 
                             <div className="mb-4 grid grid-cols-2 gap-2">
                               <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Type</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? 'Direct form' : 'Evaluation'}</p></div>
