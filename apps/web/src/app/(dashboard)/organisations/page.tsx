@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
-import { EmptyState } from '@/components/ui/empty-state';
 import { AppIcon } from '@/components/ui/app-icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -107,8 +106,8 @@ function CreateUnitModal({ orgId, orgName, onClose, onCreated }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm bg-white shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <div className="w-full max-w-sm bg-white shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 bg-slate-50">
           <p className="font-bold text-slate-900 text-sm">Create unit — {orgName}</p>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
         </div>
@@ -116,17 +115,17 @@ function CreateUnitModal({ orgId, orgName, onClose, onCreated }: {
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1.5">Unit name *</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Finance & Accounts"
-              className="w-full border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none" />
+              className="w-full bg-slate-100 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none" />
           </div>
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1.5">Description (optional)</label>
             <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2}
-              className="w-full border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none resize-none" />
+              className="w-full bg-slate-100 px-3 py-2.5 text-sm text-slate-900 focus:border-primary focus:outline-none resize-none" />
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
-              className="flex-1 border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+              className="flex-1 bg-slate-100 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
               Cancel
             </button>
             <button type="button" onClick={save} disabled={saving}
@@ -215,31 +214,31 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
   }
 
   return (
-    <div className="border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className="bg-white shadow-sm overflow-hidden">
       {/* Colour strip */}
       <div className={`h-1 bg-gradient-to-r ${sectorGrad(org.sector)}`} />
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
+      <div className="flex items-center justify-between gap-3 px-5 py-4 bg-slate-50">
         <div>
           <p className="text-sm font-bold text-slate-900">{org.name}</p>
           <p className="text-xs text-slate-400">{org.sector || 'No sector'}</p>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => setShowUnit(true)}
-            className="inline-flex items-center gap-1.5 border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-100 transition">
-            <AppIcon name="plus" className="h-3.5 w-3.5" /> Unit
+            className="inline-flex items-center gap-1.5 bg-violet-100 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-100 transition">
+            <AppIcon name="plus" className="h-6 w-6" /> Unit
           </button>
           <button type="button"
             onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
             className="inline-flex items-center gap-1.5 bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 transition shadow-sm">
-            <AppIcon name="plus" className="h-3.5 w-3.5" /> Form
+            <AppIcon name="plus" className="h-6 w-6" /> Form
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-100">
+      <div className="flex bg-slate-50">
         {tabs.map(t => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
@@ -261,20 +260,18 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
               {orgEvals.map(ev => {
                 const cfg = STATUS_EV[ev.status] ?? STATUS_EV.DRAFT;
                 return (
-                  <div key={ev.id} className="flex items-center gap-3 border border-slate-200 bg-slate-50 px-4 py-3">
-                    <AppIcon name="folder" className="h-4 w-4 shrink-0 text-blue-700" />
+                  <div key={ev.id} className="flex items-center gap-3 bg-slate-100 px-4 py-3">
+                    <AppIcon name="folder" className="h-7 w-7 shrink-0 text-blue-700" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">{ev.title}</p>
                       <p className="text-[10px] text-slate-400">{ev._count.forms} form{ev._count.forms !== 1 ? 's' : ''}</p>
                     </div>
                     <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold ${cfg.cls}`}>{cfg.label}</span>
                     <Link href={`/evaluations/${ev.id}`}
-                      className="border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0">
-                      View →
+                      className="bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0"> <span className="inline-flex items-center gap-1"><AppIcon name="edit" className="h-5 w-5" /> View</span>
                     </Link>
                     <button type="button" onClick={() => onDeleteEval(ev.id)}
-                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
-                      🗑️
+                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete"><AppIcon name="trash" className="h-6 w-6" />
                     </button>
                   </div>
                 );
@@ -298,8 +295,8 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
               {orgForms.map(f => {
                 const cfg = STATUS_FM[f.status] ?? STATUS_FM.DRAFT;
                 return (
-                  <div key={f.id} className="flex items-center gap-3 border border-slate-200 bg-slate-50 px-4 py-3">
-                    <AppIcon name="form" className="h-4 w-4 shrink-0 text-emerald-700" />
+                  <div key={f.id} className="flex items-center gap-3 bg-slate-100 px-4 py-3">
+                    <AppIcon name="form" className="h-7 w-7 shrink-0 text-emerald-700" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">{f.title}</p>
                       <p className="text-[10px] text-slate-400">{f.questionCount} questions</p>
@@ -308,12 +305,10 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                       <span className={`h-1.5 w-1.5 ${cfg.dot}`} />{cfg.label}
                     </span>
                     <Link href={`/forms/${f.id}`}
-                      className="border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0">
-                      Edit →
+                      className="bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0"> <span className="inline-flex items-center gap-1"><AppIcon name="edit" className="h-5 w-5" /> Edit</span>
                     </Link>
                     <button type="button" onClick={() => onDeleteForm(f.id)}
-                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
-                      🗑️
+                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete"><AppIcon name="trash" className="h-6 w-6" />
                     </button>
                   </div>
                 );
@@ -329,7 +324,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
               <p className="text-sm text-slate-400 mb-3">No units yet.</p>
               <button type="button" onClick={() => setShowUnit(true)}
                 className="inline-flex items-center gap-1.5 bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 transition">
-                + Create first unit
+                <AppIcon name="plus" className="h-5 w-5" /> Create first unit
               </button>
             </div>
           ) : (
@@ -349,25 +344,24 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                       toggleUnit(u);
                     }
                   }}
-                  className="block w-full border border-violet-100 bg-violet-50 overflow-hidden text-left transition hover:border-violet-300 hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                  className="block w-full bg-violet-100 overflow-hidden text-left transition hover:border-violet-300 hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-300"
                 >
                   <div className="flex items-center gap-3 px-4 py-3">
-                    <span className="text-base shrink-0">🏗️</span>
+                    <AppIcon name="sitemap" className="h-7 w-7 shrink-0 text-violet-700" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">{u.name}</p>
                       {u.description && <p className="text-[10px] text-slate-500 truncate">{u.description}</p>}
                     </div>
                     <span className="text-[10px] text-slate-400 shrink-0">{u.staffCount ?? 0} staff</span>
                     <span className="inline-flex items-center gap-1 bg-primary px-2.5 py-1.5 text-[10px] font-bold text-white transition shrink-0">
-                      + Form
+                      <AppIcon name="plus" className="h-4 w-4" /> Form
                     </span>
                     <button type="button" onClick={(event) => { event.stopPropagation(); onDeleteUnit(u.id); }}
-                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete">
-                      🗑️
+                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition shrink-0" aria-label="Delete"><AppIcon name="trash" className="h-6 w-6" />
                     </button>
                   </div>
                   {isOpen && (
-                    <div className="border-t border-violet-100 bg-white p-4">
+                    <div className="bg-white p-4">
                       <div className="mb-4 grid gap-3 sm:grid-cols-3">
                         <div className="bg-violet-50 p-3">
                           <p className="text-[10px] font-black uppercase tracking-wider text-violet-700">Purpose</p>
@@ -402,7 +396,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                       ) : (
                         <div className="space-y-3">
                           {unitForms.map((form) => (
-                            <div key={form.id} className="border border-slate-200 bg-slate-50 p-3">
+                            <div key={form.id} className="bg-slate-100 p-3">
                               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                 <div>
                                   <p className="text-sm font-bold text-slate-950">{form.title}</p>
@@ -544,12 +538,12 @@ export default function OrganisationsPage() {
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => router.push('/forms/new')}
-            className="inline-flex items-center gap-2 border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-800 hover:bg-amber-100 transition shadow-sm">
-            + Create Form
+            className="inline-flex items-center gap-2 bg-amber-100 px-4 py-2.5 text-sm font-bold text-amber-800 hover:bg-amber-100 transition shadow-sm">
+            <AppIcon name="plus" className="h-6 w-6" /> Create Form
           </button>
           <Link href="/organisations/new"
             className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-primary/80 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-            + Organisation
+            <AppIcon name="plus" className="h-6 w-6" /> Organisation
           </Link>
         </div>
       </div>
@@ -559,16 +553,23 @@ export default function OrganisationsPage() {
       {/* Search */}
       <div className="mb-5">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search organisations…"
-          className="w-full max-w-sm border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          className="w-full max-w-sm bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
       </div>
 
       {/* Two-panel layout */}
       {loading ? (
         <div className="space-y-2">
-          {[1,2,3,4].map(i => <div key={i} className="h-14 bg-white border border-slate-200 animate-pulse" />)}
+          {[1,2,3,4].map(i => <div key={i} className="h-14 bg-white shadow-sm animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="🏢" title="No organisations" description="Create your first client organisation." actionLabel="Create Organisation" onAction={() => router.push('/organisations/new')} />
+        <div className="bg-slate-100 px-6 py-14 text-center">
+          <AppIcon name="building" className="mx-auto mb-4 h-14 w-14 text-primary" />
+          <h2 className="text-lg font-bold text-slate-950">No organisations</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">Create your first client organisation.</p>
+          <button type="button" onClick={() => router.push('/organisations/new')} className="mt-5 inline-flex items-center gap-2 bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary/90">
+            <AppIcon name="plus" className="h-6 w-6" /> Create Organisation
+          </button>
+        </div>
       ) : (
         <div className="grid gap-5 xl:grid-cols-[320px_1fr]">
 
@@ -579,8 +580,8 @@ export default function OrganisationsPage() {
               <div key={org.id}
                 className={`group flex items-center gap-3 border px-4 py-3 cursor-pointer transition-all ${
                   selectedId === org.id
-                    ? 'border-primary/50 bg-primary/5 shadow-sm'
-                    : 'border-slate-200 bg-white hover:border-primary/30 hover:bg-slate-50'
+                    ? 'bg-primary/15 shadow-sm'
+                    : 'bg-white hover:bg-slate-100'
                 }`}
                 onClick={() => setSelectedId(org.id)}>
                 {/* Sector colour dot */}
@@ -596,8 +597,7 @@ export default function OrganisationsPage() {
                   <button type="button"
                     onClick={e => { e.stopPropagation(); deleteOrg(org.id); }}
                     className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                    aria-label="Delete organisation">
-                    🗑️
+                    aria-label="Delete organisation"><AppIcon name="trash" className="h-6 w-6" />
                   </button>
                 </div>
               </div>
@@ -619,8 +619,8 @@ export default function OrganisationsPage() {
                 onAddUnit={addUnit}
               />
             ) : (
-              <div className="border border-dashed border-slate-300 bg-white p-10 text-center">
-                <span className="text-4xl mb-3 block">🏢</span>
+              <div className="bg-slate-100 p-10 text-center">
+                <AppIcon name="building" className="mx-auto mb-3 h-12 w-12 text-slate-400" />
                 <p className="text-sm font-semibold text-slate-500">Select an organisation from the list</p>
               </div>
             )}
