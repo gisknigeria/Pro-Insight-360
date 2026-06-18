@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useEffect } from 'react';
 import type { FormDefinition, QuestionDefinition } from './form-builder.types';
 import { QUESTION_TYPES } from './question-types';
+import { AppIcon } from '../ui/app-icons';
 
 interface FormPreviewModalProps {
   open: boolean;
@@ -20,8 +21,8 @@ function QuestionPreview({ question }: { question: QuestionDefinition }) {
           <input
             type="text"
             disabled
-            placeholder="Type your answer here…"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50"
+            placeholder="Type your answer here..."
+            className="w-full px-3 py-2 border border-slate-300 text-sm bg-slate-50"
           />
         );
       case 'long_text':
@@ -29,8 +30,8 @@ function QuestionPreview({ question }: { question: QuestionDefinition }) {
           <textarea
             disabled
             rows={3}
-            placeholder="Type your answer here…"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 resize-none"
+            placeholder="Type your answer here..."
+            className="w-full px-3 py-2 border border-slate-300 text-sm bg-slate-50 resize-none"
           />
         );
       case 'number':
@@ -39,7 +40,7 @@ function QuestionPreview({ question }: { question: QuestionDefinition }) {
             type="number"
             disabled
             placeholder="0"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50"
+            className="w-full px-3 py-2 border border-slate-300 text-sm bg-slate-50"
           />
         );
       case 'yes_no':
@@ -60,7 +61,7 @@ function QuestionPreview({ question }: { question: QuestionDefinition }) {
               <button
                 key={n}
                 disabled
-                className="w-10 h-10 rounded-lg border border-slate-300 text-sm font-medium text-slate-600 bg-slate-50"
+                className="w-10 h-10 border border-slate-300 text-sm font-medium text-slate-600 bg-slate-50"
               >
                 {n}
               </button>
@@ -71,30 +72,32 @@ function QuestionPreview({ question }: { question: QuestionDefinition }) {
         return (
           <select
             disabled
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50"
+            className="w-full px-3 py-2 border border-slate-300 text-sm bg-slate-50"
           >
-            <option>Select an option…</option>
+            <option>Select an option...</option>
           </select>
         );
       case 'file_upload':
       case 'photo_upload':
       case 'video_upload':
         return (
-          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center text-sm text-slate-400">
-            {typeConfig?.icon} Click to upload or drag and drop
+          <div className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 p-6 text-center text-sm text-slate-400">
+            <AppIcon name={typeConfig?.icon ?? 'upload'} className="h-5 w-5" />
+            Click to upload or drag and drop
           </div>
         );
       case 'section_header':
         return null;
       case 'instruction_block':
         return (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-            ℹ️ Instruction text will appear here
+          <div className="flex items-center gap-2 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+            <AppIcon name="info" className="h-5 w-5" />
+            Instruction text will appear here
           </div>
         );
       default:
         return (
-          <div className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-400 bg-slate-50">
+          <div className="px-3 py-2 border border-slate-200 text-sm text-slate-400 bg-slate-50">
             {typeConfig?.label ?? question.type} input
           </div>
         );
@@ -156,12 +159,12 @@ export function FormPreviewModal({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
             <p className="text-xs font-medium text-primary uppercase tracking-wide mb-0.5">
-              Preview — as respondents will see it
+              Preview - as respondents will see it
             </p>
             <h2 className="text-lg font-semibold text-slate-900">
               {definition.title}
@@ -169,10 +172,10 @@ export function FormPreviewModal({
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-2 rounded-lg"
+            className="p-2 text-slate-400 hover:text-slate-600"
             aria-label="Close preview"
           >
-            ✕
+            <AppIcon name="plus" className="h-5 w-5 rotate-45" />
           </button>
         </div>
 
@@ -185,7 +188,7 @@ export function FormPreviewModal({
           ) : (
             questionsByPage.map((page) => (
               <div key={page.pageId} className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className=" border border-slate-200 bg-slate-50 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500 mb-1">
                     Page {definition.pages.indexOf(page) + 1} of {definition.pages.length}
                   </p>
@@ -205,7 +208,7 @@ export function FormPreviewModal({
         <div className="px-6 py-4 border-t border-slate-200 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg"
+            className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark"
           >
             Close Preview
           </button>
@@ -214,3 +217,5 @@ export function FormPreviewModal({
     </div>
   );
 }
+
+

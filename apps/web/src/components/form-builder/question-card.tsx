@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
+import { AppIcon } from '../ui/app-icons';
 import type { QuestionDefinition } from './form-builder.types';
 import type { QuestionType } from './question-types';
 import { QUESTION_TYPES } from './question-types';
@@ -105,8 +106,8 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white border rounded-xl shadow-sm transition-shadow ${
-        isDragging ? 'shadow-lg border-blue-400' : 'border-slate-200 hover:shadow-md'
+      className={`bg-white shadow-sm transition-shadow ${
+        isDragging ? 'shadow-lg ring-2 ring-blue-400' : 'hover:shadow-md'
       }`}
     >
       {/* Card header */}
@@ -115,16 +116,16 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
         <button
           {...attributes}
           {...listeners}
-          className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing p-1 rounded"
+          className="cursor-grab p-1 text-slate-300 hover:text-slate-500 active:cursor-grabbing"
           aria-label="Drag to reorder this question"
           title="Drag to reorder"
         >
-          ⠿
+          <AppIcon name="grid" className="h-5 w-5" />
         </button>
 
         {/* Type icon + label */}
-        <span className="text-base" aria-hidden="true">
-          {typeConfig?.icon ?? '❓'}
+        <span className="text-primary" aria-hidden="true">
+          <AppIcon name={typeConfig?.icon ?? 'info'} className="h-5 w-5" />
         </span>
         <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">
           {typeConfig?.label ?? question.type}
@@ -135,7 +136,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
           type="text"
           value={question.label}
           onChange={(e) => onUpdate({ ...question, label: e.target.value })}
-          placeholder="Enter your question here…"
+          placeholder="Enter your question here..."
           className="flex-1 text-sm font-medium text-slate-900 bg-transparent border-none outline-none placeholder-slate-300"
           aria-label="Question text"
         />
@@ -148,7 +149,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
             onChange={(e) =>
               onUpdate({ ...question, isRequired: e.target.checked })
             }
-            className="rounded"
+            className="bg-white"
             aria-label="Mark as required"
           />
           Required
@@ -157,21 +158,21 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
         {/* Expand/collapse */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-slate-400 hover:text-slate-600 p-1 rounded"
+          className="p-1 text-slate-400 hover:text-slate-600"
           aria-label={isExpanded ? 'Collapse question settings' : 'Expand question settings'}
           aria-expanded={isExpanded}
         >
-          {isExpanded ? '▲' : '▼'}
+          <AppIcon name="chevronRight" className={`h-5 w-5 transition-transform ${isExpanded ? '-rotate-90' : 'rotate-90'}`} />
         </button>
 
         {/* Delete */}
         <button
           onClick={() => onDelete(question.questionId)}
-          className="text-slate-300 hover:text-red-500 p-1 rounded transition-colors"
+          className="p-1 text-slate-300 transition-colors hover:text-red-500"
           aria-label={`Delete question: ${question.label || 'untitled'}`}
           title="Delete this question"
         >
-          🗑️
+          <AppIcon name="trash" className="h-5 w-5" />
         </button>
       </div>
 
@@ -193,7 +194,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                 onUpdate({ ...question, helperText: e.target.value })
               }
               placeholder="e.g. Enter the number of full-time staff, e.g. 45"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -201,7 +202,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
           {(optionQuestionTypes.includes(question.type) || question.type === 'matrix' || question.type === 'rating_scale' || question.type === 'slider' || question.type === 'net_promoter_score') && (
             <div className="space-y-4">
               {optionQuestionTypes.includes(question.type) && (
-                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="space-y-3 border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm font-medium text-slate-700">Answer options</p>
                     <button
@@ -219,12 +220,12 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                           type="text"
                           value={option}
                           onChange={(e) => updateOption(index, e.target.value)}
-                          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
+                          className="flex-1 border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
                         />
                         <button
                           type="button"
                           onClick={() => removeOption(index)}
-                          className="rounded-full border border-slate-300 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100"
+                          className=" border border-slate-300 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100"
                         >
                           Remove
                         </button>
@@ -235,7 +236,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
               )}
 
               {question.type === 'matrix' && (
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="space-y-4 border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm font-medium text-slate-700">Matrix rows</p>
                     <button
@@ -253,12 +254,12 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                           type="text"
                           value={row}
                           onChange={(e) => updateRow(index, e.target.value)}
-                          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
+                          className="flex-1 border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
                         />
                         <button
                           type="button"
                           onClick={() => removeRow(index)}
-                          className="rounded-full border border-slate-300 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100"
+                          className=" border border-slate-300 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100"
                         >
                           Remove
                         </button>
@@ -269,7 +270,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
               )}
 
               {(question.type === 'rating_scale' || question.type === 'slider' || question.type === 'net_promoter_score') && (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className=" border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-medium text-slate-700">Scale settings</p>
                   <div className="grid gap-4 sm:grid-cols-2 mt-3">
                     <div>
@@ -278,7 +279,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                         type="number"
                         value={typeof question.config?.min === 'number' ? question.config.min : 0}
                         onChange={(e) => updateNumericConfig('min', Number(e.target.value))}
-                        className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
+                        className="mt-2 w-full border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
                       />
                     </div>
                     <div>
@@ -287,7 +288,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                         type="number"
                         value={typeof question.config?.max === 'number' ? question.config.max : question.type === 'net_promoter_score' ? 10 : 5}
                         onChange={(e) => updateNumericConfig('max', Number(e.target.value))}
-                        className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
+                        className="mt-2 w-full border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-primary focus:ring-2 focus:ring-amber-200"
                       />
                     </div>
                   </div>
@@ -309,7 +310,7 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
                 <button
                   key={dim}
                   onClick={() => toggleDimension(dim)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  className={`px-3 py-1 text-xs font-medium border transition-colors ${
                     question.dimensions?.includes(dim)
                       ? 'bg-primary text-white border-primary'
                       : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400'
@@ -326,3 +327,5 @@ export function QuestionCard({ question, onUpdate, onDelete }: QuestionCardProps
     </div>
   );
 }
+
+

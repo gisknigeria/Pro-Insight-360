@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import {
@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { QuestionPalette } from './question-palette';
 import { QuestionCard } from './question-card';
+import { AppIcon } from '@/components/ui/app-icons';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { FormDefinition, QuestionDefinition, ConditionalRule } from './form-builder.types';
@@ -186,7 +187,7 @@ export function FormBuilderCanvas({
                   onChange={(event) =>
                     setDefinition((prev) => prev && ({ ...prev, title: event.target.value }))
                   }
-                  className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
+                  className="mt-2 w-full border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
                   placeholder="Untitled form"
                 />
               </div>
@@ -201,7 +202,7 @@ export function FormBuilderCanvas({
                     setDefinition((prev) => prev && ({ ...prev, description: event.target.value }))
                   }
                   rows={2}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
+                  className="mt-2 w-full border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
                   placeholder="Describe what this form is for"
                 />
               </div>
@@ -210,18 +211,20 @@ export function FormBuilderCanvas({
               <button
                 type="button"
                 onClick={() => onPreview(definition)}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-200"
               >
-                👁️ Preview
+                <AppIcon name="play" className="h-4 w-4" />
+                Preview
               </button>
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark disabled:bg-amber-300 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-dark disabled:bg-amber-300"
                 aria-busy={saving}
               >
-                {saving ? 'Saving…' : '💾 Save Form'}
+                <AppIcon name="check" className="h-4 w-4 text-white" />
+                {saving ? 'Saving...' : 'Save Form'}
               </button>
             </div>
           </div>
@@ -233,7 +236,7 @@ export function FormBuilderCanvas({
                   key={page.pageId}
                   type="button"
                   onClick={() => setCurrentPageIndex(index)}
-                  className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
+                  className={` border px-3 py-1 text-sm font-medium transition ${
                     index === currentPageIndex
                       ? 'bg-primary text-white border-primary'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
@@ -244,13 +247,13 @@ export function FormBuilderCanvas({
               ))}
             </div>
             <div className="mt-3 text-sm text-slate-500">
-              Showing section <span className="font-semibold">{currentPage.title}</span> — use the tabs above to switch checklist sections.
-              <span className="block mt-1 text-slate-500">Click “Preview all questions” to view every checklist item in one place.</span>
+              Showing section <span className="font-semibold">{currentPage.title}</span> - use the tabs above to switch checklist sections.
+              <span className="block mt-1 text-slate-500">Click "Preview all questions" to view every checklist item in one place.</span>
             </div>
           </div>
 
           {saveError && (
-            <div role="alert" className="mx-6 mt-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+            <div role="alert" className="mx-6 mt-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm">
               {saveError}
             </div>
           )}
@@ -263,7 +266,7 @@ export function FormBuilderCanvas({
             >
               {questions.length === 0 ? (
                 <EmptyState
-                  icon="📝"
+                  icon="edit"
                   title="No questions yet"
                   description="Click a question type from the left panel to get started."
                 />
@@ -284,7 +287,7 @@ export function FormBuilderCanvas({
         </div>
       </DndContext>
 
-      {/* Confirm delete dialog — warns about dependent conditional logic */}
+      {/* Confirm delete dialog - warns about dependent conditional logic */}
       <ConfirmDialog
         open={deleteTarget !== null}
         title={`Delete "${questionLabel}"?`}
@@ -305,3 +308,5 @@ export function FormBuilderCanvas({
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   QUESTION_TYPES,
@@ -6,6 +6,7 @@ import {
   QuestionTypeConfig,
   QuestionType,
 } from './question-types';
+import { AppIcon } from '../ui/app-icons';
 
 interface QuestionPaletteProps {
   onAddQuestion: (questionType: QuestionType) => void;
@@ -16,11 +17,11 @@ function ClickableQuestionType({ config, onAddQuestion }: { config: QuestionType
     <button
       type="button"
       onClick={() => onAddQuestion(config.type)}
-      className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm transition-colors hover:border-blue-300 hover:bg-amber-50"
+      className="flex items-center gap-2 w-full bg-white px-3 py-2 text-left text-sm shadow-sm transition-colors hover:bg-amber-50"
       title={config.description}
     >
-      <span className="text-base w-5 text-center" aria-hidden="true">
-        {config.icon}
+      <span className="text-primary" aria-hidden="true">
+        <AppIcon name={config.icon} className="h-5 w-5" />
       </span>
       <span className="font-medium text-slate-700">{config.label}</span>
     </button>
@@ -33,7 +34,7 @@ export function QuestionPalette({ onAddQuestion }: QuestionPaletteProps) {
   return (
     <aside
       className="w-64 shrink-0 bg-slate-50 border-r border-slate-200 overflow-y-auto"
-      aria-label="Question types — click to add to the form canvas"
+      aria-label="Question types - click to add to the form canvas"
     >
       <div className="p-4 border-b border-slate-200">
         <h2 className="text-sm font-semibold text-slate-900">Question Types</h2>
@@ -66,3 +67,4 @@ export function QuestionPalette({ onAddQuestion }: QuestionPaletteProps) {
     </aside>
   );
 }
+
