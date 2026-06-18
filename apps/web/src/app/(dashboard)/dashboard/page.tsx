@@ -672,7 +672,7 @@ function OrganizationInsightCharts({
   }
 
   return (
-    <div className="dashboard-panel rounded-2xl p-6">
+    <div className="dashboard-panel flex flex-col rounded-2xl p-6">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-foreground">Published analysis summary, gaps, and charts</h2>
@@ -681,7 +681,7 @@ function OrganizationInsightCharts({
         <Pill label={`${publishedAnalyses.length} published`} color="green" />
       </div>
 
-      <div className="mb-5 grid gap-4">
+      <div className="order-4 mb-5 grid gap-4">
         {analysisShowcases.map((analysis) => (
           <div key={analysis.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -793,7 +793,7 @@ function OrganizationInsightCharts({
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+      <div className="order-1 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h3 className="mb-1 text-sm font-bold text-slate-950">Gap severity</h3>
           <p className="mb-4 text-xs text-slate-500">Where the organisation needs attention across all reports.</p>
@@ -830,7 +830,7 @@ function OrganizationInsightCharts({
       </div>
 
       {gapRows.length > 0 ? (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="order-3 mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {gapRows.map((gap, index) => {
             const cfg = {
               CRITICAL: 'border-red-200 bg-red-50 text-red-700',
@@ -848,13 +848,13 @@ function OrganizationInsightCharts({
           })}
         </div>
       ) : (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+        <div className="order-3 mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
           No explicit gap list was included in the published analyses yet, but recommendations and charts are available below.
         </div>
       )}
 
       {analysisCharts.length > 0 && (
-        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+        <div className="order-2 mt-5 grid gap-4 xl:grid-cols-3">
           {analysisCharts.map((item, index) => {
             const data = normalizeAnalysisChartData(item.chart);
             const palette = ['#2563eb', '#10b981', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
@@ -1232,6 +1232,14 @@ function SuperAdminDashboard() {
     { name: 'Reports', value: selectedSummary.reports },
   ], [selectedSummary]);
 
+  const selectedOrgOperatingData = useMemo<ChartDataPoint[]>(() => [
+    { name: 'Users', value: selectedSummary.users },
+    { name: 'Forms', value: selectedSummary.forms },
+    { name: 'Questions', value: selectedSummary.questionBank },
+    { name: 'Answers', value: selectedSummary.answers },
+    { name: 'Active projects', value: selectedSummary.activeEvaluations },
+  ], [selectedSummary]);
+
   const leaderRows = selectedOrgId === 'ALL'
     ? orgSummaries.slice(0, 6)
     : orgSummaries.filter((summary) => summary.id === selectedOrgId);
@@ -1271,44 +1279,6 @@ function SuperAdminDashboard() {
         <StatCard label="Avg completion" value={loadingStats ? '...' : `${selectedSummary.averageCompletion}%`} icon={<DashboardIcon name="chart" />} color="yellow" delay={100} />
         <StatCard label="Published insights" value={loadingStats ? '...' : selectedSummary.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
       </div>
-
-      {selectedOrgId !== 'ALL' && (
-        <div className="space-y-4">
-          <div className="border border-slate-300 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">Selected organisation analysis</p>
-                <h2 className="mt-1 text-xl font-black text-slate-950">Latest published analysis for {selectedSummary.name}</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Super admin preview of what this organisation will see: professional summary, gaps, recommendations, action plan, and every chart published in the analysis.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Pill label={`${scopedReports.length} published`} color={scopedReports.length > 0 ? 'green' : 'amber'} />
-                <Pill label={selectedSummary.completionLabel} color="blue" />
-              </div>
-            </div>
-
-            {selectedOrgLatestReport ? (
-              <LatestPublishedAnalysis published={selectedOrgLatestReport} evaluation={selectedOrgLatestEvaluation} />
-            ) : (
-              <div className="border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-                <DashboardIcon name="chart" className="mx-auto h-9 w-9 text-slate-500" />
-                <p className="mt-3 text-sm font-bold text-slate-900">No published analysis for this organisation yet.</p>
-                <p className="mt-1 text-sm text-slate-500">The insight charts below use live organization data until a published analysis is available.</p>
-              </div>
-            )}
-          </div>
-
-          <OrganizationInsightCharts
-            publishedAnalyses={scopedReports}
-            evaluations={scopedEvaluations}
-            completionDistribution={completionDistribution}
-            projectStatusData={statusData}
-            workspaceSummaryData={selectedOrgWorkspaceData}
-          />
-        </div>
-      )}
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="dashboard-panel border-slate-300 p-5">
@@ -1421,10 +1391,16 @@ function SuperAdminDashboard() {
         <div className="dashboard-panel border-slate-300 p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold text-slate-950">Organisation comparison</h2>
-              <p className="text-xs text-slate-500">Which clients are generating responses, projects, and stronger completion.</p>
+              <h2 className="text-base font-bold text-slate-950">
+                {selectedOrgId === 'ALL' ? 'Organisation comparison' : 'Selected organisation operating mix'}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {selectedOrgId === 'ALL'
+                  ? 'Which clients are generating responses, projects, and stronger completion.'
+                  : 'How people, forms, questions, answers, and active work stack up for this organisation.'}
+              </p>
             </div>
-            <Pill label="Ranked" color="blue" />
+            <Pill label={selectedOrgId === 'ALL' ? 'Ranked' : 'Operating mix'} color="blue" />
           </div>
           {selectedOrgId === 'ALL' ? (
             <div className="h-72">
@@ -1443,20 +1419,22 @@ function SuperAdminDashboard() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                ['Users onboarded', selectedSummary.users],
-                ['Forms deployed', selectedSummary.forms],
-                ['Question bank', selectedSummary.questionBank],
-                ['Answers collected', selectedSummary.answers],
-                ['Active projects', selectedSummary.activeEvaluations],
-                ['Latest activity', selectedSummary.lastActivity ? new Date(selectedSummary.lastActivity).toLocaleDateString() : 'None'],
-              ].map(([label, value]) => (
-                <div key={label} className="border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
-                  <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
-                </div>
-              ))}
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={selectedOrgOperatingData} margin={{ top: 12, right: 16, left: -8, bottom: 45 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={62} />
+                  <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="value" name="Count" radius={[0, 0, 0, 0]}>
+                    {selectedOrgOperatingData.map((entry, index) => (
+                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
+                    ))}
+                  </Bar>
+                  <Line type="monotone" dataKey="value" name="Signal" stroke="#dc2626" strokeWidth={3} dot={{ r: 3 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           )}
         </div>
@@ -1484,7 +1462,7 @@ function SuperAdminDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid gap-4">
         <div className="dashboard-panel border-slate-300 p-5">
           <h2 className="text-base font-bold text-slate-950">Form depth and uptake</h2>
           <p className="mb-4 text-xs text-slate-500">Largest instruments compared with responses received.</p>
@@ -1506,7 +1484,47 @@ function SuperAdminDashboard() {
             <div className="flex h-72 items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No form data yet.</div>
           )}
         </div>
+      </div>
 
+      {selectedOrgId !== 'ALL' && (
+        <div className="space-y-4">
+          <OrganizationInsightCharts
+            publishedAnalyses={scopedReports}
+            evaluations={scopedEvaluations}
+            completionDistribution={completionDistribution}
+            projectStatusData={statusData}
+            workspaceSummaryData={selectedOrgWorkspaceData}
+          />
+
+          <div className="border border-slate-300 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">Selected organisation analysis</p>
+                <h2 className="mt-1 text-xl font-black text-slate-950">Latest published analysis for {selectedSummary.name}</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Super admin preview of what this organisation will see: professional summary, gaps, recommendations, action plan, and every chart published in the analysis.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Pill label={`${scopedReports.length} published`} color={scopedReports.length > 0 ? 'green' : 'amber'} />
+                <Pill label={selectedSummary.completionLabel} color="blue" />
+              </div>
+            </div>
+
+            {selectedOrgLatestReport ? (
+              <LatestPublishedAnalysis published={selectedOrgLatestReport} evaluation={selectedOrgLatestEvaluation} />
+            ) : (
+              <div className="border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                <DashboardIcon name="chart" className="mx-auto h-9 w-9 text-slate-500" />
+                <p className="mt-3 text-sm font-bold text-slate-900">No published analysis for this organisation yet.</p>
+                <p className="mt-1 text-sm text-slate-500">The insight charts above use live organization data until a published analysis is available.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-4">
         <div className="dashboard-panel border-slate-300 p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
