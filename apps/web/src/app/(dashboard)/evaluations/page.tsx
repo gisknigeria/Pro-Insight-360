@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { AppIcon, type AppIconName } from '@/components/ui/app-icons';
 import {
   PieChart,
   Pie,
@@ -56,7 +57,9 @@ function EvaluationCard({ evaluation, onArchive, onDelete }: {
       <div className="p-5 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-base">📋</div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-base text-primary">
+              <AppIcon name="clipboard" className="h-4 w-4" />
+            </div>
             <div className="min-w-0">
               <Link
                 href={`/evaluations/${evaluation.id}`}
@@ -76,11 +79,11 @@ function EvaluationCard({ evaluation, onArchive, onDelete }: {
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mb-5">
           <span className="inline-flex items-center gap-1">
-            <span>📄</span>{evaluation._count.forms} form{evaluation._count.forms !== 1 ? 's' : ''}
+            <AppIcon name="file" className="h-3.5 w-3.5" />{evaluation._count.forms} form{evaluation._count.forms !== 1 ? 's' : ''}
           </span>
           {evaluation.startDate && (
             <span className="inline-flex items-center gap-1">
-              <span>📅</span>
+              <AppIcon name="calendar" className="h-3.5 w-3.5" />
               Started {new Date(evaluation.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
           )}
@@ -92,20 +95,20 @@ function EvaluationCard({ evaluation, onArchive, onDelete }: {
             href={`/evaluations/${evaluation.id}/diagnosis`}
             className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10 transition-colors"
           >
-            🔍 Diagnosis
+            <AppIcon name="search" className="h-3.5 w-3.5" /> Diagnosis
           </Link>
           <Link
             href={`/evaluations/${evaluation.id}`}
             className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-3 py-2 text-xs font-bold text-white shadow-sm hover:shadow-md transition-all"
           >
-            View →
+            View <AppIcon name="chevronRight" className="h-3.5 w-3.5" />
           </Link>
           <button
             onClick={onDelete}
             className="rounded-xl p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
             aria-label={`Delete ${evaluation.title}`}
           >
-            🗑️
+            <AppIcon name="trash" className="h-4 w-4" />
           </button>
           {evaluation.status !== 'ARCHIVED' && (
             <button
@@ -113,7 +116,7 @@ function EvaluationCard({ evaluation, onArchive, onDelete }: {
               className="rounded-xl p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
               aria-label={`Archive ${evaluation.title}`}
             >
-              📦
+              <AppIcon name="archive" className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -196,6 +199,12 @@ export default function EvaluationsPage() {
     activeStatusFilter === 'ALL' ? evaluations : evaluations.filter((e) => e.status === activeStatusFilter),
     [evaluations, activeStatusFilter],
   );
+  const stats: { label: string; value: number; icon: AppIconName; grad: string }[] = [
+    { label: 'Total', value: evaluations.length, icon: 'clipboard', grad: 'from-blue-500 to-indigo-600' },
+    { label: 'Active', value: evaluations.filter((e) => e.status === 'ACTIVE').length, icon: 'check', grad: 'from-emerald-400 to-green-600' },
+    { label: 'Draft', value: evaluations.filter((e) => e.status === 'DRAFT').length, icon: 'edit', grad: 'from-slate-400 to-slate-600' },
+    { label: 'Closed', value: evaluations.filter((e) => e.status === 'CLOSED').length, icon: 'lock', grad: 'from-orange-400 to-orange-600' },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50/50">
@@ -216,15 +225,10 @@ export default function EvaluationsPage() {
       {/* ── Stats + Chart ── */}
       <div className="mb-8 grid gap-4 xl:grid-cols-[1fr_300px]">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[
-            { label: 'Total',    value: evaluations.length,                                     icon: '📋', grad: 'from-blue-500 to-indigo-600' },
-            { label: 'Active',   value: evaluations.filter((e) => e.status === 'ACTIVE').length,  icon: '🟢', grad: 'from-emerald-400 to-green-600' },
-            { label: 'Draft',    value: evaluations.filter((e) => e.status === 'DRAFT').length,   icon: '📝', grad: 'from-slate-400 to-slate-600' },
-            { label: 'Closed',   value: evaluations.filter((e) => e.status === 'CLOSED').length,  icon: '🔒', grad: 'from-orange-400 to-orange-600' },
-          ].map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>
-                {s.icon}
+                <AppIcon name={s.icon} className="h-5 w-5 text-white" />
               </div>
               <p className="text-2xl font-bold text-slate-900">{s.value}</p>
               <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
@@ -284,7 +288,7 @@ export default function EvaluationsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon="📋"
+          icon="clipboard"
           title={activeStatusFilter === 'ALL' ? 'No evaluations yet' : `No ${activeStatusFilter.toLowerCase()} evaluations`}
           description={activeStatusFilter === 'ALL' ? 'Create your first evaluation project to start collecting organisational data.' : 'Try a different filter.'}
           actionLabel={activeStatusFilter === 'ALL' ? 'Create Evaluation' : undefined}

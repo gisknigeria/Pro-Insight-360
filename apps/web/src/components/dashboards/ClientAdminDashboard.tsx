@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useMemo } from "react";
 import type { FormAssignment, RespondentStats, DepartmentScore } from "./dashboardTypes";
+import { AppIcon, type AppIconName } from "@/components/ui/app-icons";
 
 // ── Sample Data ─────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ const sampleDeptScores: DepartmentScore[] = [
 function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-      <div className="text-4xl mb-3">📭</div>
+      <AppIcon name="mail" className="mb-3 h-9 w-9 text-gray-400" />
       <h4 className="font-semibold text-gray-700 mb-1">{title}</h4>
       <p className="text-sm text-gray-500 mb-4 max-w-sm">{description}</p>
       {action}
@@ -41,7 +42,7 @@ function EmptyState({ title, description, action }: { title: string; description
 
 // ── Stat Card ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: string; color?: string }) {
+function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: AppIconName; color?: string }) {
   const colorClasses: Record<string, string> = {
     blue: "bg-amber-50 text-primary",
     green: "bg-green-50 text-green-600",
@@ -52,7 +53,9 @@ function StatCard({ label, value, icon, color = "blue" }: { label: string; value
     <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-gray-500">{label}</span>
-        <span className={`text-xl p-2 rounded ${colorClasses[color] || colorClasses.blue}`}>{icon}</span>
+        <span className={`p-2 rounded ${colorClasses[color] || colorClasses.blue}`}>
+          <AppIcon name={icon} className="h-5 w-5" />
+        </span>
       </div>
       <div className="text-2xl font-bold text-gray-800">{value}</div>
     </div>
@@ -85,10 +88,10 @@ export default function ClientAdminDashboard() {
 
       {/* ── Stats Row ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Assigned Forms" value={forms.length} icon="📋" color="blue" />
-        <StatCard label="Completion Rate" value={`${completionRate}%`} icon="✅" color="green" />
-        <StatCard label="Overdue Forms" value={overdueCount} icon="⚠️" color={overdueCount > 0 ? "red" : "green"} />
-        <StatCard label="Org Score" value={orgScore} icon="📊" color="yellow" />
+        <StatCard label="Assigned Forms" value={forms.length} icon="clipboard" color="blue" />
+        <StatCard label="Completion Rate" value={`${completionRate}%`} icon="check" color="green" />
+        <StatCard label="Overdue Forms" value={overdueCount} icon="alert" color={overdueCount > 0 ? "red" : "green"} />
+        <StatCard label="Org Score" value={orgScore} icon="chart" color="yellow" />
       </div>
 
       {/* ── Main Content ───────────────────────────────────────────────── */}

@@ -29,6 +29,7 @@ import OrgChart from '@/components/organogram/OrgChart';
 import ConsultantDashboard from '@/components/dashboards/ConsultantDashboard';
 import HODDashboard from '@/components/dashboards/HODDashboard';
 import RespondentDashboard from '@/components/dashboards/RespondentDashboard';
+import { AppIcon, type AppIconName } from '@/components/ui/app-icons';
 import { apiFetch } from '@/lib/api';
 import { getUserRole } from '@/lib/auth';
 
@@ -136,8 +137,9 @@ interface PublishedAnalysis {
     weaknesses?: string[];
     opportunities?: string[];
     recommendations?: string[];
+    gaps?: string[];
     actionPlan?: Array<{ who?: string; what?: string; how?: string; when?: string }>;
-    charts?: Array<{ title?: string; data?: Array<{ label?: string; value?: number }> }>;
+    charts?: Array<{ title?: string; data?: Array<{ label?: string; name?: string; value?: number; count?: number }> }>;
     organogram?: { nodes?: Array<{ id?: string; label?: string; group?: string }>; links?: Array<{ source?: string; target?: string; relation?: string }> };
   };
 }
@@ -145,71 +147,20 @@ interface PublishedAnalysis {
 type DashboardIconName = 'building' | 'form' | 'chart' | 'insight' | 'activity' | 'check' | 'edit' | 'report' | 'clipboard' | 'bot' | 'arrowRight';
 
 function DashboardIcon({ name, className = 'h-5 w-5' }: { name: DashboardIconName; className?: string }) {
-  const paths: Record<DashboardIconName, ReactNode> = {
-    building: (
-      <>
-        <path d="M4 21V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v15" />
-        <path d="M18 21V10h2a2 2 0 0 1 2 2v9" />
-        <path d="M8 8h4M8 12h4M8 16h4M3 21h20" />
-      </>
-    ),
-    form: (
-      <>
-        <path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-        <path d="M14 3v5h5M9 13h6M9 17h4" />
-      </>
-    ),
-    chart: (
-      <>
-        <path d="M4 19V5M4 19h16" />
-        <path d="M8 16v-5M12 16V8M16 16v-8" />
-      </>
-    ),
-    insight: (
-      <>
-        <path d="M12 3a7 7 0 0 0-4 12.74V18h8v-2.26A7 7 0 0 0 12 3Z" />
-        <path d="M9 22h6M10 18v-3h4v3" />
-      </>
-    ),
-    activity: <path d="M3 12h4l3-7 4 14 3-7h4" />,
-    check: (
-      <>
-        <path d="M20 6 9 17l-5-5" />
-        <path d="M21 12a9 9 0 1 1-3-6.7" />
-      </>
-    ),
-    edit: (
-      <>
-        <path d="M12 20h9" />
-        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
-      </>
-    ),
-    report: (
-      <>
-        <path d="M5 3h14v18H5Z" />
-        <path d="M9 8h6M9 12h6M9 16h3" />
-      </>
-    ),
-    clipboard: (
-      <>
-        <path d="M9 4h6l1 2h3v15H5V6h3Z" />
-        <path d="M9 10h6M9 14h6M9 18h3" />
-      </>
-    ),
-    bot: (
-      <>
-        <path d="M12 8V4M7 8h10a3 3 0 0 1 3 3v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-5a3 3 0 0 1 3-3Z" />
-        <path d="M9 13h.01M15 13h.01M10 17h4" />
-      </>
-    ),
-    arrowRight: <path d="M5 12h14M13 5l7 7-7 7" />,
+  const iconMap: Record<DashboardIconName, AppIconName> = {
+    building: 'building',
+    form: 'form',
+    chart: 'chart',
+    insight: 'info',
+    activity: 'activity',
+    check: 'check',
+    edit: 'edit',
+    report: 'file',
+    clipboard: 'clipboard',
+    bot: 'bot',
+    arrowRight: 'chevronRight',
   };
-
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {paths[name]}
-    </svg>
-  );
+  return <AppIcon name={iconMap[name]} className={className} />;
 }
 
 function iconForStatLabel(label: string) {
@@ -325,6 +276,34 @@ function buildOrgRows(published: PublishedAnalysis | null) {
   return rows;
 }
 
+function parseAnalysisGap(gapText: string): { severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; text: string } {
+  const upper = gapText.toUpperCase();
+  if (upper.startsWith('CRITICAL:') || upper.startsWith('CRITICAL -') || upper.startsWith('CRITICAL —')) {
+    return { severity: 'CRITICAL', text: gapText.replace(/^CRITICAL[:\s—-]+/i, '').trim() };
+  }
+  if (upper.startsWith('HIGH:') || upper.startsWith('HIGH -') || upper.startsWith('HIGH —')) {
+    return { severity: 'HIGH', text: gapText.replace(/^HIGH[:\s—-]+/i, '').trim() };
+  }
+  if (upper.startsWith('LOW:') || upper.startsWith('LOW -') || upper.startsWith('LOW —')) {
+    return { severity: 'LOW', text: gapText.replace(/^LOW[:\s—-]+/i, '').trim() };
+  }
+  return {
+    severity: upper.startsWith('MEDIUM') ? 'MEDIUM' : 'MEDIUM',
+    text: gapText.replace(/^MEDIUM[:\s—-]+/i, '').trim(),
+  };
+}
+
+function normalizeAnalysisChartData(chart: { data?: Array<{ label?: string; name?: string; value?: number; count?: number }> }) {
+  return Array.isArray(chart.data)
+    ? chart.data
+      .map((row, index) => ({
+        name: String(row.label ?? row.name ?? `Item ${index + 1}`),
+        value: Number(row.value ?? row.count ?? 0),
+      }))
+      .filter((row) => Number.isFinite(row.value))
+    : [];
+}
+
 function StatCardSkeleton() {
   return (
     <div className="rounded-2xl border border-border bg-surface p-5">
@@ -379,7 +358,7 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
         {analysis?.weaknesses ? (
           <div className="rounded-2xl border border-orange-200/50 bg-gradient-to-br from-orange-50/50 to-surface p-5 shadow-sm">
             <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <span className="text-orange-500">⚠</span>
+              <AppIcon name="alert" className="h-4 w-4 text-orange-500" />
               Key weaknesses
             </h4>
             <ul className="space-y-2 text-sm text-muted">
@@ -488,12 +467,7 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
 }
 
 function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ label?: string; name?: string; value?: number; count?: number }>; }; }) {
-  const chartData = Array.isArray(chart.data)
-    ? chart.data.map((row, rowIndex) => ({
-        name: String(row.label ?? row.name ?? `Item ${rowIndex + 1}`),
-        value: Number(row.value ?? row.count ?? 0),
-      }))
-    : [];
+  const chartData = normalizeAnalysisChartData(chart);
 
   return (
     <div className="rounded-xl border border-border bg-surface-muted p-4 min-w-0">
@@ -525,6 +499,270 @@ function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ 
               <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OrganizationInsightCharts({
+  publishedAnalyses,
+  evaluations,
+  completionDistribution,
+  projectStatusData,
+  workspaceSummaryData,
+}: {
+  publishedAnalyses: PublishedAnalysis[];
+  evaluations: Evaluation[];
+  completionDistribution: ChartDataPoint[];
+  projectStatusData: ChartDataPoint[];
+  workspaceSummaryData: ChartDataPoint[];
+}) {
+  const evaluationTitleById = useMemo(
+    () => Object.fromEntries(evaluations.map((evaluation) => [evaluation.id, evaluation.title])),
+    [evaluations],
+  );
+
+  const gapRows = useMemo(() => {
+    return publishedAnalyses.flatMap((published) => {
+      const reportName = published.evaluationId ? evaluationTitleById[published.evaluationId] : published.summary;
+      return (published.analysis?.gaps ?? []).map((gap) => ({
+        ...parseAnalysisGap(gap),
+        report: reportName || published.summary || 'Published analysis',
+        publishedAt: published.publishedAt,
+      }));
+    });
+  }, [evaluationTitleById, publishedAnalyses]);
+
+  const severityData = useMemo(() => {
+    const counts: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    gapRows.forEach((gap) => { counts[gap.severity] += 1; });
+    return [
+      { name: 'Critical', value: counts.CRITICAL, fill: '#dc2626' },
+      { name: 'High', value: counts.HIGH, fill: '#f97316' },
+      { name: 'Medium', value: counts.MEDIUM, fill: '#f59e0b' },
+      { name: 'Low', value: counts.LOW, fill: '#10b981' },
+    ];
+  }, [gapRows]);
+
+  const reportHealthData = useMemo(() => {
+    return publishedAnalyses.slice(0, 6).map((published, index) => {
+      const reportName = published.evaluationId ? evaluationTitleById[published.evaluationId] : published.summary;
+      return {
+        name: reportName ? (reportName.length > 18 ? `${reportName.slice(0, 18)}...` : reportName) : `Report ${index + 1}`,
+        gaps: published.analysis?.gaps?.length ?? 0,
+        recommendations: published.analysis?.recommendations?.length ?? 0,
+        charts: published.analysis?.charts?.length ?? 0,
+      };
+    });
+  }, [evaluationTitleById, publishedAnalyses]);
+
+  const analysisCharts = useMemo(() => {
+    return publishedAnalyses.flatMap((published, reportIndex) => {
+      const reportName = published.evaluationId ? evaluationTitleById[published.evaluationId] : published.summary;
+      return (published.analysis?.charts ?? []).map((chart, chartIndex) => ({
+        chart,
+        title: chart.title || `${reportName || `Report ${reportIndex + 1}`} chart ${chartIndex + 1}`,
+        reportName: reportName || published.summary || `Report ${reportIndex + 1}`,
+      }));
+    }).filter((item) => normalizeAnalysisChartData(item.chart).length > 0);
+  }, [evaluationTitleById, publishedAnalyses]);
+
+  if (publishedAnalyses.length === 0) {
+    const completionHasData = completionDistribution.some((item) => item.value > 0);
+    const radarData = [
+      { subject: 'Projects', score: Math.min(100, evaluations.length * 20) },
+      { subject: 'Responses', score: Math.min(100, workspaceSummaryData.find((item) => item.name === 'Responses')?.value ?? 0) },
+      { subject: 'Completion', score: completionHasData ? completionDistribution.reduce((sum, item, index) => sum + item.value * [15, 40, 65, 90][index], 0) / Math.max(1, completionDistribution.reduce((sum, item) => sum + item.value, 0)) : 0 },
+      { subject: 'Reports', score: 0 },
+      { subject: 'Gaps known', score: 0 },
+    ];
+
+    return (
+      <div className="dashboard-panel rounded-2xl p-6">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Company insight preview</h2>
+            <p className="text-sm text-muted">No published analysis yet, so this uses available activity data to show what the company should watch.</p>
+          </div>
+          <Pill label="No analysis yet" color="amber" />
+        </div>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h3 className="mb-1 text-sm font-bold text-slate-950">Readiness signal</h3>
+            <p className="mb-4 text-xs text-slate-500">Estimated from projects, responses, and completion shape.</p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData} outerRadius={82}>
+                  <PolarGrid stroke="#cbd5e1" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#334155', fontSize: 10 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
+                  <Radar dataKey="score" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.24} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h3 className="mb-1 text-sm font-bold text-slate-950">Current operating picture</h3>
+            <p className="mb-4 text-xs text-slate-500">What exists before formal GISKonsult analysis.</p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={workspaceSummaryData} margin={{ top: 8, right: 12, left: -8, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                  <Bar dataKey="value" fill="#0f766e" radius={[6, 6, 0, 0]} />
+                  <Line type="monotone" dataKey="value" stroke="#f97316" strokeWidth={3} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h3 className="mb-1 text-sm font-bold text-slate-950">Completion shape</h3>
+            <p className="mb-4 text-xs text-slate-500">Response depth available before analysis.</p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={completionDistribution} margin={{ top: 8, right: 12, left: -8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                  <Area type="monotone" dataKey="value" stroke="#2563eb" fill="#93c5fd" fillOpacity={0.7} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {[
+            ['Recommended next step', 'Complete at least one evaluation diagnosis so real gaps can replace the preview.'],
+            ['Likely management focus', evaluations.length ? 'Compare project completion and response quality before publishing insight.' : 'Create an evaluation project and assign forms to begin data collection.'],
+            ['What will improve', 'Once analysis is published, this section changes to gap severity, recommendations, and uploaded analysis charts.'],
+          ].map(([label, text]) => (
+            <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
+              <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-800">{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dashboard-panel rounded-2xl p-6">
+      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-foreground">Published analysis gaps and charts</h2>
+          <p className="text-sm text-muted">Aggregated from every GISKonsult analysis shared with this organisation.</p>
+        </div>
+        <Pill label={`${publishedAnalyses.length} published`} color="green" />
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h3 className="mb-1 text-sm font-bold text-slate-950">Gap severity</h3>
+          <p className="mb-4 text-xs text-slate-500">Where the organisation needs attention across all reports.</p>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={severityData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={92} paddingAngle={2}>
+                  {severityData.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h3 className="mb-1 text-sm font-bold text-slate-950">Report insight mix</h3>
+          <p className="mb-4 text-xs text-slate-500">Gaps, recommendations, and supporting charts by published analysis.</p>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={reportHealthData} margin={{ top: 10, right: 14, left: -8, bottom: 46 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={64} />
+                <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="gaps" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="recommendations" fill="#10b981" radius={[6, 6, 0, 0]} />
+                <Line type="monotone" dataKey="charts" stroke="#2563eb" strokeWidth={3} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {gapRows.length > 0 ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {gapRows.slice(0, 8).map((gap, index) => {
+            const cfg = {
+              CRITICAL: 'border-red-200 bg-red-50 text-red-700',
+              HIGH: 'border-orange-200 bg-orange-50 text-orange-700',
+              MEDIUM: 'border-amber-200 bg-amber-50 text-amber-700',
+              LOW: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+            }[gap.severity];
+            return (
+              <div key={`${gap.report}-${index}`} className={`rounded-2xl border p-4 ${cfg}`}>
+                <p className="text-[11px] font-black uppercase tracking-wider">{gap.severity}</p>
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-900">{gap.text}</p>
+                <p className="mt-3 truncate text-xs font-medium opacity-75">{gap.report}</p>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+          No explicit gap list was included in the published analyses yet, but recommendations and charts are available below.
+        </div>
+      )}
+
+      {analysisCharts.length > 0 && (
+        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+          {analysisCharts.slice(0, 6).map((item, index) => {
+            const data = normalizeAnalysisChartData(item.chart);
+            const palette = ['#2563eb', '#10b981', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
+            return (
+              <div key={`${item.reportName}-${item.title}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-5">
+                <p className="text-sm font-bold text-slate-950">{item.title}</p>
+                <p className="mb-4 mt-1 text-xs text-slate-500">{item.reportName}</p>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    {index % 3 === 0 ? (
+                      <BarChart data={data} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
+                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                          {data.map((row, rowIndex) => <Cell key={row.name} fill={palette[rowIndex % palette.length]} />)}
+                        </Bar>
+                      </BarChart>
+                    ) : index % 3 === 1 ? (
+                      <AreaChart data={data} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
+                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Area type="monotone" dataKey="value" stroke="#0891b2" fill="#67e8f9" fillOpacity={0.72} />
+                      </AreaChart>
+                    ) : (
+                      <PieChart>
+                        <Pie data={data} dataKey="value" nameKey="name" outerRadius={82}>
+                          {data.map((row, rowIndex) => <Cell key={row.name} fill={palette[rowIndex % palette.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Legend iconType="square" wrapperStyle={{ fontSize: 10 }} />
+                      </PieChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -864,7 +1102,7 @@ function SuperAdminDashboard() {
             <select
               value={selectedOrgId}
               onChange={(event) => setSelectedOrgId(event.target.value)}
-              className="mt-2 w-full border border-slate-700 bg-slate-900 px-3 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-cyan-300"
+              className="force-readable-light mt-2 w-full border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-cyan-300"
             >
               <option value="ALL">General overview - all organisations</option>
               {organisations.map((org) => (
@@ -1299,6 +1537,12 @@ export default function DashboardPage() {
     return gapSummaries.filter((gap) => evaluationIds.has(gap.evaluation.id));
   }, [companyEvaluations, gapSummaries]);
 
+  const filteredPublishedAnalyses = useMemo(() => {
+    return publishedAnalyses
+      .filter((analysis) => analysis.evaluationId && companyEvaluations.some((evaluation) => evaluation.id === analysis.evaluationId))
+      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  }, [companyEvaluations, publishedAnalyses]);
+
   const completionDistribution = useMemo<ChartDataPoint[]>(() => {
     const buckets = [
       { name: '0-25%', min: 0, max: 25, value: 0 },
@@ -1348,10 +1592,10 @@ export default function DashboardPage() {
     () => [
       { name: 'Projects', value: companyEvaluations.length },
       { name: 'Responses', value: companyResponses.length },
-      { name: 'Reports', value: publishedAnalyses.length },
+      { name: 'Reports', value: filteredPublishedAnalyses.length },
       { name: 'Gaps', value: companyGaps.length },
     ],
-    [companyEvaluations.length, companyGaps.length, companyResponses.length, publishedAnalyses.length],
+    [companyEvaluations.length, companyGaps.length, companyResponses.length, filteredPublishedAnalyses.length],
   );
 
   const primaryChartData = completionDistribution.some((item) => item.value > 0)
@@ -1372,9 +1616,6 @@ export default function DashboardPage() {
   const averageCompletion = companyResponses.length > 0
     ? Math.round(companyResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / companyResponses.length)
     : 0;
-  const filteredPublishedAnalyses = publishedAnalyses
-    .filter((analysis) => analysis.evaluationId && companyEvaluations.some((evaluation) => evaluation.id === analysis.evaluationId))
-    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   const latestPublished = filteredPublishedAnalyses[0] || null;
   const latestPublishedEvaluation = latestPublished ? companyEvaluations.find((evaluation) => evaluation.id === latestPublished.evaluationId) : undefined;
 
@@ -1438,7 +1679,7 @@ export default function DashboardPage() {
       {error ? (
         <div className="rounded-2xl border border-red-200/50 bg-gradient-to-r from-red-50 to-red-100/50 p-5 text-sm text-red-700 mb-6 shadow-sm animate-fade-in">
           <div className="flex items-center gap-3">
-            <span className="text-lg">⚠️</span>
+            <AppIcon name="alert" className="h-5 w-5" />
             <span>{error}</span>
           </div>
         </div>
@@ -1449,7 +1690,7 @@ export default function DashboardPage() {
             <StatCard label="Responses" value={totalResponses} icon={<DashboardIcon name="check" />} color="blue" delay={0} />
             <StatCard label="Total answers" value={totalAnswers} icon={<DashboardIcon name="edit" />} color="green" delay={50} />
             <StatCard label="Avg completion" value={`${averageCompletion}%`} icon={<DashboardIcon name="chart" />} color="yellow" delay={100} />
-            <StatCard label="Reports" value={publishedAnalyses.length} icon={<DashboardIcon name="report" />} color="slate" delay={150} />
+            <StatCard label="Reports" value={filteredPublishedAnalyses.length} icon={<DashboardIcon name="report" />} color="slate" delay={150} />
           </div>
 
 
@@ -1509,14 +1750,22 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
+          <OrganizationInsightCharts
+            publishedAnalyses={filteredPublishedAnalyses}
+            evaluations={companyEvaluations}
+            completionDistribution={completionDistribution}
+            projectStatusData={projectStatusData}
+            workspaceSummaryData={workspaceSummaryData}
+          />
+
           {/* ── Latest published insight ── */}
           <div className="dashboard-panel rounded-2xl p-6">
             <div className="flex items-center justify-between gap-4 mb-5">
               <div>
                 <h2 className="text-lg font-bold text-foreground">Latest published insight</h2>
-                <p className="text-sm text-muted mt-0.5">Your most recent GISKonsult analysis delivered by our team.</p>
+                <p className="text-sm text-muted mt-0.5">The newest report is still available below, while the chart section above combines all published analysis for this organisation.</p>
               </div>
-              <span className="text-2xl font-bold text-accent">{publishedAnalyses.length}</span>
+              <span className="text-2xl font-bold text-accent">{filteredPublishedAnalyses.length}</span>
             </div>
             {latestPublished ? (
               <LatestPublishedAnalysis published={latestPublished} evaluation={latestPublishedEvaluation} />

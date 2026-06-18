@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { AppIcon, type AppIconName } from '@/components/ui/app-icons';
 
 export type UserRole =
   | 'SUPER_ADMIN'
@@ -74,85 +75,20 @@ const sidebarGrad: Record<UserRole, string> = {
   RESPONDENT:   'from-[#121820] via-[#111827] to-[#151d32]',
 };
 
-const iconPaths: Record<IconName | 'signout', React.ReactNode> = {
-  dashboard: (
-    <>
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-    </>
-  ),
-  building: (
-    <>
-      <path d="M6 20V4h12v16" />
-      <path d="M4 20h16" />
-      <path d="M9 8h1" /><path d="M14 8h1" />
-      <path d="M9 12h1" /><path d="M14 12h1" />
-      <path d="M10 20v-4h4v4" />
-    </>
-  ),
-  clipboard: (
-    <>
-      <path d="M9 4h6l1 2h3v14H5V6h3z" />
-      <path d="M9 11h6" /><path d="M9 15h4" />
-    </>
-  ),
-  form: (
-    <>
-      <path d="M6 4h12v16H6z" />
-      <path d="M9 8h6" /><path d="M9 12h6" /><path d="M9 16h3" />
-    </>
-  ),
-  tree: (
-    <>
-      <path d="M12 4v5" />
-      <path d="M6 15v-3h12v3" />
-      <path d="M4 15h4v5H4z" /><path d="M10 15h4v5h-4z" /><path d="M16 15h4v5h-4z" />
-      <path d="M9 4h6v5H9z" />
-    </>
-  ),
-  analytics: (
-    <>
-      <path d="M5 19V9" /><path d="M12 19V5" /><path d="M19 19v-7" />
-      <path d="M3 19h18" />
-    </>
-  ),
-  search: (
-    <>
-      <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14z" />
-      <path d="m16 16 4 4" />
-    </>
-  ),
-  user: (
-    <>
-      <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
-      <path d="M4 20a8 8 0 0 1 16 0" />
-    </>
-  ),
-  signout: (
-    <>
-      <path d="M10 6H6v12h4" />
-      <path d="M14 16l4-4-4-4" /><path d="M8 12h10" />
-    </>
-  ),
+const iconMap: Record<IconName | 'signout', AppIconName> = {
+  dashboard: 'grid',
+  building: 'building',
+  clipboard: 'clipboard',
+  form: 'form',
+  tree: 'sitemap',
+  analytics: 'chart',
+  search: 'search',
+  user: 'users',
+  signout: 'logOut',
 };
 
 function NavIcon({ name }: { name: IconName | 'signout' }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="h-[17px] w-[17px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {iconPaths[name]}
-    </svg>
-  );
+  return <AppIcon name={iconMap[name]} className="h-[17px] w-[17px]" />;
 }
 
 export function SidebarNav({ role, userName }: { role: UserRole; userName: string }) {

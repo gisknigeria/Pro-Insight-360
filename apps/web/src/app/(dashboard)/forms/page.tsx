@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AppIcon, type AppIconName } from '@/components/ui/app-icons';
 
 interface Form {
   id: string;
@@ -104,6 +105,11 @@ export default function FormsPage() {
 
   const published = forms.filter((f) => f.status === 'PUBLISHED').length;
   const draft = forms.filter((f) => f.status === 'DRAFT').length;
+  const stats: { label: string; value: number; icon: AppIconName; grad: string }[] = [
+    { label: 'Total forms', value: forms.length, icon: 'clipboard', grad: 'from-blue-500 to-indigo-600' },
+    { label: 'Published', value: published, icon: 'check', grad: 'from-emerald-400 to-green-600' },
+    { label: 'Draft', value: draft, icon: 'edit', grad: 'from-amber-400 to-orange-500' },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50/50">
@@ -118,21 +124,17 @@ export default function FormsPage() {
           href="/forms/new"
           className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all"
         >
-          <span className="text-base">+</span>
+          <AppIcon name="plus" className="h-4 w-4" />
           Create Form
         </Link>
       </div>
 
       {/* ── Stats ── */}
       <div className="mb-8 grid grid-cols-3 gap-4">
-        {[
-          { label: 'Total forms', value: forms.length, icon: '📋', grad: 'from-blue-500 to-indigo-600' },
-          { label: 'Published',   value: published,    icon: '✅', grad: 'from-emerald-400 to-green-600' },
-          { label: 'Draft',       value: draft,        icon: '📝', grad: 'from-amber-400 to-orange-500' },
-        ].map((s) => (
+        {stats.map((s) => (
           <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>
-              {s.icon}
+              <AppIcon name={s.icon} className="h-5 w-5 text-white" />
             </div>
             <p className="text-2xl font-bold text-slate-900">{s.value}</p>
             <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
@@ -161,12 +163,12 @@ export default function FormsPage() {
       {/* ── Feedback ── */}
       {error && (
         <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <span>⚠</span>{error}
+          <AppIcon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />{error}
         </div>
       )}
       {copyMessage && (
         <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-          <span>✓</span>{copyMessage}
+          <AppIcon name="check" className="mt-0.5 h-4 w-4 shrink-0" />{copyMessage}
         </div>
       )}
 
@@ -178,7 +180,7 @@ export default function FormsPage() {
               {[1,2,3,4,5,6].map((i) => <SkeletonCard key={i} />)}
             </div>
           ) : forms.length === 0 ? (
-            <EmptyState icon="📋" title="No forms yet" description="Create your first form to start collecting data." actionLabel="Create Form" onAction={() => (window.location.href = '/forms/new')} />
+            <EmptyState icon="clipboard" title="No forms yet" description="Create your first form to start collecting data." actionLabel="Create Form" onAction={() => (window.location.href = '/forms/new')} />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {forms.map((form) => {
@@ -190,7 +192,9 @@ export default function FormsPage() {
 
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm">📋</div>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm text-primary">
+                          <AppIcon name="clipboard" className="h-4 w-4" />
+                        </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-900 truncate">{form.title}</p>
                           <p className="text-xs text-slate-400 mt-0.5">
@@ -209,14 +213,15 @@ export default function FormsPage() {
                       <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
                         form.accessMode === 'PUBLIC' ? 'bg-violet-50 text-violet-700' : 'bg-slate-100 text-slate-600'
                       }`}>
-                        {form.accessMode === 'PUBLIC' ? '🌐 Public' : '🔒 Registered'}
+                        <AppIcon name={form.accessMode === 'PUBLIC' ? 'globe' : 'lock'} className="h-3.5 w-3.5" />
+                        {form.accessMode === 'PUBLIC' ? 'Public' : 'Registered'}
                       </span>
                     </div>
 
                     <div className="mt-auto space-y-2">
                       <div className="flex gap-2">
                         <Link href={`/forms/${form.id}`} className="flex-1 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
-                          ✏️ Edit
+                          <AppIcon name="edit" className="mr-1.5 h-3.5 w-3.5" /> Edit
                         </Link>
                         <button
                           type="button"
@@ -228,7 +233,8 @@ export default function FormsPage() {
                               : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                           }`}
                         >
-                          {form.status === 'PUBLISHED' ? '⏸ Unpublish' : '▶ Publish'}
+                          <AppIcon name={form.status === 'PUBLISHED' ? 'pause' : 'play'} className="mr-1.5 h-3.5 w-3.5" />
+                          {form.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
                         </button>
                       </div>
                       <div className="flex gap-2">
@@ -238,7 +244,8 @@ export default function FormsPage() {
                           onClick={() => handleUpdate(form.id, { accessMode: form.accessMode === 'PUBLIC' ? 'REGISTERED' : 'PUBLIC' })}
                           className="flex-1 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition disabled:opacity-50"
                         >
-                          {form.accessMode === 'PUBLIC' ? '🔒 Set Registered' : '🌐 Set Public'}
+                          <AppIcon name={form.accessMode === 'PUBLIC' ? 'lock' : 'globe'} className="mr-1.5 h-3.5 w-3.5" />
+                          {form.accessMode === 'PUBLIC' ? 'Set Registered' : 'Set Public'}
                         </button>
                         <button
                           type="button"
@@ -246,7 +253,7 @@ export default function FormsPage() {
                           onClick={() => handleCopyLink(form.id, form.accessMode)}
                           className="flex-1 inline-flex items-center justify-center rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 transition disabled:opacity-50"
                         >
-                          🔗 Copy link
+                          <AppIcon name="link" className="mr-1.5 h-3.5 w-3.5" /> Copy link
                         </button>
                       </div>
                       <button
@@ -255,7 +262,7 @@ export default function FormsPage() {
                         onClick={() => handleDelete(form.id)}
                         className="w-full inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 transition disabled:opacity-50"
                       >
-                        🗑️ Delete form
+                        <AppIcon name="trash" className="mr-1.5 h-3.5 w-3.5" /> Delete form
                       </button>
                     </div>
                   </div>
@@ -268,7 +275,7 @@ export default function FormsPage() {
 
       {activeTab === 'templates' && (
         <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-          <span className="text-4xl mb-4">📐</span>
+          <AppIcon name="form" className="mb-4 h-10 w-10" />
           <p className="text-sm font-medium">Template library coming soon.</p>
         </div>
       )}

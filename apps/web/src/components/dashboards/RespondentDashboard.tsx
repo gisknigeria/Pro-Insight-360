@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useMemo } from "react";
 import type { FormAssignment } from "./dashboardTypes";
+import { AppIcon, type AppIconName } from "@/components/ui/app-icons";
 
 // ── Sample Data ─────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ const sampleSyncStatus = {
 function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-      <div className="text-4xl mb-3">📭</div>
+      <AppIcon name="mail" className="mb-3 h-9 w-9 text-gray-400" />
       <h4 className="font-semibold text-gray-700 mb-1">{title}</h4>
       <p className="text-sm text-gray-500 mb-4 max-w-sm">{description}</p>
       {action}
@@ -41,11 +42,11 @@ function SyncBanner({
   lastSync: string;
   pendingItems: number;
 }) {
-  const statusConfig: Record<string, { bg: string; text: string; icon: string; label: string }> = {
-    synced: { bg: "bg-green-50", text: "text-green-700", icon: "✅", label: "All data synced" },
-    syncing: { bg: "bg-amber-50", text: "text-amber-800", icon: "🔄", label: "Syncing..." },
-    pending: { bg: "bg-yellow-50", text: "text-yellow-700", icon: "⏳", label: `${pendingItems} item(s) pending` },
-    error: { bg: "bg-red-50", text: "text-red-700", icon: "❌", label: "Sync error - click to retry" },
+  const statusConfig: Record<string, { bg: string; text: string; icon: AppIconName; label: string }> = {
+    synced: { bg: "bg-green-50", text: "text-green-700", icon: "check", label: "All data synced" },
+    syncing: { bg: "bg-amber-50", text: "text-amber-800", icon: "activity", label: "Syncing..." },
+    pending: { bg: "bg-yellow-50", text: "text-yellow-700", icon: "pause", label: `${pendingItems} item(s) pending` },
+    error: { bg: "bg-red-50", text: "text-red-700", icon: "alert", label: "Sync error - click to retry" },
   };
 
   const config = statusConfig[status] || statusConfig.synced;
@@ -53,7 +54,7 @@ function SyncBanner({
   return (
     <div className={`flex items-center justify-between px-4 py-2 rounded-lg mb-6 ${config.bg} ${config.text}`}>
       <div className="flex items-center gap-2">
-        <span>{config.icon}</span>
+        <AppIcon name={config.icon} className="h-4 w-4" />
         <span className="text-sm font-medium">{config.label}</span>
       </div>
       <span className="text-xs opacity-75">
@@ -65,7 +66,7 @@ function SyncBanner({
 
 // ── Stat Card ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: string; color?: string }) {
+function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: AppIconName; color?: string }) {
   const colorClasses: Record<string, string> = {
     blue: "bg-amber-50 text-primary",
     green: "bg-green-50 text-green-600",
@@ -76,7 +77,9 @@ function StatCard({ label, value, icon, color = "blue" }: { label: string; value
     <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-gray-500">{label}</span>
-        <span className={`text-xl p-2 rounded ${colorClasses[color] || colorClasses.blue}`}>{icon}</span>
+        <span className={`p-2 rounded ${colorClasses[color] || colorClasses.blue}`}>
+          <AppIcon name={icon} className="h-5 w-5" />
+        </span>
       </div>
       <div className="text-2xl font-bold text-gray-800">{value}</div>
     </div>
@@ -109,7 +112,7 @@ export default function RespondentDashboard() {
       {/* ── Sync Status Banner ─────────────────────────────────────────── */}
       {isOffline ? (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg mb-6 flex items-center gap-2">
-          <span>📡</span>
+          <AppIcon name="activity" className="h-4 w-4" />
           <span className="text-sm font-medium">You are offline. Your responses will be saved locally and synced when you reconnect.</span>
         </div>
       ) : (
@@ -122,10 +125,10 @@ export default function RespondentDashboard() {
 
       {/* ── Stats Row ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Forms" value={forms.length} icon="📋" color="blue" />
-        <StatCard label="Completed" value={stats.completed} icon="✅" color="green" />
-        <StatCard label="In Progress" value={stats.inProgress} icon="🔄" color="yellow" />
-        <StatCard label="Overdue" value={stats.overdue} icon="⚠️" color={stats.overdue > 0 ? "red" : "green"} />
+        <StatCard label="Total Forms" value={forms.length} icon="clipboard" color="blue" />
+        <StatCard label="Completed" value={stats.completed} icon="check" color="green" />
+        <StatCard label="In Progress" value={stats.inProgress} icon="activity" color="yellow" />
+        <StatCard label="Overdue" value={stats.overdue} icon="alert" color={stats.overdue > 0 ? "red" : "green"} />
       </div>
 
       {/* ── Forms List ─────────────────────────────────────────────────── */}
@@ -219,13 +222,13 @@ export default function RespondentDashboard() {
       {/* ── Helpful Info ───────────────────────────────────────────────── */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <h4 className="font-semibold text-blue-900 mb-2">💡 Save & Continue</h4>
+          <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2"><AppIcon name="info" className="h-4 w-4" /> Save & Continue</h4>
           <p className="text-sm text-blue-800">
             Your progress is automatically saved every 30 seconds. You can close the browser and return later to continue where you left off.
           </p>
         </div>
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <h4 className="font-semibold text-green-900 mb-2">📡 Offline Mode</h4>
+          <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2"><AppIcon name="activity" className="h-4 w-4" /> Offline Mode</h4>
           <p className="text-sm text-green-800">
             If you lose internet connection, your responses are saved locally and will sync automatically when you reconnect.
           </p>

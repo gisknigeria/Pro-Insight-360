@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AppIcon, type AppIconName } from '@/components/ui/app-icons';
 import {
   BarChart,
   Bar,
@@ -126,6 +127,12 @@ export default function UsersPage() {
     const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+  const userStats: { label: string; value: number; icon: AppIconName; grad: string }[] = [
+    { label: 'Total', value: users.length, icon: 'users', grad: 'from-blue-500 to-indigo-600' },
+    { label: 'Active', value: users.filter((u) => u.status === 'ACTIVE').length, icon: 'check', grad: 'from-emerald-400 to-green-600' },
+    { label: 'Locked', value: users.filter((u) => u.status === 'LOCKED').length, icon: 'lock', grad: 'from-red-400 to-rose-600' },
+    { label: 'Inactive', value: users.filter((u) => u.status === 'INACTIVE').length, icon: 'pause', grad: 'from-slate-400 to-slate-600' },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50/50">
@@ -145,7 +152,7 @@ export default function UsersPage() {
           href="/users/new"
           className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
         >
-          <span className="text-base">+</span>
+          <AppIcon name="plus" className="h-4 w-4" />
           Add User
         </Link>
       </div>
@@ -153,15 +160,10 @@ export default function UsersPage() {
       {/* ── Stats + Chart ── */}
       <div className="mb-8 grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[
-            { label: 'Total',    value: users.length,                                 icon: '👥', grad: 'from-blue-500 to-indigo-600' },
-            { label: 'Active',   value: users.filter((u) => u.status === 'ACTIVE').length,   icon: '✅', grad: 'from-emerald-400 to-green-600' },
-            { label: 'Locked',   value: users.filter((u) => u.status === 'LOCKED').length,   icon: '🔒', grad: 'from-red-400 to-rose-600' },
-            { label: 'Inactive', value: users.filter((u) => u.status === 'INACTIVE').length, icon: '⏸', grad: 'from-slate-400 to-slate-600' },
-          ].map((s) => (
+          {userStats.map((s) => (
             <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>
-                {s.icon}
+                <AppIcon name={s.icon} className="h-5 w-5 text-white" />
               </div>
               <p className="text-2xl font-bold text-slate-900">{s.value}</p>
               <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
@@ -195,12 +197,12 @@ export default function UsersPage() {
       {/* ── Alerts ── */}
       {error && (
         <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <span>⚠</span>{error}
+          <AppIcon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />{error}
         </div>
       )}
       {resetInfo && (
         <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
-          <p className="font-bold mb-3 flex items-center gap-2">✅ Password reset for {resetInfo.email}</p>
+          <p className="font-bold mb-3 flex items-center gap-2"><AppIcon name="check" className="h-4 w-4" /> Password reset for {resetInfo.email}</p>
           <div className="space-y-2 rounded-xl bg-white/60 border border-emerald-200 p-4 text-xs">
             <p><strong>Temp password:</strong> <code className="bg-emerald-100 px-2 py-0.5 rounded font-mono">{resetInfo.temporaryPassword}</code></p>
             <p><strong>Setup token:</strong> <code className="bg-emerald-100 px-2 py-0.5 rounded font-mono break-all">{resetInfo.setupToken}</code></p>
@@ -211,7 +213,7 @@ export default function UsersPage() {
       {/* ── Search + Filter ── */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+          <AppIcon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
             placeholder="Search by name, email or organisation…"
@@ -240,7 +242,7 @@ export default function UsersPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="👥" title="No users found" description={search || roleFilter !== 'ALL' ? 'Try adjusting your search or filter.' : 'Add users to your organisation.'} actionLabel={!search && roleFilter === 'ALL' ? 'Add First User' : undefined} onAction={!search && roleFilter === 'ALL' ? () => router.push('/users/new') : undefined} />
+        <EmptyState icon="users" title="No users found" description={search || roleFilter !== 'ALL' ? 'Try adjusting your search or filter.' : 'Add users to your organisation.'} actionLabel={!search && roleFilter === 'ALL' ? 'Add First User' : undefined} onAction={!search && roleFilter === 'ALL' ? () => router.push('/users/new') : undefined} />
       ) : (
         <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           {/* Header */}
@@ -286,14 +288,14 @@ export default function UsersPage() {
                     onClick={() => handleResetPassword(user)}
                     className="rounded-xl px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition"
                   >
-                    🔑
+                    <AppIcon name="key" className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDeleteUser(user)}
                     className="rounded-xl px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
                   >
-                    🗑️
+                    <AppIcon name="trash" className="h-4 w-4" />
                   </button>
                 </div>
               </div>

@@ -231,6 +231,17 @@ img {
   border-radius: 0 !important;
 }
 
+.super-admin-dashboard select,
+.super-admin-dashboard select option {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+.dashboard-shell main .force-readable-light,
+.dashboard-shell main .force-readable-light * {
+  color: #ffffff !important;
+}
+
 .skeleton {
   background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
   background-size: 200% 100%;

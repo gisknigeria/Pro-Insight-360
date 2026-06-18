@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useMemo } from "react";
 import type { DepartmentScore } from "./dashboardTypes";
+import { AppIcon, type AppIconName } from "@/components/ui/app-icons";
 
 // ── Sample Data ─────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ const sampleSubScores = {
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-      <div className="text-4xl mb-3">📭</div>
+      <AppIcon name="mail" className="mb-3 h-9 w-9 text-gray-400" />
       <h4 className="font-semibold text-gray-700 mb-1">{title}</h4>
       <p className="text-sm text-gray-500 mb-4 max-w-sm">{description}</p>
     </div>
@@ -40,7 +41,7 @@ function EmptyState({ title, description }: { title: string; description: string
 
 // ── Stat Card ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: string; color?: string }) {
+function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: AppIconName; color?: string }) {
   const colorClasses: Record<string, string> = {
     blue: "bg-amber-50 text-primary",
     green: "bg-green-50 text-green-600",
@@ -51,7 +52,9 @@ function StatCard({ label, value, icon, color = "blue" }: { label: string; value
     <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-gray-500">{label}</span>
-        <span className={`text-xl p-2 rounded ${colorClasses[color] || colorClasses.blue}`}>{icon}</span>
+        <span className={`p-2 rounded ${colorClasses[color] || colorClasses.blue}`}>
+          <AppIcon name={icon} className="h-5 w-5" />
+        </span>
       </div>
       <div className="text-2xl font-bold text-gray-800">{value}</div>
     </div>
@@ -122,10 +125,10 @@ export default function HODDashboard() {
 
       {/* ── Stats Row ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Dept Digital Readiness" value={sampleMyDeptScore.digitalReadiness} icon="📊" color="blue" />
-        <StatCard label="Dept GIS Readiness" value={sampleMyDeptScore.gisReadiness} icon="🗺️" color="green" />
-        <StatCard label="Dept Completion" value={`${sampleMyDeptScore.completionRate}%`} icon="✅" color="purple" />
-        <StatCard label="Org Average DR" value={deptAverage.digitalReadiness} icon="📈" color="yellow" />
+        <StatCard label="Dept Digital Readiness" value={sampleMyDeptScore.digitalReadiness} icon="chart" color="blue" />
+        <StatCard label="Dept GIS Readiness" value={sampleMyDeptScore.gisReadiness} icon="map" color="green" />
+        <StatCard label="Dept Completion" value={`${sampleMyDeptScore.completionRate}%`} icon="check" color="purple" />
+        <StatCard label="Org Average DR" value={deptAverage.digitalReadiness} icon="activity" color="yellow" />
       </div>
 
       {/* ── Department Comparison ────────────────────────────────────────── */}

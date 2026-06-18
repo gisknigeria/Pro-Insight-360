@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useMemo } from "react";
 import type { Evaluation, ScoreSummary, Conflict, AIStatus } from "./dashboardTypes";
+import { AppIcon, type AppIconName } from "@/components/ui/app-icons";
 
 // ── Sample Data (replace with real API data) ───────────────────────────────
 
@@ -62,7 +63,7 @@ const defaultFilters: DashboardFilters = {
 function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-      <div className="text-4xl mb-3">📭</div>
+      <AppIcon name="mail" className="mb-3 h-9 w-9 text-gray-400" />
       <h4 className="font-semibold text-gray-700 mb-1">{title}</h4>
       <p className="text-sm text-gray-500 mb-4 max-w-sm">{description}</p>
       {action}
@@ -72,12 +73,12 @@ function EmptyState({ title, description, action }: { title: string; description
 
 // ── Stat Card Component ────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon, trend }: { label: string; value: string | number; icon: string; trend?: "up" | "down" | "neutral" }) {
+function StatCard({ label, value, icon, trend }: { label: string; value: string | number; icon: AppIconName; trend?: "up" | "down" | "neutral" }) {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-gray-500">{label}</span>
-        <span className="text-xl">{icon}</span>
+        <AppIcon name={icon} className="h-5 w-5 text-primary" />
       </div>
       <div className="text-2xl font-bold text-gray-800">{value}</div>
       {trend && (
@@ -154,10 +155,10 @@ export default function ConsultantDashboard() {
 
       {/* ── Stats Row ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Active Evaluations" value={activeCount} icon="📊" trend="up" />
-        <StatCard label="Draft Evaluations" value={draftCount} icon="📝" />
-        <StatCard label="Total Responses" value={totalResponses} icon="✅" trend="up" />
-        <StatCard label="Overall Progress" value={`${overallProgress}%`} icon="📈" trend={overallProgress > 50 ? "up" : "neutral"} />
+        <StatCard label="Active Evaluations" value={activeCount} icon="chart" trend="up" />
+        <StatCard label="Draft Evaluations" value={draftCount} icon="edit" />
+        <StatCard label="Total Responses" value={totalResponses} icon="check" trend="up" />
+        <StatCard label="Overall Progress" value={`${overallProgress}%`} icon="activity" trend={overallProgress > 50 ? "up" : "neutral"} />
       </div>
 
       {/* ── Main Content Grid ──────────────────────────────────────────── */}
