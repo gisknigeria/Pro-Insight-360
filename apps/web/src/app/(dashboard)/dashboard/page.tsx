@@ -546,7 +546,7 @@ function OrganizationInsightCharts({
   }, [gapRows]);
 
   const reportHealthData = useMemo(() => {
-    return publishedAnalyses.slice(0, 6).map((published, index) => {
+    return publishedAnalyses.map((published, index) => {
       const reportName = published.evaluationId ? evaluationTitleById[published.evaluationId] : published.summary;
       return {
         name: reportName ? (reportName.length > 18 ? `${reportName.slice(0, 18)}...` : reportName) : `Report ${index + 1}`,
@@ -566,6 +566,26 @@ function OrganizationInsightCharts({
         reportName: reportName || published.summary || `Report ${reportIndex + 1}`,
       }));
     }).filter((item) => normalizeAnalysisChartData(item.chart).length > 0);
+  }, [evaluationTitleById, publishedAnalyses]);
+
+  const analysisShowcases = useMemo(() => {
+    return publishedAnalyses.map((published, index) => {
+      const reportName = published.evaluationId ? evaluationTitleById[published.evaluationId] : published.summary;
+      const analysis = published.analysis;
+      const gaps = analysis?.gaps ?? analysis?.weaknesses ?? [];
+      return {
+        id: published.id,
+        name: reportName || published.summary || `Published analysis ${index + 1}`,
+        publishedAt: published.publishedAt,
+        summary: analysis?.executiveSummary || published.summary,
+        strengths: analysis?.strengths ?? [],
+        gaps,
+        opportunities: analysis?.opportunities ?? [],
+        recommendations: analysis?.recommendations ?? [],
+        actionPlan: analysis?.actionPlan ?? [],
+        chartCount: analysis?.charts?.length ?? 0,
+      };
+    });
   }, [evaluationTitleById, publishedAnalyses]);
 
   if (publishedAnalyses.length === 0) {
@@ -655,11 +675,124 @@ function OrganizationInsightCharts({
     <div className="dashboard-panel rounded-2xl p-6">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Published analysis gaps and charts</h2>
-          <p className="text-sm text-muted">Aggregated from every GISKonsult analysis shared with this organisation.</p>
+          <h2 className="text-lg font-bold text-foreground">Published analysis summary, gaps, and charts</h2>
+          <p className="text-sm text-muted">Client-facing view of every GISKonsult analysis shared with this organisation.</p>
         </div>
         <Pill label={`${publishedAnalyses.length} published`} color="green" />
       </div>
+
+      <div className="mb-5 grid gap-4">
+        {analysisShowcases.map((analysis) => (
+          <div key={analysis.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
+                  Published {new Date(analysis.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+                <h3 className="mt-1 text-lg font-black text-slate-950">{analysis.name}</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-100">{analysis.gaps.length} gaps</span>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">{analysis.recommendations.length} recommendations</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-100">{analysis.chartCount} charts</span>
+              </div>
+            </div>
+
+            {analysis.summary ? (
+              <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Professional summary</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-800">{analysis.summary}</p>
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 xl:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wider text-emerald-700">What looks strong</p>
+                {analysis.strengths.length > 0 ? (
+                  <ul className="mt-3 space-y-2">
+                    {analysis.strengths.map((item, index) => (
+                      <li key={index} className="flex gap-2 text-sm leading-relaxed text-slate-800">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-600">Strengths will appear here when included in the analysis.</p>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wider text-red-700">Gaps to address</p>
+                {analysis.gaps.length > 0 ? (
+                  <ul className="mt-3 space-y-2">
+                    {analysis.gaps.map((item, index) => {
+                      const parsed = parseAnalysisGap(item);
+                      return (
+                        <li key={index} className="flex gap-2 text-sm leading-relaxed text-slate-800">
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                          <span><strong className="text-red-700">{parsed.severity}:</strong> {parsed.text}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-600">No explicit gaps were included in this analysis.</p>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wider text-blue-700">Client actions</p>
+                {analysis.recommendations.length > 0 ? (
+                  <ul className="mt-3 space-y-2">
+                    {analysis.recommendations.map((item, index) => (
+                      <li key={index} className="flex gap-2 text-sm leading-relaxed text-slate-800">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-600">Recommendations will appear here when included in the analysis.</p>
+                )}
+              </div>
+            </div>
+
+            {(analysis.opportunities.length > 0 || analysis.actionPlan.length > 0) && (
+              <div className="mt-3 grid gap-3 xl:grid-cols-2">
+                {analysis.opportunities.length > 0 && (
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wider text-amber-700">Opportunities</p>
+                    <ul className="mt-3 space-y-2">
+                      {analysis.opportunities.map((item, index) => (
+                        <li key={index} className="flex gap-2 text-sm leading-relaxed text-slate-800">
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {analysis.actionPlan.length > 0 && (
+                  <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wider text-violet-700">Action plan</p>
+                    <div className="mt-3 space-y-2">
+                      {analysis.actionPlan.map((item, index) => (
+                        <div key={index} className="rounded-xl bg-white/70 p-3 text-sm text-slate-800 ring-1 ring-violet-100">
+                          <p className="font-bold text-slate-950">{item.what || 'Action item'}</p>
+                          <p className="mt-1 text-xs text-slate-600">Who: {item.who || 'TBD'} · When: {item.when || 'TBD'}</p>
+                          {item.how ? <p className="mt-2 leading-relaxed">{item.how}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h3 className="mb-1 text-sm font-bold text-slate-950">Gap severity</h3>
@@ -698,7 +831,7 @@ function OrganizationInsightCharts({
 
       {gapRows.length > 0 ? (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {gapRows.slice(0, 8).map((gap, index) => {
+          {gapRows.map((gap, index) => {
             const cfg = {
               CRITICAL: 'border-red-200 bg-red-50 text-red-700',
               HIGH: 'border-orange-200 bg-orange-50 text-orange-700',
@@ -722,7 +855,7 @@ function OrganizationInsightCharts({
 
       {analysisCharts.length > 0 && (
         <div className="mt-5 grid gap-4 xl:grid-cols-3">
-          {analysisCharts.slice(0, 6).map((item, index) => {
+          {analysisCharts.map((item, index) => {
             const data = normalizeAnalysisChartData(item.chart);
             const palette = ['#2563eb', '#10b981', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
             return (
