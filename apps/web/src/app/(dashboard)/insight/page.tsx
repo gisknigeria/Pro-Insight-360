@@ -697,10 +697,10 @@ function SuperAdminInsightPage() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-3 md:items-end">
-                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                        <span className="bg-white/10 px-4 py-2"><b className="block text-sm text-white">{sector.forms}</b>Forms</span>
-                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.published}</b>Published</span>
-                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.draft}</b>Draft</span>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs text-white">
+                        <span className="bg-white/10 px-4 py-2 text-white"><b className="block text-sm text-white">{sector.forms}</b><span className="block text-xs text-white/80">Forms</span></span>
+                        <span className="bg-white/10 px-3 py-2 text-white"><b className="block text-sm text-white">{sector.published}</b><span className="block text-xs text-white/80">Published</span></span>
+                        <span className="bg-white/10 px-3 py-2 text-white"><b className="block text-sm text-white">{sector.draft}</b><span className="block text-xs text-white/80">Draft</span></span>
                       </div>
                       <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-200">
                         {isOpen ? 'Close' : 'Open'}
