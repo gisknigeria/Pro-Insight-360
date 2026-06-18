@@ -602,8 +602,7 @@ function SuperAdminInsightPage() {
     return Array.from(groups, ([organisationName, sectorItems]) => ({
       organisationName,
       items: sectorItems,
-      projects: sectorItems.filter(item => item.kind === 'PROJECT').length,
-      forms: sectorItems.filter(item => item.kind === 'FORM').length,
+      forms: sectorItems.length,
       published: sectorItems.filter(item => item.hasAnalysis).length,
       draft: sectorItems.filter(item => !item.hasAnalysis).length,
     })).sort((a, b) => a.organisationName.localeCompare(b.organisationName));
@@ -681,11 +680,11 @@ function SuperAdminInsightPage() {
               {organisationSectors.map(sector => {
                 const isOpen = expandedOrganisation === sector.organisationName;
                 return (
-                <section key={sector.organisationName} className="border border-slate-200 bg-white shadow-sm">
+                <section key={sector.organisationName} className="border border-slate-800 bg-slate-900 shadow-sm">
                   <button
                     type="button"
                     onClick={() => setExpandedOrganisation(isOpen ? null : sector.organisationName)}
-                    className="flex w-full flex-col gap-4 border-b border-slate-100 bg-slate-900 p-5 text-left text-white transition-colors hover:bg-slate-800 md:flex-row md:items-center md:justify-between"
+                    className="flex w-full flex-col gap-4 border-b border-slate-700 bg-gradient-to-r from-slate-950 via-slate-900 to-primary p-5 text-left text-white transition-colors hover:from-slate-900 hover:via-slate-800 hover:to-primary md:flex-row md:items-center md:justify-between"
                     aria-expanded={isOpen}
                   >
                     <div className="flex items-center gap-3">
@@ -698,10 +697,8 @@ function SuperAdminInsightPage() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-3 md:items-end">
-                      <div className="grid grid-cols-5 gap-2 text-center text-xs">
-                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.items.length}</b>All</span>
-                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.projects}</b>Projects</span>
-                        <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.forms}</b>Forms</span>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <span className="bg-white/10 px-4 py-2"><b className="block text-sm text-white">{sector.forms}</b>Forms</span>
                         <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.published}</b>Published</span>
                         <span className="bg-white/10 px-3 py-2"><b className="block text-sm text-white">{sector.draft}</b>Draft</span>
                       </div>
@@ -713,7 +710,7 @@ function SuperAdminInsightPage() {
                   </button>
 
                   {isOpen && (
-                  <div className="grid gap-4 p-5 lg:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-4 bg-slate-100 p-5 lg:grid-cols-2 xl:grid-cols-3">
                     {sector.items.map(item => {
                       return (
                         <div key={`${item.kind}-${item.id}`} className="group relative flex flex-col border border-slate-200 bg-white shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
