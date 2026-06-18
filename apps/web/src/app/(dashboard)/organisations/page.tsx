@@ -157,6 +157,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
   const [showUnit, setShowUnit] = useState(false);
   const [expandedUnitId, setExpandedUnitId] = useState<string | null>(null);
   const [questionMap, setQuestionMap] = useState<Record<string, string[]>>({});
+  const [copiedFormId, setCopiedFormId] = useState<string | null>(null);
 
   const allOrgEvals = evaluations.filter(e => e.organisation?.id === org.id);
   const orgEvals = allOrgEvals.filter(e => !isFormBucketEvaluation(e));
@@ -211,6 +212,17 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
   function publicFormUrl(formId: string) {
     if (typeof window === 'undefined') return `/public/forms/${formId}`;
     return `${window.location.origin}/public/forms/${formId}`;
+  }
+
+  async function copyInviteLink(formId: string) {
+    const url = publicFormUrl(formId);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copy this questionnaire invite link:', url);
+    }
+    setCopiedFormId(formId);
+    window.setTimeout(() => setCopiedFormId(null), 2200);
   }
 
   return (
@@ -304,6 +316,20 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold ${cfg.cls}`}>
                       <span className={`h-1.5 w-1.5 ${cfg.dot}`} />{cfg.label}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => copyInviteLink(f.id)}
+                      className="inline-flex shrink-0 items-center gap-1 bg-emerald-600 px-3 py-2 text-[11px] font-black text-white transition hover:bg-emerald-700"
+                    >
+                      <AppIcon name="copy" className="h-5 w-5" />
+                      {copiedFormId === f.id ? 'Copied' : 'Copy invite link'}
+                    </button>
+                    <Link
+                      href={`/public/forms/${f.id}`}
+                      className="inline-flex shrink-0 items-center gap-1 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-800 transition hover:bg-emerald-100"
+                    >
+                      <AppIcon name="link" className="h-5 w-5" /> Open
+                    </Link>
                     <Link href={`/forms/${f.id}`}
                       className="bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0"> <span className="inline-flex items-center gap-1"><AppIcon name="edit" className="h-5 w-5" /> Edit</span>
                     </Link>
@@ -403,6 +429,9 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                                   <p className="mt-1 text-xs text-slate-500">{form.questionCount} questions - share link: {publicFormUrl(form.id)}</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
+                                  <button type="button" onClick={(event) => { event.stopPropagation(); void copyInviteLink(form.id); }} className="inline-flex items-center gap-1 bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700">
+                                    <AppIcon name="copy" className="h-5 w-5" /> {copiedFormId === form.id ? 'Copied' : 'Copy invite link'}
+                                  </button>
                                   <Link href={`/evaluations/${form.evaluationId}/diagnosis`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100">
                                     <AppIcon name="chart" className="h-3.5 w-3.5" /> Insight
                                   </Link>
