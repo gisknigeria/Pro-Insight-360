@@ -324,12 +324,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                       <AppIcon name="copy" className="h-5 w-5" />
                       {copiedFormId === f.id ? 'Copied' : 'Copy invite link'}
                     </button>
-                    <Link
-                      href={`/public/forms/${f.id}`}
-                      className="inline-flex shrink-0 items-center gap-1 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-800 transition hover:bg-emerald-100"
-                    >
-                      <AppIcon name="link" className="h-5 w-5" /> Open
-                    </Link>
+                  
                     <Link href={`/forms/${f.id}`}
                       className="bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition shrink-0"> <span className="inline-flex items-center gap-1"><AppIcon name="edit" className="h-5 w-5" /> Edit</span>
                     </Link>
