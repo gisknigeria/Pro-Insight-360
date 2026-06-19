@@ -45,7 +45,7 @@ Carefully read every question and answer. Then produce a comprehensive structure
 
 1. OVERALL ORGANISATIONAL HEALTH — executive summary, SWOT (strengths, weaknesses, opportunities, threats/gaps), and prioritised recommendations.
 2. GIS READINESS — assess geospatial capability maturity (Nascent / Emerging / Developing / Advanced), infrastructure, data management, and staff competency in GIS.
-3. DIGITAL TRANSFORMATION — evaluate technology adoption, process automation maturity, digital culture, change readiness, and leadership alignment. Score each domain 0–100.
+3. DIGITAL TRANSFORMATION — evaluate technology adoption, process automation maturity, digital culture, change readiness, and leadership alignment. Score each domain consistently.
 4. TECHNICAL SKILLS — map identified skills against required capabilities, highlight critical skill gaps, training needs, and career development priorities.
 5. GOVERNANCE & COMPLIANCE — assess policy adherence, risk management maturity, accountability structures, and regulatory compliance gaps.
 6. CHART DATA — generate multiple chart datasets (one per domain above) with realistic scores derived from the actual responses.
@@ -72,10 +72,10 @@ Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences
   ],
   "charts": [
     {"title":"GIS Readiness by Domain","data":[{"label":"Infrastructure","value":0},{"label":"Data Management","value":0},{"label":"Staff GIS Skills","value":0},{"label":"Governance","value":0},{"label":"Workflows","value":0},{"label":"Spatial Data Assets","value":0},{"label":"Leadership Buy-in","value":0}]},
-    {"title":"Digital Readiness Scores (0–100)","data":[{"label":"Technology Infra","value":0},{"label":"Process Automation","value":0},{"label":"Digital Culture","value":0},{"label":"Data Quality","value":0},{"label":"Leadership Alignment","value":0},{"label":"Connectivity","value":0},{"label":"Change Readiness","value":0}]},
-    {"title":"Technical Skills Proficiency by Department (0–100)","data":[{"label":"Department 1","value":0},{"label":"Department 2","value":0}]},
-    {"title":"Governance Maturity (0–100)","data":[{"label":"Policy Framework","value":0},{"label":"Risk Management","value":0},{"label":"Compliance Structures","value":0},{"label":"Accountability","value":0},{"label":"Security Policies","value":0},{"label":"Audit Trail","value":0}]},
-    {"title":"Overall Organisational Readiness (0–100)","data":[{"label":"GIS Readiness","value":0},{"label":"Digital Transformation","value":0},{"label":"Technical Skills","value":0},{"label":"Governance","value":0},{"label":"Operations","value":0},{"label":"Change Readiness","value":0},{"label":"Revenue Systems","value":0}]}
+    {"title":"Digital Readiness Scores","data":[{"label":"Technology Infra","value":0},{"label":"Process Automation","value":0},{"label":"Digital Culture","value":0},{"label":"Data Quality","value":0},{"label":"Leadership Alignment","value":0},{"label":"Connectivity","value":0},{"label":"Change Readiness","value":0}]},
+    {"title":"Technical Skills Proficiency by Department","data":[{"label":"Department 1","value":0},{"label":"Department 2","value":0}]},
+    {"title":"Governance Maturity","data":[{"label":"Policy Framework","value":0},{"label":"Risk Management","value":0},{"label":"Compliance Structures","value":0},{"label":"Accountability","value":0},{"label":"Security Policies","value":0},{"label":"Audit Trail","value":0}]},
+    {"title":"Overall Organisational Readiness","data":[{"label":"GIS Readiness","value":0},{"label":"Digital Transformation","value":0},{"label":"Technical Skills","value":0},{"label":"Governance","value":0},{"label":"Operations","value":0},{"label":"Change Readiness","value":0},{"label":"Revenue Systems","value":0}]}
   ],
   "organogram": {
     "nodes": [{"id":"1","label":"Role name","group":"Department name"}],
@@ -86,7 +86,7 @@ Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences
 IMPORTANT RULES:
 - gaps MUST be prefixed with severity: "CRITICAL: ...", "HIGH: ...", "MEDIUM: ...", or "LOW: ..."
 - organogram links MUST use the exact label text from nodes (not the id numbers) in the source and target fields
-- chart values for GIS Readiness may be raw scores (not necessarily 0–100); all other charts use 0–100
+- chart values should be consistent within each chart and grounded in the submitted responses
 - Base all scores and findings strictly on the actual form responses provided. Do not invent data.
 - If a dimension is not covered by the responses, set its chart values to 0 and note the gap in the gaps array.`;
 
@@ -129,7 +129,7 @@ function AnalysisChartCard({ chart }: { chart: any }) {
 
   const avg = chartData.length > 0 ? chartData.reduce((s: number, p: any) => s + p.value, 0) / chartData.length : 0;
   const maxVal = chartData.length > 0 ? Math.max(...chartData.map((d: any) => d.value)) : 100;
-  // Use 0–100 scale only when max value clearly fits; otherwise auto-scale
+  // Use a fixed scale only when values clearly fit; otherwise auto-scale.
   const yMax = maxVal <= 100 && avg <= 100 ? 100 : undefined;
 
   if (chartData.length === 0) {

@@ -304,6 +304,14 @@ function normalizeAnalysisChartData(chart: { data?: Array<{ label?: string; name
     : [];
 }
 
+function cleanChartTitle(title?: string) {
+  return String(title || 'Supporting chart')
+    .replace(/\s*\((?:0\s*[–-]\s*100|score\s*0\s*[–-]\s*100|scores?\s*0\s*[–-]\s*100)\)\s*/gi, '')
+    .replace(/\s*0\s*[–-]\s*100\s*/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function StatCardSkeleton() {
   return (
     <div className="rounded-2xl border border-border bg-surface p-5">
@@ -325,8 +333,19 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
 
   return (
     <div className="space-y-4">
-      {/* Summary card */}
-      
+      {analysis?.charts?.length ? (
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+          <h4 className="mb-4 flex items-center gap-2 text-sm font-bold text-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            Supporting charts
+          </h4>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {analysis.charts.map((chart, chartIndex) => (
+              <AnalysisChartCard key={chartIndex} chart={chart} />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {analysis?.executiveSummary ? (
         <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
@@ -334,7 +353,7 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             Executive summary
           </h3>
-          <p className="text-sm text-muted leading-relaxed whitespace-pre-wrap">{analysis.executiveSummary}</p>
+          <p className="line-clamp-3 text-sm leading-relaxed text-muted">{analysis.executiveSummary}</p>
         </div>
       ) : null}
 
@@ -434,20 +453,6 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
         </div>
       ) : null}
 
-      {analysis?.charts?.length ? (
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-          <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            Supporting charts
-          </h4>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {analysis.charts.map((chart, chartIndex) => (
-              <AnalysisChartCard key={chartIndex} chart={chart} />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       {orgRows.length > 0 ? (
         <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
           <div className="flex items-center justify-between gap-4 mb-4">
@@ -471,7 +476,7 @@ function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ 
 
   return (
     <div className="rounded-xl border border-border bg-surface-muted p-4 min-w-0">
-      <p className="font-semibold text-foreground mb-3">{chart.title || 'Supporting chart'}</p>
+      <p className="font-semibold text-foreground mb-3">{cleanChartTitle(chart.title)}</p>
       {chartData.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 bg-surface p-5 text-sm text-muted">No chart data available.</div>
       ) : (
@@ -562,7 +567,7 @@ function OrganizationInsightCharts({
       const reportName = published.evaluationId ? evaluationTitleById[published.evaluationId] : published.summary;
       return (published.analysis?.charts ?? []).map((chart, chartIndex) => ({
         chart,
-        title: chart.title || `${reportName || `Report ${reportIndex + 1}`} chart ${chartIndex + 1}`,
+        title: cleanChartTitle(chart.title || `${reportName || `Report ${reportIndex + 1}`} chart ${chartIndex + 1}`),
         reportName: reportName || published.summary || `Report ${reportIndex + 1}`,
       }));
     }).filter((item) => normalizeAnalysisChartData(item.chart).length > 0);
@@ -675,8 +680,8 @@ function OrganizationInsightCharts({
     <div className="dashboard-panel flex flex-col rounded-2xl p-6">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Published analysis summary, gaps, and charts</h2>
-          <p className="text-sm text-muted">Client-facing view of every GISKonsult analysis shared with this organisation.</p>
+          <h2 className="text-lg font-bold text-foreground">Published insight charts</h2>
+          <p className="text-sm text-muted">Visual summary of the latest GISKonsult findings shared with this organisation.</p>
         </div>
         <Pill label={`${publishedAnalyses.length} published`} color="green" />
       </div>
@@ -700,8 +705,8 @@ function OrganizationInsightCharts({
 
             {analysis.summary ? (
               <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Professional summary</p>
-                <p className="mt-2 text-sm leading-relaxed text-slate-800">{analysis.summary}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Brief summary</p>
+                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-800">{analysis.summary}</p>
               </div>
             ) : null}
 
@@ -793,7 +798,53 @@ function OrganizationInsightCharts({
         ))}
       </div>
 
-      <div className="order-1 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+      {analysisCharts.length > 0 && (
+        <div className="order-1 mb-5 grid gap-4 xl:grid-cols-3">
+          {analysisCharts.map((item, index) => {
+            const data = normalizeAnalysisChartData(item.chart);
+            const palette = ['#2563eb', '#10b981', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
+            return (
+              <div key={`${item.reportName}-${item.title}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-5">
+                <p className="text-sm font-bold text-slate-950">{item.title}</p>
+                <p className="mb-4 mt-1 text-xs text-slate-500">{item.reportName}</p>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    {index % 3 === 0 ? (
+                      <BarChart data={data} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
+                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                          {data.map((row, rowIndex) => <Cell key={row.name} fill={palette[rowIndex % palette.length]} />)}
+                        </Bar>
+                      </BarChart>
+                    ) : index % 3 === 1 ? (
+                      <AreaChart data={data} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
+                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Area type="monotone" dataKey="value" stroke="#0891b2" fill="#67e8f9" fillOpacity={0.72} />
+                      </AreaChart>
+                    ) : (
+                      <PieChart>
+                        <Pie data={data} dataKey="value" nameKey="name" outerRadius={82}>
+                          {data.map((row, rowIndex) => <Cell key={row.name} fill={palette[rowIndex % palette.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Legend iconType="square" wrapperStyle={{ fontSize: 10 }} />
+                      </PieChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="order-2 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h3 className="mb-1 text-sm font-bold text-slate-950">Gap severity</h3>
           <p className="mb-4 text-xs text-slate-500">Where the organisation needs attention across all reports.</p>
@@ -853,51 +904,6 @@ function OrganizationInsightCharts({
         </div>
       )}
 
-      {analysisCharts.length > 0 && (
-        <div className="order-2 mt-5 grid gap-4 xl:grid-cols-3">
-          {analysisCharts.map((item, index) => {
-            const data = normalizeAnalysisChartData(item.chart);
-            const palette = ['#2563eb', '#10b981', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
-            return (
-              <div key={`${item.reportName}-${item.title}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-5">
-                <p className="text-sm font-bold text-slate-950">{item.title}</p>
-                <p className="mb-4 mt-1 text-xs text-slate-500">{item.reportName}</p>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {index % 3 === 0 ? (
-                      <BarChart data={data} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
-                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                          {data.map((row, rowIndex) => <Cell key={row.name} fill={palette[rowIndex % palette.length]} />)}
-                        </Bar>
-                      </BarChart>
-                    ) : index % 3 === 1 ? (
-                      <AreaChart data={data} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
-                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                        <Area type="monotone" dataKey="value" stroke="#0891b2" fill="#67e8f9" fillOpacity={0.72} />
-                      </AreaChart>
-                    ) : (
-                      <PieChart>
-                        <Pie data={data} dataKey="value" nameKey="name" outerRadius={82}>
-                          {data.map((row, rowIndex) => <Cell key={row.name} fill={palette[rowIndex % palette.length]} />)}
-                        </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                        <Legend iconType="square" wrapperStyle={{ fontSize: 10 }} />
-                      </PieChart>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -1862,7 +1868,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-950">Client Admin Dashboard</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-950">Organisation Performance Dashboard</h1>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-200">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-300 opacity-75" />
@@ -1871,12 +1877,12 @@ export default function DashboardPage() {
                 Live
               </span>
             </div>
-            <p className="text-sm text-slate-500">Live evaluation metrics and your latest published GISKonsult insight.</p>
+            <p className="text-sm text-slate-500">Executive view of response activity, readiness signals, priority gaps, and published GISKonsult findings.</p>
           </div>
           {userOrg && (
             <div className="inline-flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 shadow-sm">
               <span className="flex-shrink-0 w-2 h-2 rounded-full bg-success" />
-              <span className="font-bold">Organisation:</span>
+              <span className="font-bold">Current organisation</span>
               <span className="text-slate-500">{userOrg.name}</span>
             </div>
           )}
@@ -1958,8 +1964,8 @@ export default function DashboardPage() {
           <div className="dashboard-panel rounded-2xl p-6">
             <div className="flex items-center justify-between gap-4 mb-5">
               <div>
-                <h2 className="text-lg font-bold text-foreground">Latest published insight</h2>
-                <p className="text-sm text-muted mt-0.5">The newest report is still available below, while the chart section above combines all published analysis for this organisation.</p>
+                <h2 className="text-lg font-bold text-foreground">Latest report brief</h2>
+                <p className="text-sm text-muted mt-0.5">A short executive note. The decision charts are shown above.</p>
               </div>
               <span className="text-2xl font-bold text-accent">{filteredPublishedAnalyses.length}</span>
             </div>

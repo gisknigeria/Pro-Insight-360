@@ -252,7 +252,7 @@ export default function GISReadinessForm({ onSubmit, initialData }: GISReadiness
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-800">GIS Readiness Assessment</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Rate your organisation's GIS readiness across 11 key areas (0-100 scale)
+          Rate your organisation's GIS readiness across 11 key areas.
         </p>
       </div>
 
