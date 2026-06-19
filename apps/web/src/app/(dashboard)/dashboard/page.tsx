@@ -1940,22 +1940,11 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          {/* ── Evaluation response stats per evaluation ── */}
-          {companyEvaluations.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {companyEvaluations.slice(0, 4).map((ev) => (
-                <EvaluationStatCard key={ev.id} evaluation={ev} />
-              ))}
-            </div>
-          )}
+        
 
         
 
-          {selectedEvaluationForMetrics ? (
-            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-              Overall metrics from <span className="font-semibold text-slate-950">{selectedEvaluationForMetrics.title}</span>.
-            </div>
-          ) : null}
+         
 
           <OrganizationInsightCharts
             publishedAnalyses={filteredPublishedAnalyses}

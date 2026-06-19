@@ -615,27 +615,6 @@ app.post('/auth/setup', async (req, res) => {
   }
 });
 
-async function getAnonymousRespondentId() {
-  const email = process.env.PUBLIC_RESPONDENT_EMAIL || 'anonymous@public.local';
-  let user = await prisma.user.findUnique({ where: { email } });
-  if (user) {
-    return user.id;
-  }
-
-  const passwordHash = await bcrypt.hash('anonymous-public-response', 10);
-  user = await prisma.user.create({
-    data: {
-      email,
-      name: 'Public respondent',
-      passwordHash,
-      role: 'RESPONDENT',
-      isActive: true,
-    },
-  });
-
-  return user.id;
-}
-
 function getOptionalAuthenticatedUserId(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -651,17 +630,36 @@ function getOptionalAuthenticatedUserId(req) {
   }
 }
 
+function getResponseRespondentLabel(response) {
+  return response.respondent?.name
+    || response.respondent?.email
+    || response.respondentName
+    || response.respondentEmail
+    || 'Public respondent';
+}
+
+async function getCurrentDbUser(req) {
+  if (!req.user?.sub) return null;
+  return prisma.user.findUnique({
+    where: { id: req.user.sub },
+    include: { organisation: true },
+  });
+}
+
 app.post('/responses/public/submit', async (req, res) => {
   try {
-    const { formId, answers } = req.body;
+    const { formId, answers, respondentName, respondentEmail } = req.body;
     if (!formId || !Array.isArray(answers)) {
       return res.status(400).json({ message: 'Form ID and answers are required.' });
     }
 
-    const respondentId =
-      getOptionalAuthenticatedUserId(req) || (await getAnonymousRespondentId());
+    const respondentId = getOptionalAuthenticatedUserId(req);
 
-    await createOrUpdateResponse(formId, respondentId, 'SUBMITTED', answers);
+    await createOrUpdateResponse(formId, respondentId, 'SUBMITTED', answers, {
+      publicSubmission: !respondentId,
+      respondentName: String(respondentName || '').trim() || null,
+      respondentEmail: String(respondentEmail || '').trim().toLowerCase() || null,
+    });
     res.json({ message: 'Response submitted.' });
   } catch (error) {
     console.error('Submit public response failed:', error);
@@ -729,20 +727,32 @@ app.put('/users/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'A
   try {
     const { id } = req.params;
     const { name, role, isActive, department, organisationId } = req.body;
+    const currentUser = await getCurrentDbUser(req);
 
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
+    if (req.user.role === 'CLIENT_ADMIN' && user.organisationId !== currentUser?.organisationId) {
+      return res.status(403).json({ message: 'You can only update users in your organisation.' });
+    }
+
+    const allowedRoles = req.user.role === 'SUPER_ADMIN'
+      ? ['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'HOD', 'RESPONDENT']
+      : ['CLIENT_ADMIN', 'HOD', 'RESPONDENT'];
+    const nextRole = allowedRoles.includes(role) ? role : user.role;
+    const nextOrganisationId = req.user.role === 'SUPER_ADMIN'
+      ? (organisationId !== undefined ? (organisationId || null) : user.organisationId)
+      : currentUser?.organisationId || user.organisationId;
 
     const updated = await prisma.user.update({
       where: { id },
       data: {
         name: name !== undefined ? String(name).trim() : user.name,
-        role: role || user.role,
+        role: nextRole,
         isActive: isActive !== undefined ? Boolean(isActive) : user.isActive,
         department: department !== undefined ? String(department || '').trim() : user.department,
-        organisationId: organisationId !== undefined ? (organisationId || null) : user.organisationId,
+        organisationId: nextOrganisationId,
       },
     });
 
@@ -887,16 +897,25 @@ app.post('/organograms', async (req, res) => {
   }
 });
 
-app.post('/users', roleGuard(['SUPER_ADMIN']), async (req, res) => {
+app.post('/users', roleGuard(['SUPER_ADMIN', 'CLIENT_ADMIN']), async (req, res) => {
   try {
     const { name, email, role, organisationId, department } = req.body;
     if (!email?.trim()) {
       return res.status(400).json({ message: 'Email is required.' });
     }
 
-    const normalizedRole = ['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'HOD', 'RESPONDENT'].includes(role)
-      ? role
-      : 'RESPONDENT';
+    const currentUser = await getCurrentDbUser(req);
+    const allowedRoles = req.user.role === 'SUPER_ADMIN'
+      ? ['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'HOD', 'RESPONDENT']
+      : ['CLIENT_ADMIN', 'HOD', 'RESPONDENT'];
+    const normalizedRole = allowedRoles.includes(role) ? role : 'RESPONDENT';
+    const scopedOrganisationId = req.user.role === 'SUPER_ADMIN'
+      ? (organisationId || null)
+      : currentUser?.organisationId;
+
+    if (req.user.role === 'CLIENT_ADMIN' && !scopedOrganisationId) {
+      return res.status(400).json({ message: 'Your account is not linked to an organisation.' });
+    }
 
     const existingUser = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
     if (existingUser) {
@@ -912,7 +931,7 @@ app.post('/users', roleGuard(['SUPER_ADMIN']), async (req, res) => {
         email: email.trim().toLowerCase(),
         name: name?.trim() || email.trim(),
         role: normalizedRole,
-        organisationId: organisationId || null,
+        organisationId: scopedOrganisationId,
         department: department?.trim() || null,
         passwordHash,
         setupToken,
@@ -935,12 +954,16 @@ app.post('/users', roleGuard(['SUPER_ADMIN']), async (req, res) => {
   }
 });
 
-app.post('/users/:id/reset-password', roleGuard(['SUPER_ADMIN']), async (req, res) => {
+app.post('/users/:id/reset-password', roleGuard(['SUPER_ADMIN', 'CLIENT_ADMIN']), async (req, res) => {
   try {
     const { id } = req.params;
+    const currentUser = await getCurrentDbUser(req);
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
+    }
+    if (req.user.role === 'CLIENT_ADMIN' && user.organisationId !== currentUser?.organisationId) {
+      return res.status(403).json({ message: 'You can only reset users in your organisation.' });
     }
 
     const tempPassword = crypto.randomBytes(16).toString('hex');
@@ -1017,49 +1040,58 @@ app.post('/contacts', async (req, res) => {
   }
 });
 
-app.post('/departments', async (req, res) => {
+app.post('/departments', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { name, lead, description, organisationId } = req.body;
     if (!name?.trim()) {
       return res.status(400).json({ message: 'Department name is required.' });
     }
+    const currentUser = await getCurrentDbUser(req);
+    const scopedOrganisationId = req.user.role === 'SUPER_ADMIN' || req.user.role === 'CONSULTANT' || req.user.role === 'ADMIN'
+      ? organisationId
+      : currentUser?.organisationId;
+    if (!scopedOrganisationId) {
+      return res.status(400).json({ message: 'Organisation is required.' });
+    }
 
-    const orgSuffix = organisationId ? `.${String(organisationId).slice(0, 8)}` : '';
-    const email = `${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.')}${orgSuffix}@pro-insight.local`;
-    const tempPassword = crypto.randomBytes(16).toString('hex');
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
-    const setupToken = crypto.randomBytes(32).toString('hex');
-
-    const user = await prisma.user.create({
+    const department = await prisma.department.create({
       data: {
-        email,
-        name: lead?.trim() || name.trim(),
-        role: 'HOD',
-        organisationId: organisationId || null,
-        department: name.trim(),
-        passwordHash,
-        setupToken,
-        setupTokenExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-        isActive: true,
+        organisationId: scopedOrganisationId,
+        name: name.trim(),
+        description: description?.trim() || null,
+        leadName: lead?.trim() || null,
       },
+      include: { organisation: true },
     });
 
     res.status(201).json({
-      id: user.id,
-      name: name.trim(),
-      lead: user.name,
-      description: description?.trim() || undefined,
-      setupToken: user.setupToken,
+      id: department.id,
+      name: department.name,
+      lead: department.leadName || undefined,
+      description: department.description || undefined,
+      organisation: { id: department.organisation.id, name: department.organisation.name },
+      staffCount: 0,
+      createdAt: department.createdAt,
     });
   } catch (error) {
     console.error('Create department failed:', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ message: 'A department with this name already exists for this organisation.' });
+    }
     res.status(500).json({ message: 'Unable to create department.' });
   }
 });
 
 app.get('/users', async (req, res) => {
   try {
+    const currentUser = await getCurrentDbUser(req);
+    const where = req.user.role === 'SUPER_ADMIN'
+      ? {}
+      : currentUser?.organisationId
+        ? { organisationId: currentUser.organisationId }
+        : { id: req.user.sub };
     const users = await prisma.user.findMany({
+      where,
       include: { organisation: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -1419,7 +1451,7 @@ app.get('/forms/:formId/versions', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIE
       responseDetails.set(version, [
         ...(responseDetails.get(version) || []),
         {
-          respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
+          respondent: getResponseRespondentLabel(response),
           submittedAt: response.submittedAt,
           answers: response.answers.map(answer => ({
             question: answer.question?.label || answer.questionId,
@@ -1725,9 +1757,12 @@ app.get('/storage/files/:key(*)', async (req, res) => {
 
 app.get('/responses', async (req, res) => {
   try {
+    const currentUser = await getCurrentDbUser(req);
     const query = req.user.role === 'RESPONDENT'
       ? { respondentId: req.user.sub }
-      : {};
+      : req.user.role === 'CLIENT_ADMIN' && currentUser?.organisationId
+        ? { form: { evaluation: { organisationId: currentUser.organisationId } } }
+        : {};
 
     const responses = await prisma.response.findMany({
       where: query,
@@ -1768,9 +1803,9 @@ app.get('/responses', async (req, res) => {
             : null,
         },
         respondent: {
-          id: response.respondent.id,
-          name: response.respondent.name || response.respondent.email,
-          email: response.respondent.email,
+          id: response.respondent?.id || null,
+          name: getResponseRespondentLabel(response),
+          email: response.respondent?.email || response.respondentEmail || '',
         },
         status: response.status,
         completionPercentage,
@@ -1815,7 +1850,7 @@ app.get('/responses/draft/:formId', async (req, res) => {
   }
 });
 
-async function createOrUpdateResponse(formId, respondentId, status, answers) {
+async function createOrUpdateResponse(formId, respondentId, status, answers, options = {}) {
   const form = await prisma.form.findUnique({ where: { id: formId } });
   if (!form) {
     throw new Error('Form not found.');
@@ -1823,16 +1858,22 @@ async function createOrUpdateResponse(formId, respondentId, status, answers) {
 
   const formVersion = getFormCurrentVersion(form.definition);
   const rawCacheJson = JSON.stringify({ answers, formVersion });
+  const isPublicSubmission = Boolean(options.publicSubmission);
 
-  let response = await prisma.response.findFirst({
-    where: { formId, respondentId, status: 'DRAFT' },
-  });
+  let response = null;
+  if (respondentId && !isPublicSubmission) {
+    response = await prisma.response.findFirst({
+      where: { formId, respondentId, status: 'DRAFT' },
+    });
+  }
 
   if (!response) {
     response = await prisma.response.create({
       data: {
         formId,
-        respondentId,
+        respondentId: respondentId || null,
+        respondentName: options.respondentName || null,
+        respondentEmail: options.respondentEmail || null,
         status: 'DRAFT',
         rawCacheJson,
       },
@@ -1863,6 +1904,8 @@ async function createOrUpdateResponse(formId, respondentId, status, answers) {
   if (status === 'SUBMITTED') {
     data.status = 'SUBMITTED';
     data.submittedAt = new Date();
+    if (options.respondentName !== undefined) data.respondentName = options.respondentName || null;
+    if (options.respondentEmail !== undefined) data.respondentEmail = options.respondentEmail || null;
   }
 
   return prisma.response.update({ where: { id: response.id }, data });
@@ -1900,7 +1943,12 @@ app.post('/responses/submit', async (req, res) => {
 
 app.get('/organisations', async (req, res) => {
   try {
+    const currentUser = await getCurrentDbUser(req);
+    const where = req.user.role === 'CLIENT_ADMIN' && currentUser?.organisationId
+      ? { id: currentUser.organisationId }
+      : {};
     const organisations = await prisma.organisation.findMany({
+      where,
       include: { users: true, evaluations: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -2178,33 +2226,38 @@ app.post('/organogram-intake-responses/:id/publish', authenticate, roleGuard(['S
 
 app.get('/departments', async (req, res) => {
   try {
-    const users = await prisma.user.findMany({
-      where: { department: { not: null } },
+    const currentUser = await getCurrentDbUser(req);
+    const where = req.user.role === 'CLIENT_ADMIN' && currentUser?.organisationId
+      ? { organisationId: currentUser.organisationId }
+      : {};
+    const departments = await prisma.department.findMany({
+      where,
       include: { organisation: true },
+      orderBy: { createdAt: 'desc' },
     });
 
-    const groups = new Map();
-    for (const user of users) {
-      const key = user.department.trim();
-      if (!groups.has(key)) {
-        groups.set(key, {
-          id: `${key}-${user.organisationId}`,
-          name: key,
-          description: '',
-          organisation: { id: user.organisation?.id, name: user.organisation?.name || '' },
-          headOfDepartment: user.role === 'HOD' ? { name: user.name || user.email, email: user.email } : null,
-          staffCount: 0,
-          evaluationProgress: 0,
-          digitalReadinessScore: undefined,
-          gisReadinessScore: undefined,
-          createdAt: user.createdAt,
-        });
-      }
-      const dept = groups.get(key);
-      dept.staffCount += 1;
-    }
+    const staffCounts = await prisma.user.groupBy({
+      by: ['organisationId', 'department'],
+      where: {
+        organisationId: { in: departments.map((department) => department.organisationId) },
+        department: { not: null },
+      },
+      _count: { _all: true },
+    });
+    const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
 
-    res.json(Array.from(groups.values()));
+    res.json(departments.map((department) => ({
+      id: department.id,
+      name: department.name,
+      description: department.description || '',
+      organisation: { id: department.organisation.id, name: department.organisation.name },
+      headOfDepartment: department.leadName ? { name: department.leadName, email: department.leadEmail || '' } : null,
+      staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
+      evaluationProgress: 0,
+      digitalReadinessScore: undefined,
+      gisReadinessScore: undefined,
+      createdAt: department.createdAt,
+    })));
   } catch (error) {
     console.error('Fetch departments failed:', error);
     res.status(500).json({ message: 'Unable to fetch departments.' });
@@ -2215,56 +2268,75 @@ app.get('/departments', async (req, res) => {
 
 app.get('/units', authenticate, async (req, res) => {
   try {
-    // Units are stored as Department records with organisationId; fall back to
-    // building from the user.department strings if the model doesn't have a Unit table.
-    // For now we use a simple in-memory construct from the departments data.
-    const users = await prisma.user.findMany({
-      where: { department: { not: null } },
+    const currentUser = await getCurrentDbUser(req);
+    const where = req.user.role === 'CLIENT_ADMIN' && currentUser?.organisationId
+      ? { organisationId: currentUser.organisationId }
+      : {};
+    const departments = await prisma.department.findMany({
+      where,
       include: { organisation: true },
+      orderBy: { createdAt: 'desc' },
     });
-    const groups = new Map();
-    for (const user of users) {
-      const key = `${user.organisationId}::${user.department.trim()}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          id: key,
-          name: user.department.trim(),
-          description: '',
-          organisation: { id: user.organisation?.id, name: user.organisation?.name || '' },
-          staffCount: 0,
-          createdAt: user.createdAt,
-        });
-      }
-      groups.get(key).staffCount += 1;
-    }
-    res.json(Array.from(groups.values()));
+    const staffCounts = await prisma.user.groupBy({
+      by: ['organisationId', 'department'],
+      where: {
+        organisationId: { in: departments.map((department) => department.organisationId) },
+        department: { not: null },
+      },
+      _count: { _all: true },
+    });
+    const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
+    res.json(departments.map((department) => ({
+      id: department.id,
+      name: department.name,
+      description: department.description || '',
+      organisation: { id: department.organisation.id, name: department.organisation.name },
+      staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
+      createdAt: department.createdAt,
+    })));
   } catch (error) {
     console.error('Fetch units failed:', error);
     res.status(500).json({ message: 'Unable to fetch units.' });
   }
 });
 
-app.post('/units', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'ADMIN']), async (req, res) => {
+app.post('/units', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { organisationId, name, description } = req.body;
-    if (!organisationId || !name?.trim()) {
-      return res.status(400).json({ message: 'organisationId and name are required.' });
+    if (!name?.trim()) {
+      return res.status(400).json({ message: 'Unit name is required.' });
     }
-    const org = await prisma.organisation.findUnique({ where: { id: organisationId } });
+    const currentUser = await getCurrentDbUser(req);
+    const scopedOrganisationId = req.user.role === 'CLIENT_ADMIN'
+      ? currentUser?.organisationId
+      : organisationId;
+    if (!scopedOrganisationId) {
+      return res.status(400).json({ message: 'Organisation is required.' });
+    }
+    const org = await prisma.organisation.findUnique({ where: { id: scopedOrganisationId } });
     if (!org) return res.status(404).json({ message: 'Organisation not found.' });
     // Store unit as a synthetic object — we return it immediately so the UI can display it.
     // In a full implementation this would be a Unit model in Prisma.
-    const unit = {
-      id: `${organisationId}::${name.trim()}`,
-      name: name.trim(),
-      description: description?.trim() || '',
+    const department = await prisma.department.create({
+      data: {
+        organisationId: scopedOrganisationId,
+        name: name.trim(),
+        description: description?.trim() || null,
+      },
+    });
+    res.status(201).json({
+      id: department.id,
+      name: department.name,
+      description: department.description || '',
       organisation: { id: org.id, name: org.name },
       staffCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-    res.status(201).json(unit);
+      createdAt: department.createdAt,
+    });
   } catch (error) {
     console.error('Create unit failed:', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ message: 'A unit with this name already exists for this organisation.' });
+    }
     res.status(500).json({ message: 'Unable to create unit.' });
   }
 });
@@ -2322,7 +2394,7 @@ app.get('/notifications', async (req, res) => {
         id: response.id,
         type: 'RESPONSE_SUBMITTED',
         title: 'Response submitted',
-        message: `${response.respondent.name || response.respondent.email} submitted ${response.form.title}.`,
+        message: `${getResponseRespondentLabel(response)} submitted ${response.form.title}.`,
         read: false,
         createdAt: response.submittedAt || response.createdAt,
         actionUrl: `/responses`,
@@ -2713,7 +2785,7 @@ app.get('/insights/response-stats', authenticate, async (req, res) => {
         for (const response of form.responses) {
           totalSubmissions++;
           totalAnswers += response.answers.length;
-          respondentIds.add(response.respondentId);
+          respondentIds.add(response.respondentId || response.respondentEmail || response.respondentName || response.id);
           if (qCount > 0) completionSum += (response.answers.length / qCount) * 100;
         }
       }
@@ -3534,7 +3606,7 @@ app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
         sampleAnswers.push({
           question: answer.question?.label || answer.questionId,
           answer: formattedAnswer,
-          respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
+          respondent: getResponseRespondentLabel(response),
         });
       }
       if (sampleAnswers.length >= 8) break;
@@ -3629,7 +3701,7 @@ app.get('/diagnosis/evaluations/:id/responses/full', async (req, res) => {
         sampleAnswers.push({
           question: answer.question?.label || answer.questionId,
           answer: formattedAnswer,
-          respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
+          respondent: getResponseRespondentLabel(response),
         });
       }
       if (sampleAnswers.length >= 8) break;
@@ -3637,7 +3709,7 @@ app.get('/diagnosis/evaluations/:id/responses/full', async (req, res) => {
 
     const formattedResponses = selectedResponses.map((response) => ({
       id: response.id,
-      respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
+      respondent: getResponseRespondentLabel(response),
       submittedAt: response.submittedAt ? response.submittedAt.toISOString() : null,
       formVersion: getResponseFormVersion(response),
       answers: response.answers.map((answer) => ({

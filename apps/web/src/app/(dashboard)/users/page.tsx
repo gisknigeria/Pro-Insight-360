@@ -77,9 +77,18 @@ export default function UsersPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
+  const [currentRole, setCurrentRole] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1] || ''));
+        setCurrentRole(String(payload.role || ''));
+      } catch {
+        setCurrentRole('');
+      }
+    }
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setUsers)
@@ -216,7 +225,7 @@ export default function UsersPage() {
           <AppIcon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
-            placeholder="Search by name, email or organisation…"
+            placeholder="Search by name, email or organisation..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition"
@@ -272,7 +281,7 @@ export default function UsersPage() {
 
                 <span className="hidden md:block text-sm text-slate-500 truncate">{user.email}</span>
                 <RoleBadge role={user.role} />
-                <span className="text-sm text-slate-500 truncate">{user.organisation?.name || '—'}</span>
+                <span className="text-sm text-slate-500 truncate">{user.organisation?.name || '-'}</span>
                 <StatusBadge status={user.status} />
 
                 {/* Actions */}
@@ -290,13 +299,15 @@ export default function UsersPage() {
                   >
                     <AppIcon name="key" className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteUser(user)}
-                    className="rounded-xl px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
-                  >
-                    <AppIcon name="trash" className="h-4 w-4" />
-                  </button>
+                  {currentRole === 'SUPER_ADMIN' && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(user)}
+                      className="rounded-xl px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
+                    >
+                      <AppIcon name="trash" className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

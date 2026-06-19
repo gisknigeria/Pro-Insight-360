@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-const roles = [
+const allRoles = [
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
   { value: 'CONSULTANT', label: 'Consultant' },
   { value: 'CLIENT_ADMIN', label: 'CEO / Client Admin' },
@@ -11,15 +11,28 @@ const roles = [
   { value: 'RESPONDENT', label: 'Staff Respondent' },
 ];
 
+function getCurrentRole() {
+  if (typeof window === 'undefined') return '';
+  const token = localStorage.getItem('accessToken');
+  if (!token) return '';
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1] || ''));
+    return String(payload.role || '');
+  } catch {
+    return '';
+  }
+}
+
 export default function NewUserPage() {
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [values, setValues] = useState({
     name: '',
     email: '',
-    role: 'CONSULTANT',
+    role: 'RESPONDENT',
     organisationId: '',
     department: '',
   });
+  const [currentRole, setCurrentRole] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{
@@ -30,14 +43,25 @@ export default function NewUserPage() {
   } | null>(null);
 
   useEffect(() => {
+    const role = getCurrentRole();
+    setCurrentRole(role);
     const token = localStorage.getItem('accessToken');
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/organisations`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
-      .then(setOrgs)
+      .then((items) => {
+        setOrgs(items);
+        if (role === 'CLIENT_ADMIN' && Array.isArray(items) && items[0]?.id) {
+          setValues((current) => ({ ...current, organisationId: items[0].id }));
+        }
+      })
       .catch(() => setOrgs([]));
   }, []);
+
+  const roles = currentRole === 'CLIENT_ADMIN'
+    ? allRoles.filter((role) => ['CLIENT_ADMIN', 'HOD', 'RESPONDENT'].includes(role.value))
+    : allRoles;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -96,7 +120,7 @@ export default function NewUserPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Create a new user</h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Invite a new team member and share their setup credentials.
+          Invite a real platform user and share their setup credentials.
         </p>
       </div>
 
@@ -219,7 +243,7 @@ export default function NewUserPage() {
               onChange={(event) => setValues((current) => ({ ...current, organisationId: event.target.value }))}
               className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-amber-200"
             >
-              <option value="">Select organisation (optional)</option>
+              <option value="">{currentRole === 'CLIENT_ADMIN' ? 'Your organisation' : 'Select organisation (optional)'}</option>
               {orgs.map((org) => (
                 <option key={org.id} value={org.id}>
                   {org.name}
@@ -228,6 +252,7 @@ export default function NewUserPage() {
             </select>
             <p className="mt-2 text-xs text-slate-500">
               Assign this user to an organisation so they can access the right evaluation projects.
+              {currentRole === 'CLIENT_ADMIN' ? ' Client admins can only create users for their own organisation.' : ''}
             </p>
           </div>
 
@@ -268,7 +293,7 @@ export default function NewUserPage() {
               disabled={saving}
               className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-amber-300"
             >
-              {saving ? 'Creating user…' : 'Create user'}
+              {saving ? 'Creating user...' : 'Create user'}
             </button>
             <Link
               href="/users"

@@ -93,6 +93,7 @@ model Organisation {
 
   users       User[]
   evaluations Evaluation[]
+  departments Department[]
 
   @@map("organisations")
 }
@@ -130,6 +131,21 @@ model User {
   updatedWeights       ScoringWeight[]
 
   @@map("users")
+}
+
+model Department {
+  id             String   @id @default(uuid())
+  organisationId String   @map("organisation_id")
+  name           String   @db.VarChar(255)
+  description    String?
+  leadName       String?  @map("lead_name") @db.VarChar(255)
+  leadEmail      String?  @map("lead_email") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, name])
+  @@map("departments")
 }
 
 model Evaluation {
@@ -271,7 +287,9 @@ model FormAssignment {
 model Response {
   id            String         @id @default(uuid())
   formId        String         @map("form_id")
-  respondentId  String         @map("respondent_id")
+  respondentId  String?        @map("respondent_id")
+  respondentName String?       @map("respondent_name") @db.VarChar(255)
+  respondentEmail String?      @map("respondent_email") @db.VarChar(255)
   status        ResponseStatus @default(DRAFT)
   submittedAt   DateTime?      @map("submitted_at")
   syncedAt      DateTime?      @map("synced_at")
@@ -279,7 +297,7 @@ model Response {
   createdAt     DateTime       @default(now()) @map("created_at")
 
   form       Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
-  respondent User     @relation(fields: [respondentId], references: [id])
+  respondent User?    @relation(fields: [respondentId], references: [id])
   answers    Answer[]
 
   @@map("responses")
