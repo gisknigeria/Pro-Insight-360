@@ -51,6 +51,7 @@ interface EvalMetrics {
 interface PublishedAnalysis {
   id: string; publishedAt: string; publishedBy?: string;
   recipientId: string; recipientName?: string;
+  organisationId?: string | null; organisationName?: string | null;
   evaluationId?: string | null; summary: string;
   sidebarPinned?: boolean;
   sidebarTitle?: string;
@@ -542,6 +543,11 @@ function SuperAdminInsightPage() {
   const evalById = useMemo(() => new Map(evaluations.map(ev => [ev.id, ev])), [evaluations]);
 
   const items = useMemo<InsightItem[]>(() => {
+    const displayRecipientAsOrganisation = (value?: string | null) => {
+      const text = String(value || '').trim();
+      return text && !text.includes('@') ? text : '';
+    };
+
     const formsByEvaluationId = new Map<string, OrganisationForm[]>();
     forms.forEach(form => {
       if (!form.evaluationId) return;
@@ -556,7 +562,7 @@ function SuperAdminInsightPage() {
         kind: 'PUBLISHED',
         id: published.id,
         title: ev?.title || published.sidebarTitle || published.summary || primaryForm?.title || 'Published insight',
-        organisationName: ev?.organisation?.name || published.recipientName || primaryForm?.organisation?.name || 'Published organisation',
+        organisationName: ev?.organisation?.name || primaryForm?.organisation?.name || published.organisationName || displayRecipientAsOrganisation(published.recipientName) || 'Unassigned organisation',
         formCount: relatedForms.length || 1,
         createdAt: published.publishedAt,
         diagnosisHref: published.evaluationId ? `/evaluations/${published.evaluationId}/diagnosis` : undefined,

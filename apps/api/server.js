@@ -2236,7 +2236,10 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
       return res.status(400).json({ message: 'recipientId and analysis are required.' });
     }
 
-    const recipient = await prisma.user.findUnique({ where: { id: recipientId } });
+    const recipient = await prisma.user.findUnique({
+      where: { id: recipientId },
+      include: { organisation: { select: { id: true, name: true } } },
+    });
     if (!recipient) {
       return res.status(404).json({ message: 'Recipient not found.' });
     }
@@ -2245,12 +2248,17 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
       return res.status(400).json({ message: 'Selected recipient must be a client admin.' });
     }
 
+    let publishOrganisation = recipient.organisation;
     let diagnosisId = null;
     if (evaluationId) {
-      const evaluation = await prisma.evaluation.findUnique({ where: { id: evaluationId } });
+      const evaluation = await prisma.evaluation.findUnique({
+        where: { id: evaluationId },
+        include: { organisation: { select: { id: true, name: true } } },
+      });
       if (!evaluation) {
         return res.status(404).json({ message: 'Evaluation not found.' });
       }
+      publishOrganisation = evaluation.organisation || publishOrganisation;
 
       const existingDiagnosis = await prisma.diagnosis.findFirst({ where: { evaluationId } });
       if (existingDiagnosis) {
@@ -2288,6 +2296,8 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
           recipientId,
           recipientEmail: recipient.email,
           recipientName: recipient.name,
+          organisationId: publishOrganisation?.id || null,
+          organisationName: publishOrganisation?.name || null,
           evaluationId: evaluationId || null,
           publishedById: req.user.sub,
           publishedByEmail: req.user.email,
@@ -2458,6 +2468,8 @@ app.get('/published-analyses', authenticate, async (req, res) => {
           publishedBy: metadata.publishedByEmail || undefined,
           recipientId: metadata.recipientId,
           recipientName: metadata.recipientName || metadata.recipientEmail,
+          organisationId: metadata.organisationId || null,
+          organisationName: metadata.organisationName || null,
           evaluationId: metadata.evaluationId || null,
           summary: metadata.summary || '',
           analysis: metadata.analysis || null,
@@ -2490,6 +2502,8 @@ app.get('/published-analyses/all', authenticate, roleGuard(['SUPER_ADMIN', 'CONS
         publishedBy: metadata.publishedByEmail || undefined,
         recipientId: metadata.recipientId,
         recipientName: metadata.recipientName || metadata.recipientEmail,
+        organisationId: metadata.organisationId || null,
+        organisationName: metadata.organisationName || null,
         evaluationId: metadata.evaluationId || null,
         summary: metadata.summary || '',
         analysis: metadata.analysis || null,
@@ -2523,6 +2537,8 @@ app.get('/published-analyses/sidebar', authenticate, async (req, res) => {
           title: metadata.sidebarTitle || metadata.analysis?.title || metadata.summary || metadata.recipientName || 'Published insight',
           recipientId: metadata.recipientId,
           recipientName: metadata.recipientName || metadata.recipientEmail,
+          organisationId: metadata.organisationId || null,
+          organisationName: metadata.organisationName || null,
           evaluationId: metadata.evaluationId || null,
           publishedAt: log.createdAt,
           sidebarPinned: Boolean(metadata.sidebarPinned),
