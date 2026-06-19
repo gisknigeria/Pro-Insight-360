@@ -1,90 +1,98 @@
 "use client";
+
 import React, { useMemo, useRef, useState } from "react";
+import { AppIcon } from "@/components/ui/app-icons";
 import type { OrgRow } from "./OrgChartUploader";
 
-// ─── Colour palette (cycles through departments) ──────────────────────────────
 const DEPT_COLOURS = [
-  { bg: '#dbeafe', border: '#3b82f6', text: '#1e3a8a' }, // blue
-  { bg: '#d1fae5', border: '#10b981', text: '#064e3b' }, // emerald
-  { bg: '#fef3c7', border: '#f59e0b', text: '#78350f' }, // amber
-  { bg: '#ede9fe', border: '#8b5cf6', text: '#3b0764' }, // violet
-  { bg: '#fee2e2', border: '#ef4444', text: '#7f1d1d' }, // red
-  { bg: '#ffedd5', border: '#f97316', text: '#7c2d12' }, // orange
-  { bg: '#cffafe', border: '#06b6d4', text: '#164e63' }, // cyan
-  { bg: '#fce7f3', border: '#ec4899', text: '#831843' }, // pink
-  { bg: '#f0fdf4', border: '#22c55e', text: '#14532d' }, // green
-  { bg: '#f5f3ff', border: '#a855f7', text: '#581c87' }, // purple
+  { bg: "#dbeafe", border: "#3b82f6", text: "#1e3a8a" },
+  { bg: "#d1fae5", border: "#10b981", text: "#064e3b" },
+  { bg: "#fef3c7", border: "#f59e0b", text: "#78350f" },
+  { bg: "#ede9fe", border: "#8b5cf6", text: "#3b0764" },
+  { bg: "#fee2e2", border: "#ef4444", text: "#7f1d1d" },
+  { bg: "#ffedd5", border: "#f97316", text: "#7c2d12" },
+  { bg: "#cffafe", border: "#06b6d4", text: "#164e63" },
+  { bg: "#fce7f3", border: "#ec4899", text: "#831843" },
+  { bg: "#f0fdf4", border: "#22c55e", text: "#14532d" },
+  { bg: "#f5f3ff", border: "#a855f7", text: "#581c87" },
 ];
 
 const NODE_W = 140;
 const NODE_H = 48;
-const H_GAP = 18;  // horizontal gap between siblings
-const V_GAP = 58;  // vertical gap between levels
+const H_GAP = 18;
+const V_GAP = 58;
 
-// ─── Tree node ────────────────────────────────────────────────────────────────
 interface TreeNode {
   name: string;
-  title: string; // = group/department
+  title: string;
   children: TreeNode[];
-  // computed by layout pass:
   x: number;
   y: number;
   subtreeW: number;
 }
 
+interface Line {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+interface OrgChartProps {
+  rows: OrgRow[];
+  reportTitle?: string;
+  reportSummary?: string;
+  reportSections?: Array<{ heading: string; lines: string[] }>;
+}
+
 function buildTree(rows: OrgRow[]): TreeNode[] {
   const map = new Map<string, TreeNode>();
-  for (const r of rows) {
-    const dept = r.title ?? r.department ?? r.jobTitle ?? '';
-    map.set(r.name, { name: r.name, title: dept, children: [], x: 0, y: 0, subtreeW: 0 });
-  }
+  rows.forEach((row) => {
+    const dept = row.title ?? row.department ?? row.jobTitle ?? "";
+    map.set(row.name, { name: row.name, title: dept, children: [], x: 0, y: 0, subtreeW: 0 });
+  });
+
   const roots: TreeNode[] = [];
-  for (const r of rows) {
-    const node = map.get(r.name)!;
-    if (r.reportsTo && map.has(r.reportsTo)) {
-      map.get(r.reportsTo)!.children.push(node);
+  rows.forEach((row) => {
+    const node = map.get(row.name);
+    if (!node) return;
+    if (row.reportsTo && map.has(row.reportsTo)) {
+      map.get(row.reportsTo)?.children.push(node);
     } else {
       roots.push(node);
     }
-  }
+  });
   return roots;
 }
 
-// Compute subtree widths bottom-up
 function measure(node: TreeNode): number {
   if (node.children.length === 0) {
     node.subtreeW = NODE_W;
     return node.subtreeW;
   }
-  const childrenW = node.children.reduce((sum, c) => sum + measure(c), 0)
-    + H_GAP * (node.children.length - 1);
+  const childrenW = node.children.reduce((sum, child) => sum + measure(child), 0) + H_GAP * (node.children.length - 1);
   node.subtreeW = Math.max(NODE_W, childrenW);
   return node.subtreeW;
 }
 
-// Assign x/y coordinates top-down
 function layout(node: TreeNode, x: number, y: number) {
   node.x = x + node.subtreeW / 2;
   node.y = y;
   let childX = x;
-  for (const child of node.children) {
+  node.children.forEach((child) => {
     layout(child, childX, y + NODE_H + V_GAP);
     childX += child.subtreeW + H_GAP;
-  }
+  });
 }
 
-// Flatten tree into a list for rendering
 function flatten(node: TreeNode, acc: TreeNode[] = []): TreeNode[] {
   acc.push(node);
-  for (const c of node.children) flatten(c, acc);
+  node.children.forEach((child) => flatten(child, acc));
   return acc;
 }
 
-// Build all connector line segments
-interface Line { x1: number; y1: number; x2: number; y2: number; }
 function buildLines(node: TreeNode, lines: Line[] = []): Line[] {
-  for (const child of node.children) {
-    // elbow connector: down from parent bottom-centre, across, then down to child top-centre
+  node.children.forEach((child) => {
     const px = node.x;
     const py = node.y + NODE_H;
     const cx = child.x;
@@ -94,27 +102,48 @@ function buildLines(node: TreeNode, lines: Line[] = []): Line[] {
     lines.push({ x1: px, y1: midY, x2: cx, y2: midY });
     lines.push({ x1: cx, y1: midY, x2: cx, y2: cy });
     buildLines(child, lines);
-  }
+  });
   return lines;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-interface OrgChartProps {
-  rows: OrgRow[];
-  reportTitle?: string;
-  reportSummary?: string;
-  reportSections?: Array<{ heading: string; lines: string[] }>;
+function cleanPdfText(value: string) {
+  return String(value || "").replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export default function OrgChart({ rows, reportTitle = 'Organogram report', reportSummary = '', reportSections = [] }: OrgChartProps) {
+function escapePdfText(value: string) {
+  return cleanPdfText(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+function wrapPdfText(value: string, maxChars = 86) {
+  const words = cleanPdfText(value).split(" ").filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  words.forEach((word) => {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  });
+  if (current) lines.push(current);
+  return lines.length ? lines : [""];
+}
+
+function addPdfText(lines: string[], x: number, startY: number, size = 10, leading = 14) {
+  return lines.map((line, index) => `BT /F1 ${size} Tf ${x} ${startY - index * leading} Td (${escapePdfText(line)}) Tj ET`).join("\n");
+}
+
+export default function OrgChart({ rows, reportTitle = "Organogram report", reportSummary = "", reportSections = [] }: OrgChartProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [fullScreen, setFullScreen] = useState(false);
 
-  // Build department → colour map
   const deptColourMap = useMemo(() => {
-    const depts = [...new Set((rows ?? []).map(r => r.title ?? r.department ?? r.jobTitle ?? '').filter(Boolean))];
+    const depts = [...new Set((rows ?? []).map((row) => row.title ?? row.department ?? row.jobTitle ?? "").filter(Boolean))];
     const map = new Map<string, typeof DEPT_COLOURS[0]>();
-    depts.forEach((d, i) => map.set(d, DEPT_COLOURS[i % DEPT_COLOURS.length]));
+    depts.forEach((dept, index) => map.set(dept, DEPT_COLOURS[index % DEPT_COLOURS.length]));
     return map;
   }, [rows]);
 
@@ -122,31 +151,29 @@ export default function OrgChart({ rows, reportTitle = 'Organogram report', repo
     const roots = buildTree(rows ?? []);
     if (roots.length === 0) return { allNodes: [], lines: [], svgW: 400, svgH: 200 };
 
-    // Measure and layout each root tree side by side
     let totalW = 0;
-    for (const root of roots) {
+    roots.forEach((root) => {
       measure(root);
       totalW += root.subtreeW;
-    }
+    });
     totalW += H_GAP * (roots.length - 1);
 
     let startX = 0;
-    for (const root of roots) {
+    roots.forEach((root) => {
       layout(root, startX, 40);
       startX += root.subtreeW + H_GAP;
-    }
+    });
 
-    const allNodes = roots.flatMap(r => flatten(r));
-    const lines = roots.flatMap(r => buildLines(r));
-
-    const maxX = Math.max(...allNodes.map(n => n.x + NODE_W / 2));
-    const maxY = Math.max(...allNodes.map(n => n.y + NODE_H));
+    const allNodes = roots.flatMap((root) => flatten(root));
+    const lines = roots.flatMap((root) => buildLines(root));
+    const maxX = Math.max(...allNodes.map((node) => node.x + NODE_W / 2));
+    const maxY = Math.max(...allNodes.map((node) => node.y + NODE_H));
 
     return { allNodes, lines, svgW: maxX + 40, svgH: maxY + 40 };
   }, [rows, collapsed]);
 
   function toggleCollapse(name: string) {
-    setCollapsed(prev => {
+    setCollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
       else next.add(name);
@@ -154,242 +181,294 @@ export default function OrgChart({ rows, reportTitle = 'Organogram report', repo
     });
   }
 
-  function escapeHtml(value: string) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
   function getSvgSource() {
-    if (!svgRef.current) return '';
+    if (!svgRef.current) return "";
     const cloned = svgRef.current.cloneNode(true) as SVGSVGElement;
-    cloned.setAttribute('width', String(svgW));
-    cloned.setAttribute('height', String(svgH));
-    cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    cloned.setAttribute("width", String(svgW));
+    cloned.setAttribute("height", String(svgH));
+    cloned.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     return new XMLSerializer().serializeToString(cloned);
   }
 
-  function svgToPngDataUrl() {
+  function svgToCanvasDataUrl(type: "image/png" | "image/jpeg" = "image/png") {
     const source = getSvgSource();
-    if (!source) return Promise.reject(new Error('No organogram to export.'));
+    if (!source) return Promise.reject(new Error("No organogram to export."));
     const img = new Image();
-    const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
-    return new Promise<string>((resolve, reject) => {
+    const url = URL.createObjectURL(new Blob([source], { type: "image/svg+xml;charset=utf-8" }));
+    return new Promise<{ dataUrl: string; width: number; height: number }>((resolve, reject) => {
       img.onload = () => {
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = svgW + 40;
         canvas.height = svgH + 40;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
         if (!ctx) {
           URL.revokeObjectURL(url);
-          reject(new Error('Canvas export unavailable.'));
+          reject(new Error("Canvas export unavailable."));
           return;
         }
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = "#f8fafc";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 20, 20);
-        const dataUrl = canvas.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL(type, 0.92);
         URL.revokeObjectURL(url);
-        resolve(dataUrl);
+        resolve({ dataUrl, width: canvas.width, height: canvas.height });
       };
       img.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error('Unable to render organogram image.'));
+        reject(new Error("Unable to render organogram image."));
       };
       img.src = url;
     });
   }
 
   async function downloadImage() {
-    const dataUrl = await svgToPngDataUrl();
-    const a = document.createElement('a');
+    const { dataUrl } = await svgToCanvasDataUrl("image/png");
+    const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = 'organogram.png';
+    a.download = "organogram.png";
     a.click();
   }
 
-  async function downloadReportPdf() {
-    const imageUrl = await svgToPngDataUrl();
-    const roles = rows.map(row => `${row.name}${row.title ? ` - ${row.title}` : ''}${row.reportsTo ? `, reports to ${row.reportsTo}` : ', top level'}`);
-    const reportWindow = window.open('', '_blank', 'noopener,noreferrer,width=1024,height=768');
-    if (!reportWindow) return;
-    const sectionHtml = reportSections.map(section => `
-      <section>
-        <h2>${escapeHtml(section.heading)}</h2>
-        <ul>${section.lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
-      </section>
-    `).join('');
+  function buildPdfBlob(image: { dataUrl: string; width: number; height: number }) {
+    const pageW = 595;
+    const pageH = 842;
+    const margin = 42;
+    const maxImageW = pageW - margin * 2;
+    const maxImageH = 470;
+    const imageRatio = image.width / image.height;
+    let imageW = maxImageW;
+    let imageH = imageW / imageRatio;
+    if (imageH > maxImageH) {
+      imageH = maxImageH;
+      imageW = imageH * imageRatio;
+    }
 
-    reportWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <title>${escapeHtml(reportTitle)}</title>
-          <style>
-            body { font-family: Arial, sans-serif; color: #0f172a; margin: 32px; }
-            h1 { font-size: 24px; margin: 0 0 8px; }
-            h2 { font-size: 15px; margin: 24px 0 8px; color: #0f766e; text-transform: uppercase; letter-spacing: .04em; }
-            p { line-height: 1.5; color: #475569; }
-            img { width: 100%; max-height: 620px; object-fit: contain; border: 1px solid #e2e8f0; background: #f8fafc; margin-top: 18px; }
-            ul { margin: 0; padding-left: 18px; }
-            li { margin: 6px 0; line-height: 1.45; }
-            .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0; }
-            .meta div { background: #f1f5f9; padding: 12px; }
-            .meta strong { display: block; font-size: 20px; }
-            @media print { body { margin: 18mm; } }
-          </style>
-        </head>
-        <body>
-          <h1>${escapeHtml(reportTitle)}</h1>
-          ${reportSummary ? `<p>${escapeHtml(reportSummary)}</p>` : ''}
-          <div class="meta">
-            <div><strong>${rows.length}</strong><span>Roles</span></div>
-            <div><strong>${new Set(rows.map(row => row.title).filter(Boolean)).size}</strong><span>Departments</span></div>
-            <div><strong>${rows.filter(row => !row.reportsTo).length}</strong><span>Top-level roles</span></div>
-          </div>
-          <img src="${imageUrl}" alt="Organogram" />
-          ${sectionHtml}
-          <section>
-            <h2>Role list</h2>
-            <ul>${roles.map(role => `<li>${escapeHtml(role)}</li>`).join('')}</ul>
-          </section>
-          <script>window.onload = () => { window.focus(); window.print(); };</script>
-        </body>
-      </html>
-    `);
-    reportWindow.document.close();
-  }
+    const roleLines = rows.map((row) => `${row.name}${row.title ? ` - ${row.title}` : ""}${row.reportsTo ? `, reports to ${row.reportsTo}` : ", top level"}`);
+    const narrative = [
+      ...reportSections.flatMap((section) => [
+        `${section.heading}:`,
+        ...section.lines.map((line) => `- ${line}`),
+        "",
+      ]),
+      "Role list:",
+      ...roleLines.map((role) => `- ${role}`),
+    ];
 
-  async function downloadPNG() {
-    if (!svgRef.current) return;
-    const source = getSvgSource();
-    const img = new Image();
-    const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = svgW + 40;
-      canvas.height = svgH + 40;
-      const ctx = canvas.getContext('2d')!;
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = 'organogram.png';
-      a.click();
-      URL.revokeObjectURL(url);
+    const firstPageContent = [
+      addPdfText([reportTitle], margin, 800, 20, 24),
+      ...wrapPdfText(reportSummary || "Organisational structure and accountability report.", 92).map((line, index) => addPdfText([line], margin, 770 - index * 13, 10, 13)),
+      addPdfText([`Roles: ${rows.length}`], margin, 720, 12, 14),
+      addPdfText([`Departments: ${new Set(rows.map((row) => row.title).filter(Boolean)).size}`], margin + 160, 720, 12, 14),
+      addPdfText([`Top-level roles: ${rows.filter((row) => !row.reportsTo).length}`], margin + 340, 720, 12, 14),
+      `q ${imageW.toFixed(2)} 0 0 ${imageH.toFixed(2)} ${(margin + (maxImageW - imageW) / 2).toFixed(2)} 96 cm /Im1 Do Q`,
+    ].join("\n");
+
+    const pageLines: string[] = [];
+    narrative.forEach((line) => {
+      if (!line) {
+        pageLines.push("");
+        return;
+      }
+      wrapPdfText(line, line.startsWith("-") ? 92 : 74).forEach((wrappedLine) => pageLines.push(wrappedLine));
+    });
+
+    const textPages: string[] = [];
+    while (pageLines.length) {
+      const chunk = pageLines.splice(0, 48);
+      textPages.push(chunk.map((line, index) => addPdfText([line], margin, 800 - index * 15, line.endsWith(":") ? 12 : 9.5, 15)).join("\n"));
+    }
+
+    const contents = [firstPageContent, ...textPages];
+    const imageBinary = atob(image.dataUrl.split(",")[1] || "");
+    const imageBuffer = new ArrayBuffer(imageBinary.length);
+    const imageBytes = new Uint8Array(imageBuffer);
+    for (let index = 0; index < imageBinary.length; index += 1) {
+      imageBytes[index] = imageBinary.charCodeAt(index);
+    }
+    type PdfPart = string | Uint8Array<ArrayBuffer>;
+    const offsets: number[] = [];
+    const parts: PdfPart[] = [];
+    const encoder = new TextEncoder();
+    let offset = 0;
+    const byteLength = (part: PdfPart) => (typeof part === "string" ? encoder.encode(part).length : part.byteLength);
+    const addPart = (part: PdfPart) => {
+      parts.push(part);
+      offset += byteLength(part);
     };
-    img.src = url;
+    const addObject = (id: number, body: string) => {
+      offsets[id] = offset;
+      addPart(`${id} 0 obj\n${body}\nendobj\n`);
+    };
+
+    addPart("%PDF-1.4\n");
+    addObject(1, "<< /Type /Catalog /Pages 2 0 R >>");
+    const firstPageId = 5;
+    const objectCount = firstPageId + contents.length * 2;
+    addObject(2, `<< /Type /Pages /Kids [ ${contents.map((_, index) => `${firstPageId + index * 2} 0 R`).join(" ")} ] /Count ${contents.length} >>`);
+    addObject(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+    offsets[4] = offset;
+    addPart(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`);
+    addPart(imageBytes);
+    addPart("\nendstream\nendobj\n");
+
+    contents.forEach((content, index) => {
+      const pageId = firstPageId + index * 2;
+      const contentId = pageId + 1;
+      addObject(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /Font << /F1 3 0 R >> /XObject << /Im1 4 0 R >> >> /Contents ${contentId} 0 R >>`);
+      addObject(contentId, `<< /Length ${byteLength(content)} >>\nstream\n${content}\nendstream`);
+    });
+
+    const xrefOffset = offset;
+    addPart(`xref\n0 ${objectCount}\n0000000000 65535 f \n`);
+    for (let id = 1; id < objectCount; id += 1) {
+      addPart(`${String(offsets[id] || 0).padStart(10, "0")} 00000 n \n`);
+    }
+    addPart(`trailer\n<< /Size ${objectCount} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+    return new Blob(parts, { type: "application/pdf" });
   }
+
+  async function downloadReportPdf() {
+    const image = await svgToCanvasDataUrl("image/jpeg");
+    const blob = buildPdfBlob(image);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${cleanPdfText(reportTitle).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "organogram-report"}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const chartSvg = () => (
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${svgW} ${svgH}`}
+      preserveAspectRatio="xMidYMin meet"
+      style={{ background: "#f8fafc", display: "block", width: "100%", height: "auto", maxHeight: fullScreen ? "calc(100vh - 160px)" : "68vh" }}
+    >
+      {lines.map((line, index) => (
+        <line key={index} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} stroke="#cbd5e1" strokeWidth={1.5} strokeLinecap="round" />
+      ))}
+
+      {allNodes.map((node) => {
+        const col = deptColourMap.get(node.title) ?? DEPT_COLOURS[0];
+        const nx = node.x - NODE_W / 2;
+        const ny = node.y;
+        const hasChildren = node.children.length > 0;
+        const isCollapsed = collapsed.has(node.name);
+        const words = node.name.split(" ");
+        let line1 = "";
+        let line2 = "";
+        let curr = "";
+        for (const word of words) {
+          if ((curr + " " + word).trim().length <= 20) {
+            curr = (curr + " " + word).trim();
+          } else if (!line1) {
+            line1 = curr;
+            curr = word;
+          } else {
+            line2 = (curr + " " + word).trim();
+            curr = "";
+            break;
+          }
+        }
+        if (!line1) line1 = curr;
+        else if (curr && !line2) line2 = curr;
+
+        return (
+          <g key={node.name} style={{ cursor: hasChildren ? "pointer" : "default" }} onClick={hasChildren ? (event) => { event.stopPropagation(); toggleCollapse(node.name); } : undefined}>
+            <rect x={nx + 2} y={ny + 2} width={NODE_W} height={NODE_H} rx={8} fill="rgba(0,0,0,0.06)" />
+            <rect x={nx} y={ny} width={NODE_W} height={NODE_H} rx={8} fill={col.bg} stroke={col.border} strokeWidth={1.5} />
+            <rect x={nx} y={ny} width={NODE_W} height={4} rx={4} fill={col.border} />
+            <text x={node.x} y={ny + 20} textAnchor="middle" fontSize={11} fontWeight="700" fill={col.text} style={{ pointerEvents: "none" }}>
+              {line1}
+            </text>
+            {line2 && (
+              <text x={node.x} y={ny + 32} textAnchor="middle" fontSize={11} fontWeight="700" fill={col.text} style={{ pointerEvents: "none" }}>
+                {line2}
+              </text>
+            )}
+            <text x={node.x} y={ny + NODE_H - 7} textAnchor="middle" fontSize={9} fill={col.text} opacity={0.65} style={{ pointerEvents: "none" }}>
+              {node.title}
+            </text>
+            {hasChildren && <circle cx={nx + NODE_W - 10} cy={ny + 10} r={6} fill={isCollapsed ? col.border : "#fff"} stroke={col.border} strokeWidth={1.5} />}
+          </g>
+        );
+      })}
+    </svg>
+  );
 
   if (!rows || rows.length === 0) {
-    return <div className="text-slate-400 text-sm p-4">No organogram data.</div>;
+    return <div className="p-4 text-sm text-slate-400">No organogram data.</div>;
   }
 
   return (
     <div>
-      {/* Download buttons */}
       <div className="mb-4 flex flex-wrap gap-2">
-        <button onClick={() => void downloadReportPdf()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition">
+        <button type="button" onClick={() => void downloadReportPdf()} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800">
+          <AppIcon name="file" className="h-4 w-4" />
           Download PDF report
         </button>
-        <button onClick={() => void downloadImage()}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+        <button type="button" onClick={() => void downloadImage()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
+          <AppIcon name="download" className="h-4 w-4" />
           Download organogram image
+        </button>
+        <button type="button" onClick={() => setFullScreen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-100">
+          <AppIcon name="expand" className="h-4 w-4" />
+          Full screen
         </button>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="mb-4 flex flex-wrap gap-2">
         {[...deptColourMap.entries()].map(([dept, col]) => (
-          <span key={dept} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-            style={{ background: col.bg, color: col.text, border: `1px solid ${col.border}` }}>
+          <span key={dept} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: col.bg, color: col.text, border: `1px solid ${col.border}` }}>
             {dept}
           </span>
         ))}
       </div>
 
-      {/* SVG chart */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <svg ref={svgRef} viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="xMidYMin meet"
-          style={{ background: '#f8fafc', display: 'block', width: '100%', height: 'auto', maxHeight: '68vh' }}>
-
-          {/* Connector lines */}
-          {lines.map((l, i) => (
-            <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
-              stroke="#cbd5e1" strokeWidth={1.5} strokeLinecap="round" />
-          ))}
-
-          {/* Nodes */}
-          {allNodes.map(node => {
-            const col = deptColourMap.get(node.title) ?? DEPT_COLOURS[0];
-            const nx = node.x - NODE_W / 2;
-            const ny = node.y;
-            const hasChildren = node.children.length > 0;
-            const isCollapsed = collapsed.has(node.name);
-
-            // Wrap long name into two lines
-            const words = node.name.split(' ');
-            let line1 = '', line2 = '';
-            let curr = '';
-            for (const w of words) {
-              if ((curr + ' ' + w).trim().length <= 20) {
-                curr = (curr + ' ' + w).trim();
-              } else {
-                if (!line1) { line1 = curr; curr = w; }
-                else { line2 = (curr + ' ' + w).trim(); curr = ''; break; }
-              }
-            }
-            if (!line1) { line1 = curr; }
-            else if (curr && !line2) { line2 = curr; }
-
-            return (
-              <g key={node.name} style={{ cursor: hasChildren ? 'pointer' : 'default' }}
-                onClick={hasChildren ? () => toggleCollapse(node.name) : undefined}>
-                {/* Card shadow */}
-                <rect x={nx + 2} y={ny + 2} width={NODE_W} height={NODE_H} rx={8}
-                  fill="rgba(0,0,0,0.06)" />
-                {/* Card background */}
-                <rect x={nx} y={ny} width={NODE_W} height={NODE_H} rx={8}
-                  fill={col.bg} stroke={col.border} strokeWidth={1.5} />
-                {/* Top accent bar */}
-                <rect x={nx} y={ny} width={NODE_W} height={4} rx={4}
-                  fill={col.border} />
-                {/* Name text — line 1 */}
-                <text x={node.x} y={ny + 20} textAnchor="middle"
-                  fontSize={11} fontWeight="700" fill={col.text}
-                  style={{ pointerEvents: 'none' }}>
-                  {line1}
-                </text>
-                {/* Name text — line 2 */}
-                {line2 && (
-                  <text x={node.x} y={ny + 32} textAnchor="middle"
-                    fontSize={11} fontWeight="700" fill={col.text}
-                    style={{ pointerEvents: 'none' }}>
-                    {line2}
-                  </text>
-                )}
-                {/* Department sub-label */}
-                <text x={node.x} y={ny + NODE_H - 7} textAnchor="middle"
-                  fontSize={9} fill={col.text} opacity={0.65}
-                  style={{ pointerEvents: 'none' }}>
-                  {node.title}
-                </text>
-                {/* Collapse toggle dot */}
-                {hasChildren && (
-                  <circle cx={nx + NODE_W - 10} cy={ny + 10} r={6}
-                    fill={isCollapsed ? col.border : '#fff'}
-                    stroke={col.border} strokeWidth={1.5} />
-                )}
-              </g>
-            );
-          })}
-        </svg>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setFullScreen(true)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setFullScreen(true);
+          }
+        }}
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 outline-none ring-teal-200 transition focus:ring-2"
+        title="Open organogram full screen"
+      >
+        {chartSvg()}
       </div>
+
+      {fullScreen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 p-3 backdrop-blur-sm sm:p-6">
+          <div className="flex h-full flex-col bg-white shadow-2xl">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-teal-600">Full screen organogram</p>
+                <h3 className="text-base font-bold text-slate-900">{reportTitle}</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => void downloadReportPdf()} className="inline-flex items-center gap-1.5 bg-slate-900 px-3 py-2 text-xs font-bold text-white">
+                  <AppIcon name="file" className="h-4 w-4" />
+                  PDF report
+                </button>
+                <button type="button" onClick={() => void downloadImage()} className="inline-flex items-center gap-1.5 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800">
+                  <AppIcon name="download" className="h-4 w-4" />
+                  Image
+                </button>
+                <button type="button" onClick={() => setFullScreen(false)} className="inline-flex items-center gap-1.5 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700">
+                  <AppIcon name="x" className="h-4 w-4" />
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto bg-slate-50 p-4">{chartSvg()}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

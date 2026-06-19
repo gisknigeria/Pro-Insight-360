@@ -287,8 +287,9 @@ function EditPanel({ organogram, onSave, onCancel }: EditPanelProps) {
             Cancel
           </button>
           <button type="button" onClick={handleSave} disabled={saving}
-            className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition">
-            {saving ? 'Saving…' : '💾 Save & publish'}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition">
+            <AppIcon name="check" className="h-4 w-4" />
+            {saving ? 'Saving...' : 'Save and publish'}
           </button>
         </div>
       </div>
@@ -296,14 +297,14 @@ function EditPanel({ organogram, onSave, onCancel }: EditPanelProps) {
       <div className="grid gap-4 xl:grid-cols-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-            Nodes — <code className="text-[10px]">[{"{"}"id","label","group"{"}"}]</code>
+            Nodes - <code className="text-[10px]">[{"{"}"id","label","group"{"}"}]</code>
           </p>
           <textarea value={nodesText} onChange={e => setNodesText(e.target.value)} rows={14}
             className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-mono text-slate-800 focus:border-blue-400 focus:outline-none resize-none" />
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-            Links — <code className="text-[10px]">[{"{"}"source","target","relation"{"}"}]</code>
+            Links - <code className="text-[10px]">[{"{"}"source","target","relation"{"}"}]</code>
           </p>
           <textarea value={linksText} onChange={e => setLinksText(e.target.value)} rows={14}
             className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-mono text-slate-800 focus:border-blue-400 focus:outline-none resize-none" />
@@ -349,7 +350,9 @@ function OrgCard({ analysis, isSelected, onSelect, onDelete }: OrgCardProps) {
         <div className="flex items-center gap-2.5 min-w-0">
           <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${
             isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100'
-          }`}>🏢</span>
+          }`}>
+            <AppIcon name="building" className={`h-5 w-5 ${isSelected ? 'text-white' : 'text-slate-600'}`} />
+          </span>
           <div className="min-w-0">
             <p className="text-sm font-bold text-slate-900 truncate">
               {analysis.recipientName ?? 'Unknown org'}
@@ -375,8 +378,8 @@ function OrgCard({ analysis, isSelected, onSelect, onDelete }: OrgCardProps) {
         </div>
       </div>
       <div className="flex gap-3 text-xs text-slate-500">
-        <span className="inline-flex items-center gap-1">👤 {nodeCount} roles</span>
-        <span className="inline-flex items-center gap-1">🏢 {deptCount} depts</span>
+        <span className="inline-flex items-center gap-1"><AppIcon name="users" className="h-3.5 w-3.5" /> {nodeCount} roles</span>
+        <span className="inline-flex items-center gap-1"><AppIcon name="building" className="h-3.5 w-3.5" /> {deptCount} depts</span>
       </div>
     </div>
   );
@@ -585,7 +588,7 @@ export default function OrganogramPage() {
         </div>
         {analyses.length === 0 ? (
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <EmptyState icon="🏢" title="No organogram available yet"
+            <EmptyState icon="building" title="No organogram available yet"
               description="Your organisational structure chart will appear here once it has been prepared by the GISKonsult team." />
           </div>
         ) : (
@@ -597,19 +600,22 @@ export default function OrganogramPage() {
                     className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
                       selectedId === a.id ? 'bg-teal-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:border-teal-400'
                     }`}>
-                    📋 {new Date(a.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    <AppIcon name="clipboard" className="h-4 w-4" />
+                    {new Date(a.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </button>
                 ))}
               </div>
             )}
             <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
               {[
-                { label: 'Total Roles', value: orgRows.length, icon: '👤', grad: 'from-teal-500 to-emerald-600' },
-                { label: 'Departments', value: departments.length, icon: '🏢', grad: 'from-blue-500 to-indigo-600' },
-                { label: 'Report Date', value: selected ? new Date(selected.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—', icon: '📅', grad: 'from-violet-500 to-purple-600' },
+                { label: 'Total Roles', value: orgRows.length, icon: 'users' as const, grad: 'from-teal-500 to-emerald-600' },
+                { label: 'Departments', value: departments.length, icon: 'building' as const, grad: 'from-blue-500 to-indigo-600' },
+                { label: 'Report Date', value: selected ? new Date(selected.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-', icon: 'calendar' as const, grad: 'from-violet-500 to-purple-600' },
               ].map(stat => (
                 <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.grad} text-lg shadow-md`}>{stat.icon}</div>
+                  <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.grad} text-white shadow-md`}>
+                    <AppIcon name={stat.icon} className="h-5 w-5" />
+                  </div>
                   <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
                   <p className="text-xs font-semibold text-slate-500 mt-0.5">{stat.label}</p>
                 </div>
@@ -627,7 +633,7 @@ export default function OrganogramPage() {
                     reportSummary={selected?.analysis?.executiveSummary || 'Organisational structure and accountability report.'}
                     reportSections={buildOrganogramReportSections(orgRows, selected?.analysis)}
                   />
-                : <EmptyState icon="🏢" title="No structure data" description="The organogram structure could not be loaded." />
+                : <EmptyState icon="building" title="No structure data" description="The organogram structure could not be loaded." />
               }
             </div>
           </>
@@ -787,13 +793,14 @@ export default function OrganogramPage() {
 
       {saveMsg && (
         <div className="mb-5 flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          <span>✓</span>{saveMsg}
+          <AppIcon name="check" className="h-4 w-4" />
+          {saveMsg}
         </div>
       )}
 
       {analyses.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <EmptyState icon="🏢" title="No organograms yet"
+          <EmptyState icon="building" title="No organograms yet"
             description="Organograms are generated when you publish an analysis that includes organisational structure data." />
         </div>
       ) : (
@@ -830,7 +837,8 @@ export default function OrganogramPage() {
                       {!editing && (
                         <button type="button" onClick={() => setEditing(true)}
                           className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition shadow-sm">
-                          ✏️ Edit organogram
+                          <AppIcon name="edit" className="h-4 w-4" />
+                          Edit organogram
                         </button>
                       )}
                     </div>
@@ -839,7 +847,10 @@ export default function OrganogramPage() {
                   {departments.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100">
                       {departments.map((d, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">🏢 {d}</span>
+                        <span key={i} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                          <AppIcon name="building" className="h-3.5 w-3.5" />
+                          {d}
+                        </span>
                       ))}
                     </div>
                   )}
@@ -866,7 +877,7 @@ export default function OrganogramPage() {
                         reportSummary={selected.analysis?.executiveSummary || 'Organisational structure and accountability report.'}
                         reportSections={buildOrganogramReportSections(orgRows, selected.analysis)}
                       />
-                    : <EmptyState icon="🏢" title="No chart data" description="Edit the organogram to add nodes and links." />
+                    : <EmptyState icon="building" title="No chart data" description="Edit the organogram to add nodes and links." />
                   }
                 </div>
               </>

@@ -14,7 +14,9 @@ export type AppIconName =
   | "chevronRight"
   | "clipboard"
   | "copy"
+  | "download"
   | "edit"
+  | "expand"
   | "file"
   | "folder"
   | "form"
@@ -35,7 +37,8 @@ export type AppIconName =
   | "sitemap"
   | "trash"
   | "upload"
-  | "users";
+  | "users"
+  | "x";
 
 const paths: Record<AppIconName, ReactNode> = {
   activity: <path d="M3 12h4l3-7 4 14 3-7h4" />,
@@ -49,7 +52,9 @@ const paths: Record<AppIconName, ReactNode> = {
   chevronRight: <path d="m9 18 6-6-6-6" />,
   clipboard: <><path d="M9 4h6l1 2h3v15H5V6h3Z" /><path d="M9 10h6M9 14h6M9 18h3" /></>,
   copy: <><path d="M8 8h11v11H8Z" /><path d="M5 16H4a1 1 0 0 1-1-1V4h11v1" /></>,
+  download: <><path d="M12 4v12m-5-5 5 5 5-5" /><path d="M4 20h16" /></>,
   edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
+  expand: <><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5" /><path d="M3 3l6 6M21 3l-6 6M3 21l6-6M21 21l-6-6" /></>,
   file: <><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></>,
   folder: <path d="M3 6h7l2 2h9v11H3Z" />,
   form: <><path d="M6 4h12v16H6Z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
@@ -71,6 +76,7 @@ const paths: Record<AppIconName, ReactNode> = {
   trash: <><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" /></>,
   upload: <><path d="M12 16V4m-5 5 5-5 5 5" /><path d="M4 20h16" /></>,
   users: <><path d="M16 19a4 4 0 0 0-8 0" /><circle cx="12" cy="8" r="4" /><path d="M22 19a4 4 0 0 0-4-4M2 19a4 4 0 0 1 4-4" /></>,
+  x: <path d="M18 6 6 18M6 6l12 12" />,
 };
 
 export function AppIcon({ name, className = "h-5 w-5", ...props }: { name: AppIconName; className?: string } & SVGProps<SVGSVGElement>) {
