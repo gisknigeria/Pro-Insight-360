@@ -19,7 +19,7 @@ FOREIGN KEY ("organisation_id") REFERENCES "organisations"("id") ON DELETE CASCA
 
 INSERT INTO "departments" ("id", "organisation_id", "name", "lead_name", "lead_email", "created_at")
 SELECT
-    gen_random_uuid()::text,
+    md5(random()::text || clock_timestamp()::text),
     "organisation_id",
     TRIM("department"),
     MAX(CASE WHEN "role" = 'HOD' THEN COALESCE("name", "email") END),

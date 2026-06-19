@@ -1758,11 +1758,16 @@ app.get('/storage/files/:key(*)', async (req, res) => {
 app.get('/responses', async (req, res) => {
   try {
     const currentUser = await getCurrentDbUser(req);
-    const query = req.user.role === 'RESPONDENT'
-      ? { respondentId: req.user.sub }
-      : req.user.role === 'CLIENT_ADMIN' && currentUser?.organisationId
-        ? { form: { evaluation: { organisationId: currentUser.organisationId } } }
-        : {};
+    let query = {};
+    if (req.user.role === 'RESPONDENT') {
+      query = { respondentId: req.user.sub };
+    } else if (req.user.role === 'CLIENT_ADMIN' && currentUser?.organisationId) {
+      const forms = await prisma.form.findMany({
+        where: { evaluation: { organisationId: currentUser.organisationId } },
+        select: { id: true },
+      });
+      query = { formId: { in: forms.map((form) => form.id) } };
+    }
 
     const responses = await prisma.response.findMany({
       where: query,
