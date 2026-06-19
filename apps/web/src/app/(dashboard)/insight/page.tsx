@@ -797,16 +797,17 @@ function SuperAdminInsightPage() {
                             </div>
 
                             {item.publishedAnalysis ? (
-                              <label className="mb-4 flex items-center justify-between gap-3 bg-slate-900 px-3 py-2 text-xs font-bold text-white">
-                                <span>Add under Insight menu</span>
+                              <div className="mb-4 flex justify-end">
                                 <input
                                   type="checkbox"
+                                  aria-label="Show this published insight under the Insight menu"
+                                  title="Show under Insight menu"
                                   checked={Boolean(item.publishedAnalysis.sidebarPinned)}
                                   disabled={sidebarSavingId === item.publishedAnalysis.id}
                                   onChange={(event) => handleSuperAdminSidebarPinChange(item, event.target.checked)}
-                                  className="h-4 w-4 accent-teal-400"
+                                  className="h-5 w-5 accent-teal-500"
                                 />
-                              </label>
+                              </div>
                             ) : null}
 
                             <div className="mb-4 grid grid-cols-2 gap-2">

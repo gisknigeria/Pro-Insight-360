@@ -1932,7 +1932,7 @@ function buildOrganogramPrompt(intake) {
 Return ONLY valid JSON in this exact shape:
 {
   "organogram": {
-    "nodes": [{"id":"1","label":"Role name","group":"Department name"}],
+    "nodes": [{"id":"1","label":"Role name","group":"Department name","accountability":"What this role owns","decisionAreas":["Area 1","Area 2"]}],
     "links": [{"source":"Child role label","target":"Parent role label","relation":"reports to"}]
   }
 }
@@ -1941,6 +1941,8 @@ Rules:
 - Every role from the intake must appear once in nodes.
 - Use role titles as labels. If two roles have the same title, add the holder or department in brackets so labels stay unique.
 - Use department names as groups.
+- Add accountability for each role when the intake describes responsibilities.
+- Add decisionAreas when the role owns approvals, data, GIS, technology, governance, people, finance, operations, or service delivery.
 - For links, source is the direct report and target is the manager.
 - Link source and target values must exactly match node label values.
 - If a reporting line is unclear, leave that role as a root node.

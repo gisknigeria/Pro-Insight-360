@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { isClientAdmin as checkClientAdmin } from '@/lib/auth';
 import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AppIcon } from '@/components/ui/app-icons';
 import type { OrgRow } from '@/components/organogram/OrgChartUploader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,6 +26,9 @@ interface PublishedAnalysis {
   analysis: {
     organogram?: Organogram;
     executiveSummary?: string;
+    gaps?: string[];
+    recommendations?: string[];
+    actionPlan?: Array<{ who?: string; what?: string; how?: string; when?: string }>;
   } | null;
 }
 
@@ -66,6 +70,162 @@ function buildOrgRows(nodes?: OrgNode[], links?: OrgLink[]): OrgRow[] {
     if (row) row.reportsTo = tgtName;
   });
   return rows;
+}
+
+function buildStructureInsights(rows: OrgRow[], analysis?: PublishedAnalysis['analysis'] | null) {
+  const departments = [...new Set(rows.map(r => r.title).filter((value): value is string => Boolean(value)))];
+  const roots = rows.filter(row => !row.reportsTo);
+  const childCounts = new Map<string, number>();
+  rows.forEach(row => {
+    if (!row.reportsTo) return;
+    childCounts.set(row.reportsTo, (childCounts.get(row.reportsTo) || 0) + 1);
+  });
+  const overloadedManagers = Array.from(childCounts.entries())
+    .filter(([, count]) => count >= 4)
+    .map(([name, count]) => ({ name, count }));
+  const singlePersonDepartments = departments
+    .map(department => ({ department, count: rows.filter(row => row.title === department).length }))
+    .filter(item => item.count === 1);
+  const actionPlan = Array.isArray(analysis?.actionPlan) ? analysis.actionPlan : [];
+  const recommendations = Array.isArray(analysis?.recommendations) ? analysis.recommendations : [];
+  const gaps = Array.isArray(analysis?.gaps) ? analysis.gaps : [];
+
+  const ownershipItems = [...actionPlan.map(item => ({
+    title: item.what || 'Action item',
+    owner: item.who || inferOwnerFromText(item.what || item.how || '', departments),
+    detail: item.how || item.when || '',
+  })), ...recommendations.slice(0, 4).map(item => ({
+    title: item,
+    owner: inferOwnerFromText(item, departments),
+    detail: 'Recommendation from published analysis',
+  }))].slice(0, 8);
+
+  const insightNotes = [
+    roots.length > 1
+      ? `${roots.length} top-level roles are visible. Confirm whether these all report to the same executive sponsor.`
+      : roots.length === 1
+        ? `${roots[0].name} appears to be the top accountability owner.`
+        : 'No top-level role was detected.',
+    overloadedManagers.length > 0
+      ? `${overloadedManagers.length} manager${overloadedManagers.length === 1 ? '' : 's'} may have a wide span of control.`
+      : 'No obvious wide-span manager was detected.',
+    singlePersonDepartments.length > 0
+      ? `${singlePersonDepartments.length} department${singlePersonDepartments.length === 1 ? '' : 's'} appear to depend on one named role.`
+      : 'Departments have more than one visible role where listed.',
+    gaps.length > 0
+      ? `${gaps.length} published gap${gaps.length === 1 ? '' : 's'} can be mapped back to structure owners.`
+      : 'No published gaps are attached to this organogram yet.',
+  ];
+
+  return {
+    departments,
+    roots,
+    overloadedManagers,
+    singlePersonDepartments,
+    ownershipItems,
+    insightNotes,
+  };
+}
+
+function inferOwnerFromText(text: string, departments: string[]) {
+  const lower = String(text || '').toLowerCase();
+  const matchedDepartment = departments.find(department => lower.includes(department.toLowerCase()));
+  if (matchedDepartment) return matchedDepartment;
+  if (lower.includes('data')) return 'Data / Governance owner';
+  if (lower.includes('gis') || lower.includes('geospatial')) return 'GIS / Geospatial lead';
+  if (lower.includes('infrastructure') || lower.includes('network') || lower.includes('system')) return 'IT / Infrastructure lead';
+  if (lower.includes('training') || lower.includes('skill')) return 'HR / Capability lead';
+  if (lower.includes('policy') || lower.includes('governance')) return 'Leadership / Governance owner';
+  return 'Executive sponsor';
+}
+
+function StructureInsightPanel({ rows, analysis }: { rows: OrgRow[]; analysis?: PublishedAnalysis['analysis'] | null }) {
+  const insights = useMemo(() => buildStructureInsights(rows, analysis), [rows, analysis]);
+  const [copied, setCopied] = useState(false);
+
+  async function copyOwnershipBrief() {
+    const text = [
+      'Use this organogram to connect structure, accountability, and analysis recommendations.',
+      '',
+      `Roles: ${rows.length}`,
+      `Departments: ${insights.departments.length}`,
+      `Top-level roles: ${insights.roots.map(row => row.name).join(', ') || 'None detected'}`,
+      `Wide-span managers: ${insights.overloadedManagers.map(item => `${item.name} (${item.count} direct reports)`).join(', ') || 'None detected'}`,
+      '',
+      'Ownership map:',
+      ...(insights.ownershipItems.length > 0
+        ? insights.ownershipItems.map(item => `- ${item.title}\n  Owner: ${item.owner}\n  Detail: ${item.detail || 'No detail provided'}`)
+        : ['- No action plan or recommendation ownership data yet.']),
+      '',
+      'Structure notes:',
+      ...insights.insightNotes.map(note => `- ${note}`),
+    ].join('\n');
+
+    await navigator.clipboard.writeText(text).catch(() => window.prompt('Copy this organogram ownership brief:', text));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2200);
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-teal-600">Structure insight</p>
+          <h2 className="mt-1 text-lg font-bold text-slate-900">Accountability and ownership map</h2>
+          <p className="mt-1 text-sm text-slate-500">Use the organogram to see who should own gaps, recommendations, and action items.</p>
+        </div>
+        <button type="button" onClick={copyOwnershipBrief} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800">
+          <AppIcon name={copied ? 'check' : 'copy'} className="h-4 w-4 text-white" />
+          {copied ? 'Brief copied' : 'Copy ownership brief'}
+        </button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-4">
+        {[
+          { label: 'Roles', value: rows.length, icon: 'users' as const, tone: 'bg-blue-50 text-blue-700' },
+          { label: 'Departments', value: insights.departments.length, icon: 'building' as const, tone: 'bg-teal-50 text-teal-700' },
+          { label: 'Top owners', value: insights.roots.length, icon: 'sitemap' as const, tone: 'bg-violet-50 text-violet-700' },
+          { label: 'Wide spans', value: insights.overloadedManagers.length, icon: 'activity' as const, tone: 'bg-amber-50 text-amber-700' },
+        ].map(metric => (
+          <div key={metric.label} className={`${metric.tone} p-4`}>
+            <AppIcon name={metric.icon} className="mb-2 h-5 w-5" />
+            <p className="text-2xl font-black">{metric.value}</p>
+            <p className="text-xs font-bold uppercase">{metric.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="bg-slate-50 p-4">
+          <p className="mb-3 text-sm font-bold text-slate-900">What the structure is telling us</p>
+          <div className="space-y-2">
+            {insights.insightNotes.map((note, index) => (
+              <div key={index} className="flex gap-2 bg-white p-3 text-sm text-slate-700">
+                <AppIcon name="info" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>{note}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-slate-950 p-4 text-white">
+          <p className="mb-3 text-sm font-bold text-white">Recommendation ownership</p>
+          {insights.ownershipItems.length > 0 ? (
+            <div className="space-y-2">
+              {insights.ownershipItems.map((item, index) => (
+                <div key={index} className="bg-white/10 p-3">
+                  <p className="text-sm font-bold text-white">{item.title}</p>
+                  <p className="mt-1 text-xs text-teal-200">Owner: {item.owner}</p>
+                  {item.detail ? <p className="mt-1 text-xs text-slate-300">{item.detail}</p> : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-300">Publish an analysis with recommendations or action items to map ownership here.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Edit panel ───────────────────────────────────────────────────────────────
@@ -435,6 +595,9 @@ export default function OrganogramPage() {
                 </div>
               ))}
             </div>
+            <div className="mb-6">
+              <StructureInsightPanel rows={orgRows} analysis={selected?.analysis} />
+            </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-base font-bold text-slate-900 mb-5">Reporting Structure</h2>
               {orgRows.length > 0
@@ -656,6 +819,8 @@ export default function OrganogramPage() {
                     </div>
                   )}
                 </div>
+
+                <StructureInsightPanel rows={orgRows} analysis={selected.analysis} />
 
                 {/* Edit panel */}
                 {editing && selected.analysis?.organogram && (

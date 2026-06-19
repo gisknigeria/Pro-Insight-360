@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import RadarChart from '@/components/charts/RadarChart';
 import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AppIcon, type AppIconName } from '@/components/ui/app-icons';
 import { isClientAdmin } from '@/lib/auth';
 import { apiFetch } from '@/lib/api';
 import { evaluationApiEndpoints } from '@/lib/apiEndpoints';
@@ -15,6 +16,7 @@ import {
 } from 'recharts';
 
 type Tab = 'analysis' | 'responses';
+type VersionBreakdown = { version: number; responses: number; answers: number };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,7 +37,7 @@ function parseGap(text: string): { sev: string; text: string } {
   if (u.startsWith('CRITICAL')) sev = 'CRITICAL';
   else if (u.startsWith('HIGH')) sev = 'HIGH';
   else if (u.startsWith('LOW')) sev = 'LOW';
-  return { sev, text: text.replace(/^(CRITICAL|HIGH|MEDIUM|LOW)[:\s—\-]+/i, '').trim() };
+  return { sev, text: text.replace(/^(CRITICAL|HIGH|MEDIUM|LOW)[:\s-]+/i, '').trim() };
 }
 
 function DiagnosisChartCard({ chart }: { chart: any }) {
@@ -94,6 +96,10 @@ export default function EvaluationDiagnosisPage() {
   const [copyMessage, setCopyMessage] = useState('');
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [canRunDiagnosis, setCanRunDiagnosis] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
+  const [versionSummary, setVersionSummary] = useState<any | null>(null);
+  const [versionLoading, setVersionLoading] = useState(false);
+  const [comparisonFormId, setComparisonFormId] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -101,6 +107,16 @@ export default function EvaluationDiagnosisPage() {
     setCanRunDiagnosis(!isClientAdmin());
     setHasAccess(true);
   }, [router]);
+
+  useEffect(() => {
+    if (!id || hasAccess !== true) return;
+    apiFetch<Array<{ id: string; evaluationId?: string }>>('/forms')
+      .then((forms) => {
+        const form = forms.find((item) => item.evaluationId === id);
+        setComparisonFormId(form?.id || '');
+      })
+      .catch(() => setComparisonFormId(''));
+  }, [id, hasAccess]);
 
   const shouldFetch = hasAccess === true;
   const { responsesApi, diagnosisApi } = useEvaluationDiagnosis(id, shouldFetch);
@@ -132,7 +148,7 @@ export default function EvaluationDiagnosisPage() {
     (organogram.links ?? []).forEach((link: any) => {
       const src = String(link.source || '');
       const tgt = String(link.target || '');
-      // source/target can be label strings or IDs — resolve IDs via nodes
+      // source/target can be label strings or IDs - resolve IDs via nodes
       const idToLabel = new Map<string, string>(
         organogram.nodes.map((n: any): [string, string] => [String(n.id ?? ''), String(n.label ?? n.id ?? '')])
       );
@@ -179,8 +195,30 @@ export default function EvaluationDiagnosisPage() {
   }
 
   const responses = responsesApi.data;
+  const responseSummary = versionSummary || responses;
+  const versionBreakdown: VersionBreakdown[] = Array.isArray(responses?.versionBreakdown) ? responses.versionBreakdown : [];
   const responsesLoading = responsesApi.loading;
   const pageError = responsesApi.error || diagnosisApi.error;
+
+  async function switchVersion(version: number | null) {
+    setSelectedVersion(version);
+    setAllResponses(null);
+    setShowAllResponses(false);
+    if (!version) {
+      setVersionSummary(null);
+      return;
+    }
+
+    setVersionLoading(true);
+    try {
+      const payload = await apiFetch<any>(`${evaluationApiEndpoints.responses(id)}?formVersion=${version}`);
+      setVersionSummary(payload);
+    } catch {
+      setVersionSummary(null);
+    } finally {
+      setVersionLoading(false);
+    }
+  }
 
   async function runDiagnosis() {
     setRunning(true); setRunMsg('');
@@ -196,7 +234,10 @@ export default function EvaluationDiagnosisPage() {
     if (allResponses || allResponsesLoading) { setShowAllResponses(true); return allResponses || []; }
     setAllResponsesLoading(true); setCopyMessage('');
     try {
-      const payload = await apiFetch<{ responses?: any[] }>(evaluationApiEndpoints.responsesFull(id));
+      const endpoint = selectedVersion
+        ? `${evaluationApiEndpoints.responsesFull(id)}?formVersion=${selectedVersion}`
+        : evaluationApiEndpoints.responsesFull(id);
+      const payload = await apiFetch<{ responses?: any[] }>(endpoint);
       const r = payload.responses || [];
       setAllResponses(r); setShowAllResponses(true); return r;
     } catch { setAllResponses([]); return []; }
@@ -218,9 +259,13 @@ export default function EvaluationDiagnosisPage() {
     }
   }
 
-  const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'analysis',  label: 'Analysis',   icon: '🧠' },
-    { id: 'responses', label: 'Responses',  icon: '💬' },
+  function scrollToSection(targetId: string) {
+    document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const tabs: { id: Tab; label: string; icon: AppIconName }[] = [
+    { id: 'analysis',  label: 'Analysis',   icon: 'bot' },
+    { id: 'responses', label: 'Responses',  icon: 'mail' },
   ];
 
   return (
@@ -251,6 +296,46 @@ export default function EvaluationDiagnosisPage() {
         <p className="mt-1">Run the diagnosis to refresh the latest gap analysis and saved evaluation diagnosis.</p>
       </div>
 
+      <div className="mb-6 bg-slate-950 p-4 text-white">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-bold text-white">Version view</p>
+            <p className="text-xs text-slate-300">Switch response data by questionnaire run, or open the comparison analysis workflow.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void switchVersion(null)}
+              className={`inline-flex items-center gap-2 px-3 py-2 text-xs font-bold ${selectedVersion === null ? 'bg-primary text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
+            >
+              <AppIcon name="grid" className="h-4 w-4" />
+              All versions
+            </button>
+            {versionBreakdown.map((version) => (
+              <button
+                key={version.version}
+                type="button"
+                onClick={() => void switchVersion(version.version)}
+                className={`inline-flex items-center gap-2 px-3 py-2 text-xs font-bold ${selectedVersion === version.version ? 'bg-primary text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
+              >
+                <AppIcon name="activity" className="h-4 w-4" />
+                V{version.version} · {version.responses}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => comparisonFormId && router.push(`/forms/${comparisonFormId}`)}
+              disabled={!comparisonFormId}
+              className="inline-flex items-center gap-2 bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-700"
+            >
+              <AppIcon name="chart" className="h-4 w-4" />
+              Compare analysis
+            </button>
+          </div>
+        </div>
+        {versionLoading ? <p className="mt-3 text-xs font-bold text-amber-200">Loading selected version...</p> : null}
+      </div>
+
       {/* ── Tabs ── */}
       <div className="border-b border-slate-200 mb-6">
         <nav className="flex gap-1" aria-label="Diagnosis sections">
@@ -259,7 +344,7 @@ export default function EvaluationDiagnosisPage() {
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'
               }`} aria-current={activeTab === tab.id ? 'page' : undefined}>
-              <span aria-hidden="true">{tab.icon}</span>{tab.label}
+              <AppIcon name={tab.icon} className="h-4 w-4" />{tab.label}
             </button>
           ))}
         </nav>
@@ -272,7 +357,7 @@ export default function EvaluationDiagnosisPage() {
         {activeTab === 'analysis' && (
           !diagnosis ? (
             <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <EmptyState icon="🧠" title="No saved analysis yet"
+              <EmptyState icon="bot" title="No saved analysis yet"
                 description="Publish or generate a diagnosis to show the saved analysis content here."
                 actionLabel={canRunDiagnosis ? 'Run Diagnosis' : undefined}
                 onAction={canRunDiagnosis ? runDiagnosis : undefined} />
@@ -282,25 +367,27 @@ export default function EvaluationDiagnosisPage() {
               {/* ── Metric strip ── */}
               <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 xl:grid-cols-7">
                 {[
-                  { label: 'Strengths',       value: Array.isArray(s.strengths)       ? s.strengths.length       : 0, color: 'from-emerald-400 to-green-600' },
-                  { label: 'Weaknesses',      value: Array.isArray(s.weaknesses)      ? s.weaknesses.length      : 0, color: 'from-red-400 to-rose-600' },
-                  { label: 'Opportunities',   value: Array.isArray(s.opportunities)   ? s.opportunities.length   : 0, color: 'from-amber-400 to-orange-500' },
-                  { label: 'Gaps',            value: parsedGaps.length,                                               color: 'from-rose-400 to-red-600' },
-                  { label: 'Recommendations', value: Array.isArray(s.recommendations) ? s.recommendations.length : 0, color: 'from-blue-400 to-indigo-600' },
-                  { label: 'Action Items',    value: Array.isArray(s.actionPlan)      ? s.actionPlan.length      : 0, color: 'from-violet-400 to-purple-600' },
-                  { label: 'Q&As',            value: Array.isArray(s.questions)       ? s.questions.length       : 0, color: 'from-slate-400 to-slate-600' },
+                  { label: 'Strengths',       value: Array.isArray(s.strengths)       ? s.strengths.length       : 0, color: 'from-emerald-400 to-green-600', target: 'strengths-section', icon: 'check' as const },
+                  { label: 'Weaknesses',      value: Array.isArray(s.weaknesses)      ? s.weaknesses.length      : 0, color: 'from-red-400 to-rose-600', target: 'weaknesses-section', icon: 'alert' as const },
+                  { label: 'Opportunities',   value: Array.isArray(s.opportunities)   ? s.opportunities.length   : 0, color: 'from-amber-400 to-orange-500', target: 'opportunities-section', icon: 'plus' as const },
+                  { label: 'Gaps',            value: parsedGaps.length,                                               color: 'from-rose-400 to-red-600', target: 'gaps-section', icon: 'activity' as const },
+                  { label: 'Recommendations', value: Array.isArray(s.recommendations) ? s.recommendations.length : 0, color: 'from-blue-400 to-indigo-600', target: 'recommendations-section', icon: 'clipboard' as const },
+                  { label: 'Action Items',    value: Array.isArray(s.actionPlan)      ? s.actionPlan.length      : 0, color: 'from-violet-400 to-purple-600', target: 'action-section', icon: 'calendar' as const },
+                  { label: 'Q&As',            value: Array.isArray(s.questions)       ? s.questions.length       : 0, color: 'from-slate-400 to-slate-600', target: 'questions-section', icon: 'mail' as const },
                 ].map(m => (
-                  <div key={m.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className={`mb-2 h-1.5 w-10 rounded-full bg-gradient-to-r ${m.color}`} />
+                  <button key={m.label} type="button" onClick={() => scrollToSection(m.target)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md">
+                    <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-r ${m.color} text-white`}>
+                      <AppIcon name={m.icon} className="h-4 w-4 text-white" />
+                    </div>
                     <p className="text-2xl font-bold text-slate-900">{m.value}</p>
                     <p className="text-xs font-medium text-slate-500 mt-0.5">{m.label}</p>
-                  </div>
+                  </button>
                 ))}
               </div>
 
               {/* ── Executive summary + Radar ── */}
               <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div id="gaps-section" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-3">Executive Summary</p>
                   <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
                     {s.executiveSummary || 'No summary available.'}
@@ -329,13 +416,15 @@ export default function EvaluationDiagnosisPage() {
               {/* ── S / W / O ── */}
               <div className="grid gap-4 xl:grid-cols-3">
                 {[
-                  { key: 'strengths',    title: 'Strengths',     icon: '✓', color: 'emerald', items: s.strengths     },
-                  { key: 'weaknesses',   title: 'Weaknesses',    icon: '!', color: 'red',     items: s.weaknesses    },
-                  { key: 'opportunities',title: 'Opportunities', icon: '→', color: 'amber',   items: s.opportunities },
+                  { key: 'strengths',    title: 'Strengths',     icon: 'check' as const, color: 'emerald', items: s.strengths     },
+                  { key: 'weaknesses',   title: 'Weaknesses',    icon: 'alert' as const, color: 'red',     items: s.weaknesses    },
+                  { key: 'opportunities',title: 'Opportunities', icon: 'plus' as const, color: 'amber',   items: s.opportunities },
                 ].map(({ key, title, icon, color, items }) => (
-                  <div key={key} className={`rounded-2xl border border-${color}-200 bg-${color}-50/60 p-5 shadow-sm`}>
+                  <div key={key} id={`${key}-section`} className={`scroll-mt-24 rounded-2xl border border-${color}-200 bg-${color}-50/60 p-5 shadow-sm`}>
                     <h3 className={`text-sm font-bold text-${color}-800 mb-4 flex items-center gap-2`}>
-                      <span className={`flex h-6 w-6 items-center justify-center rounded-full bg-${color}-500 text-xs text-white`}>{icon}</span>
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full bg-${color}-500 text-xs text-white`}>
+                        <AppIcon name={icon} className="h-3.5 w-3.5 text-white" />
+                      </span>
                       {title}
                     </h3>
                     <div className="space-y-2">
@@ -351,7 +440,7 @@ export default function EvaluationDiagnosisPage() {
 
               {/* ── Gaps ── */}
               {parsedGaps.length > 0 && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div id="recommendations-section" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between gap-4 mb-5">
                     <h3 className="text-base font-bold text-slate-900">Identified Gaps</h3>
                     <div className="flex flex-wrap gap-2">
@@ -410,7 +499,7 @@ export default function EvaluationDiagnosisPage() {
 
               {/* ── Recommendations ── */}
               {Array.isArray(s.recommendations) && s.recommendations.length > 0 && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div id="action-section" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="text-base font-bold text-slate-900 mb-4">Recommendations</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {s.recommendations.map((item: string, i: number) => (
@@ -425,7 +514,7 @@ export default function EvaluationDiagnosisPage() {
 
               {/* ── Action Plan ── */}
               {Array.isArray(s.actionPlan) && s.actionPlan.length > 0 && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div id="charts-section" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="text-base font-bold text-slate-900 mb-5">Action Plan</h3>
                   <div className="space-y-4">
                     {s.actionPlan.map((item: any, i: number) => (
@@ -445,7 +534,7 @@ export default function EvaluationDiagnosisPage() {
                           </div>
                           <div className="rounded-lg bg-slate-100 border border-slate-200 px-3 py-2">
                             <p className="font-bold text-slate-600 mb-0.5">How</p>
-                            <p className="text-slate-600 leading-relaxed">{item.how || '—'}</p>
+                            <p className="text-slate-600 leading-relaxed">{item.how || '-'}</p>
                           </div>
                         </div>
                       </div>
@@ -471,7 +560,7 @@ export default function EvaluationDiagnosisPage() {
 
               {/* ── Organogram ── */}
               {orgRows.length > 0 && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-x-auto">
+                <div id="organogram-section" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-x-auto">
                   <div className="flex items-center justify-between gap-4 mb-4">
                     <h3 className="text-base font-bold text-slate-900">Organogram</h3>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 ring-1 ring-violet-200">
@@ -483,7 +572,10 @@ export default function EvaluationDiagnosisPage() {
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {[...new Set(s.organogram?.nodes?.map((n: any) => n.group).filter(Boolean))].map((dept: any, i: number) => (
-                      <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">🏢 {dept}</span>
+                      <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                        <AppIcon name="building" className="h-3.5 w-3.5" />
+                        {dept}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -491,7 +583,7 @@ export default function EvaluationDiagnosisPage() {
 
               {/* ── Survey Q&As ── */}
               {Array.isArray(s.questions) && s.questions.length > 0 && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div id="questions-section" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between gap-4 mb-5">
                     <h3 className="text-base font-bold text-slate-900">Survey Responses</h3>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
@@ -543,9 +635,9 @@ export default function EvaluationDiagnosisPage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
-                    { label: 'Submitted responses', value: responses.totalResponses },
-                    { label: 'Total answers', value: responses.totalAnswers },
-                    { label: 'Avg completion', value: `${responses.averageCompletion}%` },
+                    { label: 'Submitted responses', value: responseSummary.totalResponses },
+                    { label: 'Total answers', value: responseSummary.totalAnswers },
+                    { label: 'Avg completion', value: `${responseSummary.averageCompletion}%` },
                   ].map(s => (
                     <div key={s.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                       <p className="text-xs text-slate-500 uppercase tracking-wide">{s.label}</p>
@@ -554,9 +646,9 @@ export default function EvaluationDiagnosisPage() {
                   ))}
                 </div>
 
-                {responses.sampleAnswers?.length > 0 ? (
+                {responseSummary.sampleAnswers?.length > 0 ? (
                   <div className="space-y-3">
-                    {responses.sampleAnswers.map((item: any, i: number) => (
+                    {responseSummary.sampleAnswers.map((item: any, i: number) => (
                       <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4">
                         <p className="text-xs text-slate-500">{item.respondent}</p>
                         <p className="text-sm font-semibold text-slate-900 mt-1">{item.question}</p>
@@ -565,7 +657,7 @@ export default function EvaluationDiagnosisPage() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon="💬" title="No submitted responses yet" description="Once responses are submitted, this tab will show actual answers." />
+                  <EmptyState icon="mail" title="No submitted responses yet" description="Once responses are submitted, this tab will show actual answers." />
                 )}
 
                 {showAllResponses && (
@@ -600,7 +692,7 @@ export default function EvaluationDiagnosisPage() {
                 )}
               </div>
             ) : (
-              <EmptyState icon="💬" title="No submitted responses yet" description="Once responses are submitted, this tab will show actual answers." />
+              <EmptyState icon="mail" title="No submitted responses yet" description="Once responses are submitted, this tab will show actual answers." />
             )}
           </div>
         )}
