@@ -55,6 +55,21 @@ function getJsonValue(value) {
   }
 }
 
+async function findDuplicateFormTitleForOrganisation({ organisationId, title, excludeFormId }) {
+  const normalizedTitle = String(title || '').trim().toLowerCase();
+  if (!organisationId || !normalizedTitle) return null;
+
+  const forms = await prisma.form.findMany({
+    where: {
+      ...(excludeFormId ? { id: { not: excludeFormId } } : {}),
+      evaluation: { organisationId },
+    },
+    select: { id: true, title: true },
+  });
+
+  return forms.find(form => String(form.title || '').trim().toLowerCase() === normalizedTitle) || null;
+}
+
 function formatAnswerValue(rawValue) {
   if (rawValue === null || rawValue === undefined) return '';
   if (typeof rawValue === 'object') {
@@ -1069,6 +1084,14 @@ app.post('/forms', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMI
       return res.status(404).json({ message: 'Evaluation not found.' });
     }
 
+    const duplicateForm = await findDuplicateFormTitleForOrganisation({
+      organisationId: evaluation.organisationId,
+      title,
+    });
+    if (duplicateForm) {
+      return res.status(409).json({ message: 'A form with this name already exists for this organization. Please use another form name.' });
+    }
+
     const formDefinition = definition || {
       formId: `form-${Date.now()}`,
       title: title.trim(),
@@ -1120,6 +1143,14 @@ app.post('/forms/for-organisation', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLI
 
     const org = await prisma.organisation.findUnique({ where: { id: organisationId } });
     if (!org) return res.status(404).json({ message: 'Organisation not found.' });
+
+    const duplicateForm = await findDuplicateFormTitleForOrganisation({
+      organisationId,
+      title,
+    });
+    if (duplicateForm) {
+      return res.status(409).json({ message: 'A form with this name already exists for this organization. Please use another form name.' });
+    }
 
     // Find or create a hidden evaluation bucket for organisation-level forms.
     let evaluation = await prisma.evaluation.findFirst({
@@ -1231,9 +1262,22 @@ app.put('/forms/:formId', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN'
     const { formId } = req.params;
     const { title, definition, status, accessMode } = req.body;
 
-    const form = await prisma.form.findUnique({ where: { id: formId } });
+    const form = await prisma.form.findUnique({
+      where: { id: formId },
+      include: { evaluation: { select: { organisationId: true } } },
+    });
     if (!form) {
       return res.status(404).json({ message: 'Form not found.' });
+    }
+
+    const nextTitle = title?.trim() || form.title;
+    const duplicateForm = await findDuplicateFormTitleForOrganisation({
+      organisationId: form.evaluation?.organisationId,
+      title: nextTitle,
+      excludeFormId: formId,
+    });
+    if (duplicateForm) {
+      return res.status(409).json({ message: 'A form with this name already exists for this organization. Please use another form name.' });
     }
 
     const existingDefinition = getJsonValue(form.definition) || {};
@@ -1247,7 +1291,7 @@ app.put('/forms/:formId', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN'
     const updated = await prisma.form.update({
       where: { id: formId },
       data: {
-        title: title?.trim() || form.title,
+        title: nextTitle,
         definition: finalDefinition,
         status: status || form.status,
         updatedAt: new Date(),

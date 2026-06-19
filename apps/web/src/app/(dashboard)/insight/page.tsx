@@ -524,7 +524,7 @@ function SuperAdminInsightPage() {
         const [allEvals, allForms, allPublished] = await Promise.all([
           apiFetch<Evaluation[]>('/evaluations'),
           apiFetch<OrganisationForm[]>('/forms').catch(() => []),
-          apiFetch<PublishedAnalysis[]>('/published-analyses').catch(() => []),
+          apiFetch<PublishedAnalysis[]>('/published-analyses/all').catch(() => []),
         ]);
         setEvaluations(allEvals.filter(e => !isFormBucketEvaluation(e)));
         setForms(allForms);
