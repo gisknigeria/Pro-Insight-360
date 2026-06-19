@@ -503,8 +503,8 @@ function AnalysisCard({
 // â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type InsightItem =
-  | { kind: 'PROJECT'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref: string; viewHref: string; hasAnalysis: boolean; publishedAnalysis?: PublishedAnalysis; unitName?: string | null; questionCount?: number; }
-  | { kind: 'FORM'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: boolean; publishedAnalysis?: PublishedAnalysis; unitName?: string | null; questionCount?: number; };
+  | { kind: 'PUBLISHED'; id: string; title: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: true; publishedAnalysis: PublishedAnalysis; unitName?: string | null; questionCount?: number; }
+  | { kind: 'FORM'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: false; publishedAnalysis?: undefined; unitName?: string | null; questionCount?: number; };
 
 function SuperAdminInsightPage() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
@@ -526,7 +526,7 @@ function SuperAdminInsightPage() {
           apiFetch<OrganisationForm[]>('/forms').catch(() => []),
           apiFetch<PublishedAnalysis[]>('/published-analyses/all').catch(() => []),
         ]);
-        setEvaluations(allEvals.filter(e => !isFormBucketEvaluation(e)));
+        setEvaluations(allEvals);
         setForms(allForms);
         setPublishedAnalyses(allPublished);
       } catch (err: any) {
@@ -539,31 +539,38 @@ function SuperAdminInsightPage() {
   }, []);
 
   const publishedEvalIds = useMemo(() => new Set(publishedAnalyses.map(pa => pa.evaluationId).filter(Boolean)), [publishedAnalyses]);
-  const publishedByEvalId = useMemo(() => {
-    const map = new Map<string, PublishedAnalysis>();
-    publishedAnalyses.forEach(pa => {
-      if (pa.evaluationId && !map.has(pa.evaluationId)) map.set(pa.evaluationId, pa);
-    });
-    return map;
-  }, [publishedAnalyses]);
   const evalById = useMemo(() => new Map(evaluations.map(ev => [ev.id, ev])), [evaluations]);
 
   const items = useMemo<InsightItem[]>(() => {
-    const projectItems: InsightItem[] = evaluations.map(ev => ({
-      kind: 'PROJECT',
-      id: ev.id,
-      title: ev.title,
-      status: ev.status,
-      organisationName: ev.organisation?.name ?? 'Unassigned organisation',
-      formCount: ev._count?.forms ?? 0,
-      createdAt: ev.startDate ?? ev.createdAt,
-      diagnosisHref: `/evaluations/${ev.id}/diagnosis`,
-      viewHref: `/evaluations/${ev.id}`,
-      hasAnalysis: publishedEvalIds.has(ev.id),
-      publishedAnalysis: publishedByEvalId.get(ev.id),
-    }));
+    const formsByEvaluationId = new Map<string, OrganisationForm[]>();
+    forms.forEach(form => {
+      if (!form.evaluationId) return;
+      formsByEvaluationId.set(form.evaluationId, [...(formsByEvaluationId.get(form.evaluationId) ?? []), form]);
+    });
 
-    const formItems: InsightItem[] = forms.map(form => {
+    const publishedItems: InsightItem[] = publishedAnalyses.map(published => {
+      const ev = published.evaluationId ? evalById.get(published.evaluationId) : undefined;
+      const relatedForms = published.evaluationId ? (formsByEvaluationId.get(published.evaluationId) ?? []) : [];
+      const primaryForm = relatedForms[0];
+      return {
+        kind: 'PUBLISHED',
+        id: published.id,
+        title: ev?.title || published.sidebarTitle || published.summary || primaryForm?.title || 'Published insight',
+        organisationName: ev?.organisation?.name || published.recipientName || primaryForm?.organisation?.name || 'Published organisation',
+        formCount: relatedForms.length || 1,
+        createdAt: published.publishedAt,
+        diagnosisHref: published.evaluationId ? `/evaluations/${published.evaluationId}/diagnosis` : undefined,
+        viewHref: published.evaluationId ? `/evaluations/${published.evaluationId}/diagnosis` : `/insight?published=${encodeURIComponent(published.id)}`,
+        hasAnalysis: true,
+        publishedAnalysis: published,
+        unitName: primaryForm?.unitName,
+        questionCount: primaryForm?.questionCount,
+      };
+    });
+
+    const formItems: InsightItem[] = forms
+      .filter(form => !form.evaluationId || !publishedEvalIds.has(form.evaluationId))
+      .map(form => {
       const ev = form.evaluationId ? evalById.get(form.evaluationId) : undefined;
       return {
         kind: 'FORM',
@@ -575,19 +582,18 @@ function SuperAdminInsightPage() {
         createdAt: form.createdAt ?? form.updatedAt,
         diagnosisHref: form.evaluationId ? `/evaluations/${form.evaluationId}/diagnosis` : undefined,
         viewHref: `/forms/${form.id}`,
-        hasAnalysis: Boolean(form.evaluationId && publishedEvalIds.has(form.evaluationId)),
-        publishedAnalysis: form.evaluationId ? publishedByEvalId.get(form.evaluationId) : undefined,
+        hasAnalysis: false,
         unitName: form.unitName,
         questionCount: form.questionCount,
       };
     });
 
-    return [...projectItems, ...formItems].sort((a, b) => {
+    return [...publishedItems, ...formItems].sort((a, b) => {
       const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return bTime - aTime;
     });
-  }, [evaluations, forms, evalById, publishedByEvalId, publishedEvalIds]);
+  }, [evaluations, forms, evalById, publishedAnalyses, publishedEvalIds]);
 
   const filtered = useMemo(() => {
     if (activeFilter === 'ALL') return items;
@@ -619,15 +625,11 @@ function SuperAdminInsightPage() {
   }, [filtered]);
 
   async function deleteInsightItem(item: InsightItem) {
-    const label = item.kind === 'PROJECT' ? 'project' : 'form';
-    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
+    if (item.kind !== 'FORM') return;
+    if (!window.confirm('Delete this form? This cannot be undone.')) return;
 
-    await apiFetch(item.kind === 'PROJECT' ? `/evaluations/${item.id}` : `/forms/${item.id}`, { method: 'DELETE' });
-    if (item.kind === 'PROJECT') {
-      setEvaluations(prev => prev.filter(evaluation => evaluation.id !== item.id));
-    } else {
-      setForms(prev => prev.filter(form => form.id !== item.id));
-    }
+    await apiFetch(`/forms/${item.id}`, { method: 'DELETE' });
+    setForms(prev => prev.filter(form => form.id !== item.id));
 
   }
 
@@ -756,28 +758,30 @@ function SuperAdminInsightPage() {
                           <div className="flex flex-1 flex-col p-5">
                             <div className="mb-3 flex items-start justify-between gap-3">
                               <div className="flex min-w-0 flex-1 items-center gap-3">
-                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center ${item.kind === 'FORM' ? 'bg-amber-50 text-amber-700' : 'bg-primary/10 text-primary'}`}>
-                                  <AppIcon name={item.kind === 'FORM' ? 'file' : 'folder'} className="h-5 w-5" />
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center ${item.kind === 'FORM' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                  <AppIcon name={item.kind === 'FORM' ? 'file' : 'chart'} className="h-5 w-5" />
                                 </div>
                                 <div className="min-w-0">
                                   <Link href={item.viewHref} className="block truncate text-sm font-bold text-slate-900 transition-colors hover:text-primary">{item.title}</Link>
-                                  <p className="mt-0.5 truncate text-xs text-slate-400">{item.kind === 'FORM' ? 'Direct form' : 'Project'}</p>
+                                  <p className="mt-0.5 truncate text-xs text-slate-400">{item.kind === 'FORM' ? 'Direct form' : 'Published analysis'}</p>
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => deleteInsightItem(item)}
-                                className="border border-red-100 bg-white px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
-                              >
-                                Delete
-                              </button>
+                              {item.kind === 'FORM' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => deleteInsightItem(item)}
+                                  className="border border-red-100 bg-white px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
+                                >
+                                  Delete
+                                </button>
+                              ) : null}
                             </div>
 
                             <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                               <span className={`px-2 py-1 font-bold ${item.hasAnalysis ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                                 {item.hasAnalysis ? 'Published insight' : 'Draft insight'}
                               </span>
-                              {item.kind === 'PROJECT' ? <span>{item.formCount} form{item.formCount !== 1 ? 's' : ''}</span> : <span>{item.questionCount ?? 0} question{item.questionCount !== 1 ? 's' : ''}</span>}
+                              {item.kind === 'PUBLISHED' ? <span>{item.formCount} linked form{item.formCount !== 1 ? 's' : ''}</span> : <span>{item.questionCount ?? 0} question{item.questionCount !== 1 ? 's' : ''}</span>}
                               {item.unitName ? <span>Unit: {item.unitName}</span> : null}
                             </div>
 
@@ -795,8 +799,8 @@ function SuperAdminInsightPage() {
                             ) : null}
 
                             <div className="mb-4 grid grid-cols-2 gap-2">
-                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Type</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? 'Direct form' : 'Evaluation'}</p></div>
-                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">{item.kind === 'FORM' ? 'Questions' : 'Forms'}</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? (item.questionCount ?? 0) : item.formCount}</p></div>
+                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Type</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? 'Direct form' : 'Published analysis'}</p></div>
+                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">{item.kind === 'FORM' ? 'Questions' : 'Linked forms'}</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? (item.questionCount ?? 0) : item.formCount}</p></div>
                             </div>
 
                             <div className="mt-auto flex items-center gap-2">
