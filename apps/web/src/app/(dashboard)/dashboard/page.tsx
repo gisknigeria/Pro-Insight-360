@@ -471,6 +471,57 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
   );
 }
 
+function LatestReportBriefChart({ published, evaluation }: { published: PublishedAnalysis; evaluation?: Evaluation }) {
+  const analysis = published.analysis;
+  const briefText = analysis?.executiveSummary || published.summary || 'Latest published report is available for review.';
+  const metricData = [
+    { name: 'Gaps', value: analysis?.gaps?.length ?? analysis?.weaknesses?.length ?? 0, fill: '#ef4444' },
+    { name: 'Recommendations', value: analysis?.recommendations?.length ?? 0, fill: '#10b981' },
+    { name: 'Charts', value: analysis?.charts?.length ?? 0, fill: '#2563eb' },
+    { name: 'Actions', value: analysis?.actionPlan?.length ?? 0, fill: '#7c3aed' },
+  ];
+  const totalSignals = metricData.reduce((sum, item) => sum + item.value, 0);
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+      <div className="bg-slate-950 p-5 text-white">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">Latest shared report</p>
+        <h3 className="mt-3 text-lg font-black leading-tight text-white">{evaluation?.title || published.summary || 'Published insight'}</h3>
+        <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-slate-200">{briefText}</p>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          {metricData.map((item) => (
+            <div key={item.name} className="bg-white/10 p-3 ring-1 ring-white/10">
+              <p className="text-xl font-black text-white">{item.value}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300">{item.name}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white p-5 ring-1 ring-slate-200">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <p className="text-sm font-black text-slate-950">Report signal mix</p>
+          <span className="bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800 ring-1 ring-cyan-100">{totalSignals} signals</span>
+        </div>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={metricData} margin={{ top: 12, right: 14, left: -8, bottom: 14 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+              <Bar dataKey="value" radius={[0, 0, 0, 0]}>
+                {metricData.map((item) => <Cell key={item.name} fill={item.fill} />)}
+              </Bar>
+              <Line type="monotone" dataKey="value" stroke="#0f172a" strokeWidth={3} dot={{ r: 4 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ label?: string; name?: string; value?: number; count?: number }>; }; }) {
   const chartData = normalizeAnalysisChartData(chart);
 
@@ -573,25 +624,18 @@ function OrganizationInsightCharts({
     }).filter((item) => normalizeAnalysisChartData(item.chart).length > 0);
   }, [evaluationTitleById, publishedAnalyses]);
 
-  const analysisShowcases = useMemo(() => {
-    return publishedAnalyses.map((published, index) => {
-      const reportName = published.evaluationId ? evaluationTitleById[published.evaluationId] : published.summary;
-      const analysis = published.analysis;
-      const gaps = analysis?.gaps ?? analysis?.weaknesses ?? [];
-      return {
-        id: published.id,
-        name: reportName || published.summary || `Published analysis ${index + 1}`,
-        publishedAt: published.publishedAt,
-        summary: analysis?.executiveSummary || published.summary,
-        strengths: analysis?.strengths ?? [],
-        gaps,
-        opportunities: analysis?.opportunities ?? [],
-        recommendations: analysis?.recommendations ?? [],
-        actionPlan: analysis?.actionPlan ?? [],
-        chartCount: analysis?.charts?.length ?? 0,
-      };
-    });
-  }, [evaluationTitleById, publishedAnalyses]);
+  const analysisShowcases: Array<{
+    id: string;
+    name: string;
+    publishedAt: string;
+    summary?: string;
+    strengths: string[];
+    gaps: string[];
+    opportunities: string[];
+    recommendations: string[];
+    actionPlan: Array<{ who?: string; what?: string; how?: string; when?: string }>;
+    chartCount: number;
+  }> = [];
 
   if (publishedAnalyses.length === 0) {
     const completionHasData = completionDistribution.some((item) => item.value > 0);
@@ -1970,7 +2014,7 @@ export default function DashboardPage() {
               <span className="text-2xl font-bold text-accent">{filteredPublishedAnalyses.length}</span>
             </div>
             {latestPublished ? (
-              <LatestPublishedAnalysis published={latestPublished} evaluation={latestPublishedEvaluation} />
+              <LatestReportBriefChart published={latestPublished} evaluation={latestPublishedEvaluation} />
             ) : (
               <EmptyDashboard message="No published GISKonsult insights have been shared with your account yet." />
             )}
