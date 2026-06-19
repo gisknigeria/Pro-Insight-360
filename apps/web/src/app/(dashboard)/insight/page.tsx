@@ -34,6 +34,7 @@ interface OrganisationForm {
   status: string;
   accessMode?: string;
   questionCount: number;
+  responseCount?: number;
   createdAt?: string;
   updatedAt?: string;
   evaluationId?: string;
@@ -504,8 +505,8 @@ function AnalysisCard({
 // â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type InsightItem =
-  | { kind: 'PUBLISHED'; id: string; title: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: true; publishedAnalysis: PublishedAnalysis; unitName?: string | null; questionCount?: number; }
-  | { kind: 'FORM'; id: string; title: string; status: string; organisationName: string; formCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: false; publishedAnalysis?: undefined; unitName?: string | null; questionCount?: number; };
+  | { kind: 'PUBLISHED'; id: string; title: string; organisationName: string; formCount: number; responseCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: true; publishedAnalysis: PublishedAnalysis; unitName?: string | null; questionCount?: number; }
+  | { kind: 'FORM'; id: string; title: string; status: string; organisationName: string; formCount: number; responseCount: number; createdAt?: string; diagnosisHref?: string; viewHref: string; hasAnalysis: false; publishedAnalysis?: undefined; unitName?: string | null; questionCount?: number; };
 
 function SuperAdminInsightPage() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
@@ -558,12 +559,14 @@ function SuperAdminInsightPage() {
       const ev = published.evaluationId ? evalById.get(published.evaluationId) : undefined;
       const relatedForms = published.evaluationId ? (formsByEvaluationId.get(published.evaluationId) ?? []) : [];
       const primaryForm = relatedForms[0];
+      const responseCount = relatedForms.reduce((sum, form) => sum + (form.responseCount || 0), 0);
       return {
         kind: 'PUBLISHED',
         id: published.id,
         title: ev?.title || published.sidebarTitle || published.summary || primaryForm?.title || 'Published insight',
         organisationName: ev?.organisation?.name || primaryForm?.organisation?.name || published.organisationName || displayRecipientAsOrganisation(published.recipientName) || 'Unassigned organisation',
         formCount: relatedForms.length || 1,
+        responseCount,
         createdAt: published.publishedAt,
         diagnosisHref: published.evaluationId ? `/evaluations/${published.evaluationId}/diagnosis` : undefined,
         viewHref: published.evaluationId ? `/evaluations/${published.evaluationId}/diagnosis` : `/insight?published=${encodeURIComponent(published.id)}`,
@@ -585,6 +588,7 @@ function SuperAdminInsightPage() {
         status: form.status,
         organisationName: form.organisation?.name ?? ev?.organisation?.name ?? 'Direct organisation form',
         formCount: 1,
+        responseCount: form.responseCount || 0,
         createdAt: form.createdAt ?? form.updatedAt,
         diagnosisHref: form.evaluationId ? `/evaluations/${form.evaluationId}/diagnosis` : undefined,
         viewHref: `/forms/${form.id}`,
@@ -788,6 +792,7 @@ function SuperAdminInsightPage() {
                                 {item.hasAnalysis ? 'Published insight' : 'Draft insight'}
                               </span>
                               {item.kind === 'PUBLISHED' ? <span>{item.formCount} linked form{item.formCount !== 1 ? 's' : ''}</span> : <span>{item.questionCount ?? 0} question{item.questionCount !== 1 ? 's' : ''}</span>}
+                              <span>{item.responseCount} respondent{item.responseCount === 1 ? '' : 's'}</span>
                               {item.unitName ? <span>Unit: {item.unitName}</span> : null}
                             </div>
 
@@ -806,7 +811,7 @@ function SuperAdminInsightPage() {
 
                             <div className="mb-4 grid grid-cols-2 gap-2">
                               <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">Type</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? 'Direct form' : 'Published analysis'}</p></div>
-                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">{item.kind === 'FORM' ? 'Questions' : 'Linked forms'}</p><p className="mt-1 text-sm font-bold text-slate-900">{item.kind === 'FORM' ? (item.questionCount ?? 0) : item.formCount}</p></div>
+                              <div className="bg-slate-50 p-3"><p className="text-xs font-medium text-slate-500">People responded</p><p className="mt-1 text-sm font-bold text-slate-900">{item.responseCount}</p></div>
                             </div>
 
                             <div className="mt-auto flex items-center gap-2">
@@ -1392,7 +1397,7 @@ export default function InsightPage() {
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-base">ðŸ“„</div>
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-slate-900 truncate">{form.title}</p>
-                              <p className="text-xs text-slate-400 mt-0.5">{form.questionCount} questions</p>
+                              <p className="text-xs text-slate-400 mt-0.5">{form.questionCount} questions · {form.responseCount || 0} respondent{form.responseCount === 1 ? '' : 's'}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -1410,7 +1415,7 @@ export default function InsightPage() {
                           <>
                             <div className="grid grid-cols-3 gap-2 mb-3">
                               {[
-                                { label: 'Responses',  value: m.totalResponses },
+                                { label: 'Responses',  value: m.totalResponses || form.responseCount || 0 },
                                 { label: 'Answers',    value: m.totalAnswers },
                                 { label: 'Completion', value: `${m.averageCompletion}%` },
                               ].map(s => (

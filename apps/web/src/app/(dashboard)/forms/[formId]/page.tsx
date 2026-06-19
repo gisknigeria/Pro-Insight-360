@@ -31,9 +31,21 @@ interface FormVersionSummary {
   gaps?: number;
   recommendations?: number;
   charts?: number;
+  responsesDetail?: Array<{
+    respondent: string;
+    submittedAt?: string | null;
+    answers: Array<{ question: string; answer: string }>;
+  }>;
+  analyses?: Array<{
+    id: string;
+    publishedAt: string;
+    summary?: string;
+    analysis?: any;
+  }>;
 }
 
 interface FormVersionsPayload {
+  form?: { id: string; title: string; evaluationId?: string };
   currentVersion: number;
   versions: FormVersionSummary[];
 }
@@ -54,6 +66,14 @@ export default function EditFormPage() {
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [republishing, setRepublishing] = useState(false);
   const [comparisonCopied, setComparisonCopied] = useState(false);
+  const [clientAdmins, setClientAdmins] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [selectedAdminId, setSelectedAdminId] = useState('');
+  const [comparisonOutput, setComparisonOutput] = useState('');
+  const [comparisonParsed, setComparisonParsed] = useState<any | null>(null);
+  const [comparisonParseError, setComparisonParseError] = useState('');
+  const [comparisonPublishMessage, setComparisonPublishMessage] = useState('');
+  const [comparisonPublishError, setComparisonPublishError] = useState('');
+  const [comparisonPublishing, setComparisonPublishing] = useState(false);
 
   useEffect(() => {
     if (!formId) return;
@@ -69,6 +89,13 @@ export default function EditFormPage() {
         const versions = await apiFetch<FormVersionsPayload>(`/forms/${formId}/versions`);
         setVersionInfo(versions);
         setSelectedVersion(versions.currentVersion);
+        apiFetch<{ id: string; name: string; email: string; role: string }[]>('/users')
+          .then((users) => {
+            const admins = users.filter((user) => user.role === 'CLIENT_ADMIN');
+            setClientAdmins(admins.map((user) => ({ id: user.id, name: user.name || user.email, email: user.email })));
+            if (admins.length > 0) setSelectedAdminId(admins[0].id);
+          })
+          .catch(() => setClientAdmins([]));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to load form definition.');
       } finally {
@@ -176,23 +203,58 @@ export default function EditFormPage() {
   async function copyVersionComparison() {
     const versions = versionInfo?.versions || [];
     if (versions.length === 0) return;
+    const versionBlocks = versions.map((version) => {
+      const responseText = (version.responsesDetail || []).map((response, index) => {
+        const answers = response.answers.map((answer) => `Question: ${answer.question}\nAnswer: ${answer.answer}`).join('\n');
+        return `Response ${index + 1}\nRespondent: ${response.respondent}\nSubmitted: ${response.submittedAt ? new Date(response.submittedAt).toLocaleString() : 'Unknown'}\n${answers}`;
+      }).join('\n\n');
+
+      const analysisText = (version.analyses || []).map((analysis, index) => (
+        `Published analysis ${index + 1}\nPublished: ${analysis.publishedAt ? new Date(analysis.publishedAt).toLocaleString() : 'Unknown'}\nSummary: ${analysis.summary || ''}\nAnalysis JSON:\n${JSON.stringify(analysis.analysis || {}, null, 2)}`
+      )).join('\n\n');
+
+      return [
+        `VERSION ${version.version}${version.isCurrent ? ' (LATEST)' : ''}`,
+        `Question count: ${version.questionCount}`,
+        `Submitted responses: ${version.responses}`,
+        `Total answers: ${version.answers}`,
+        `Published analyses: ${version.publishedAnalyses}`,
+        `Gaps: ${version.gaps || 0}`,
+        `Recommendations: ${version.recommendations || 0}`,
+        `Charts: ${version.charts || 0}`,
+        version.latestSummary ? `Latest professional summary: ${version.latestSummary}` : 'Latest professional summary: Not published yet',
+        '',
+        'Submitted response data:',
+        responseText || 'No submitted responses for this version yet.',
+        '',
+        'Published analysis data:',
+        analysisText || 'No published analysis for this version yet.',
+      ].join('\n');
+    }).join('\n\n====================\n\n');
+
     const text = [
+      'You are an expert organisational analyst comparing repeat assessment runs for the same insight/form.',
+      'Use ONLY the response data and published analysis data below. Compare every version together and explain measurable improvement, decline, unchanged gaps, and what leadership should do next.',
+      '',
+      'Return valid JSON only with this structure:',
+      '{',
+      '  "title": "Version comparison analysis",',
+      '  "executiveSummary": "Professional comparison summary",',
+      '  "comparisonSummary": "What improved and what declined across versions",',
+      '  "improvements": ["..."],',
+      '  "declines": ["..."],',
+      '  "unchangedGaps": ["..."],',
+      '  "gaps": ["..."],',
+      '  "recommendations": ["..."],',
+      '  "actionPlan": [{ "who": "...", "what": "...", "how": "...", "when": "..." }],',
+      '  "charts": [{ "title": "Version growth", "data": [{ "label": "V1", "value": 0 }] }],',
+      '  "questions": [{ "question": "Version comparison", "answer": "..." }]',
+      '}',
+      '',
       `Insight/Form: ${definition?.title || 'Untitled form'}`,
       `Latest version: V${versionInfo?.currentVersion || 1}`,
       '',
-      'Compare these assessment runs and explain what improved, what declined, and what leadership should do next:',
-      '',
-      ...versions.map((version) => [
-        `Version ${version.version}${version.isCurrent ? ' (latest)' : ''}`,
-        `Responses: ${version.responses}`,
-        `Answers: ${version.answers}`,
-        `Questions: ${version.questionCount}`,
-        `Published analyses: ${version.publishedAnalyses}`,
-        `Gaps identified: ${version.gaps || 0}`,
-        `Recommendations: ${version.recommendations || 0}`,
-        `Charts included: ${version.charts || 0}`,
-        version.latestSummary ? `Latest professional summary: ${version.latestSummary}` : 'Latest professional summary: Not published yet',
-      ].join('\n')),
+      versionBlocks,
     ].join('\n\n');
 
     try {
@@ -202,6 +264,61 @@ export default function EditFormPage() {
     }
     setComparisonCopied(true);
     window.setTimeout(() => setComparisonCopied(false), 2200);
+  }
+
+  function parseComparisonOutput() {
+    setComparisonParseError('');
+    setComparisonPublishMessage('');
+    setComparisonPublishError('');
+    try {
+      const text = comparisonOutput.trim();
+      const start = text.indexOf('{');
+      const parsed = JSON.parse(start >= 0 ? text.slice(start) : text);
+      setComparisonParsed({
+        ...parsed,
+        analysisType: 'VERSION_COMPARISON',
+        comparedVersions: versionInfo?.versions.map((version) => version.version) || [],
+      });
+    } catch {
+      setComparisonParsed(null);
+      setComparisonParseError('Could not parse the comparison JSON. Paste valid JSON from ChatGPT or Claude.');
+    }
+  }
+
+  async function publishComparisonAnalysis() {
+    setComparisonPublishMessage('');
+    setComparisonPublishError('');
+    if (!comparisonParsed) {
+      setComparisonPublishError('Parse a comparison analysis before publishing.');
+      return;
+    }
+    if (!selectedAdminId) {
+      setComparisonPublishError('Select a client admin recipient.');
+      return;
+    }
+    if (!versionInfo?.form?.evaluationId) {
+      setComparisonPublishError('This form is not attached to an evaluation.');
+      return;
+    }
+
+    setComparisonPublishing(true);
+    try {
+      const result = await apiFetch<{ message: string }>('/diagnoses/publish', {
+        method: 'POST',
+        body: JSON.stringify({
+          recipientId: selectedAdminId,
+          evaluationId: versionInfo.form.evaluationId,
+          formVersion: versionInfo.currentVersion,
+          analysis: comparisonParsed,
+        }),
+      });
+      setComparisonPublishMessage(result.message || 'Comparison analysis published successfully.');
+      await refreshVersions();
+    } catch (err: any) {
+      setComparisonPublishError(err?.message || 'Unable to publish comparison analysis.');
+    } finally {
+      setComparisonPublishing(false);
+    }
   }
 
   if (loading) {
@@ -433,6 +550,101 @@ export default function EditFormPage() {
               <div className="bg-slate-100 p-4 text-sm font-medium text-slate-600">Version comparison will appear after this form is saved.</div>
             );
           })()}
+        </div>
+      </section>
+
+      <section className="grid gap-4 bg-slate-950 p-5 text-white shadow-sm lg:grid-cols-[1fr_1fr]">
+        <div>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="bg-primary p-2 text-white">
+              <AppIcon name="chart" className="h-6 w-6 text-white" />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Comparison analysis</h2>
+              <p className="text-sm text-slate-200">
+                Paste the AI version-comparison JSON here, preview it, then publish it to the client admin like a normal analysis.
+              </p>
+            </div>
+          </div>
+          <textarea
+            value={comparisonOutput}
+            onChange={(event) => setComparisonOutput(event.target.value)}
+            rows={10}
+            className="w-full bg-white p-3 text-sm font-medium text-slate-950 outline-none ring-2 ring-transparent focus:ring-primary"
+            placeholder='Paste comparison JSON here, for example { "executiveSummary": "...", "improvements": [], "charts": [] }'
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={parseComparisonOutput}
+              className="inline-flex items-center gap-2 bg-white px-4 py-2 text-sm font-bold text-slate-950 hover:bg-slate-100"
+            >
+              <AppIcon name="check" className="h-5 w-5 text-slate-950" />
+              Parse comparison
+            </button>
+            <button
+              type="button"
+              onClick={() => void copyVersionComparison()}
+              className="inline-flex items-center gap-2 bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90"
+            >
+              <AppIcon name={comparisonCopied ? 'check' : 'copy'} className="h-5 w-5 text-white" />
+              {comparisonCopied ? 'Prompt copied' : 'Copy full comparison prompt'}
+            </button>
+          </div>
+          {comparisonParseError ? <p className="mt-3 bg-red-50 p-3 text-sm font-bold text-red-700">{comparisonParseError}</p> : null}
+        </div>
+
+        <div className="bg-slate-900 p-5">
+          <h3 className="text-base font-bold text-white">Preview and publish</h3>
+          {comparisonParsed ? (
+            <div className="mt-4 space-y-4">
+              <div className="bg-white p-4 text-slate-950">
+                <p className="text-sm font-black text-slate-950">{comparisonParsed.title || 'Version comparison analysis'}</p>
+                <p className="mt-2 text-sm text-slate-700">{comparisonParsed.executiveSummary || comparisonParsed.comparisonSummary || 'No summary provided.'}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Improvements', value: Array.isArray(comparisonParsed.improvements) ? comparisonParsed.improvements.length : 0 },
+                  { label: 'Gaps', value: Array.isArray(comparisonParsed.gaps) ? comparisonParsed.gaps.length : 0 },
+                  { label: 'Charts', value: Array.isArray(comparisonParsed.charts) ? comparisonParsed.charts.length : 0 },
+                ].map((metric) => (
+                  <div key={metric.label} className="bg-white/10 p-3 text-white">
+                    <p className="text-xs font-bold uppercase text-slate-300">{metric.label}</p>
+                    <p className="mt-1 text-xl font-black text-white">{metric.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 bg-white/10 p-4 text-sm text-slate-200">Parse a comparison JSON to preview it here.</div>
+          )}
+
+          <div className="mt-5 grid gap-3">
+            <label className="text-sm font-bold text-white" htmlFor="comparison-client-admin">Publish to client admin</label>
+            <select
+              id="comparison-client-admin"
+              value={selectedAdminId}
+              onChange={(event) => setSelectedAdminId(event.target.value)}
+              className="bg-white px-3 py-2 text-sm font-bold text-slate-950 outline-none ring-2 ring-transparent focus:ring-primary"
+            >
+              {clientAdmins.length === 0 ? (
+                <option value="">No client admins found</option>
+              ) : clientAdmins.map((admin) => (
+                <option key={admin.id} value={admin.id}>{admin.name} ({admin.email})</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => void publishComparisonAnalysis()}
+              disabled={comparisonPublishing || !comparisonParsed || clientAdmins.length === 0}
+              className="inline-flex items-center justify-center gap-2 bg-emerald-500 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-600"
+            >
+              <AppIcon name="upload" className="h-5 w-5 text-white" />
+              {comparisonPublishing ? 'Publishing comparison' : 'Publish comparison analysis'}
+            </button>
+          </div>
+          {comparisonPublishMessage ? <p className="mt-3 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{comparisonPublishMessage}</p> : null}
+          {comparisonPublishError ? <p className="mt-3 bg-red-50 p-3 text-sm font-bold text-red-700">{comparisonPublishError}</p> : null}
         </div>
       </section>
 

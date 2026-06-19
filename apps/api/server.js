@@ -1091,7 +1091,10 @@ app.get('/users', async (req, res) => {
 app.get('/forms', async (req, res) => {
   try {
     const forms = await prisma.form.findMany({
-      include: { evaluation: { include: { organisation: true } } },
+      include: {
+        evaluation: { include: { organisation: true } },
+        _count: { select: { responses: { where: { status: 'SUBMITTED' } } } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -1111,6 +1114,7 @@ app.get('/forms', async (req, res) => {
         status: form.status,
         accessMode: definition?.accessMode || 'REGISTERED',
         questionCount,
+        responseCount: form._count?.responses || 0,
         evaluationId: form.evaluationId,
         evaluationTitle: form.evaluation?.title,
         organisationId: form.evaluation?.organisationId,
@@ -1288,7 +1292,10 @@ app.get('/forms/by-organisation/:orgId', authenticate, async (req, res) => {
     const evalIds = evaluations.map(e => e.id);
     const forms = await prisma.form.findMany({
       where: { evaluationId: { in: evalIds } },
-      include: { evaluation: { select: { id: true, title: true, organisationId: true } } },
+      include: {
+        evaluation: { select: { id: true, title: true, organisationId: true } },
+        _count: { select: { responses: { where: { status: 'SUBMITTED' } } } },
+      },
       orderBy: { createdAt: 'desc' },
     });
     const mapped = forms.map(form => {
@@ -1301,6 +1308,7 @@ app.get('/forms/by-organisation/:orgId', authenticate, async (req, res) => {
         status: form.status,
         accessMode: def?.accessMode || 'REGISTERED',
         questionCount,
+        responseCount: form._count?.responses || 0,
         evaluationId: form.evaluationId,
         organisationId: form.evaluation?.organisationId,
         unitId: def?.unitContext?.id || null,
@@ -1387,7 +1395,10 @@ app.get('/forms/:formId/versions', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIE
     const versions = normalizeFormVersions(definition, form.updatedAt);
     const responses = await prisma.response.findMany({
       where: { formId, status: 'SUBMITTED' },
-      select: { id: true, rawCacheJson: true, submittedAt: true, answers: { select: { id: true } } },
+      include: {
+        respondent: true,
+        answers: { include: { question: true } },
+      },
     });
     const logs = await prisma.auditLog.findMany({
       where: { action: 'DIAGNOSIS_PUBLISHED' },
@@ -1395,6 +1406,7 @@ app.get('/forms/:formId/versions', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIE
     });
 
     const responseCounts = new Map();
+    const responseDetails = new Map();
     responses.forEach((response) => {
       const version = getResponseFormVersion(response);
       const current = responseCounts.get(version) || { responses: 0, answers: 0, latestSubmittedAt: null };
@@ -1404,9 +1416,21 @@ app.get('/forms/:formId/versions', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIE
         current.latestSubmittedAt = response.submittedAt;
       }
       responseCounts.set(version, current);
+      responseDetails.set(version, [
+        ...(responseDetails.get(version) || []),
+        {
+          respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
+          submittedAt: response.submittedAt,
+          answers: response.answers.map(answer => ({
+            question: answer.question?.label || answer.questionId,
+            answer: formatAnswerValue(getJsonValue(answer.value)),
+          })),
+        },
+      ]);
     });
 
     const analysisCounts = new Map();
+    const analysisDetails = new Map();
     logs.forEach((log) => {
       const metadata = log.metadata && typeof log.metadata === 'object' ? log.metadata : {};
       if (metadata.evaluationId !== form.evaluationId) return;
@@ -1429,6 +1453,15 @@ app.get('/forms/:formId/versions', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIE
         current.charts = Array.isArray(metadata.analysis?.charts) ? metadata.analysis.charts.length : 0;
       }
       analysisCounts.set(safeVersion, current);
+      analysisDetails.set(safeVersion, [
+        ...(analysisDetails.get(safeVersion) || []),
+        {
+          id: log.id,
+          publishedAt: log.createdAt,
+          summary: metadata.summary || '',
+          analysis: metadata.analysis || null,
+        },
+      ]);
     });
 
     res.json({
@@ -1452,8 +1485,9 @@ app.get('/forms/:formId/versions', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIE
           recommendations: 0,
           charts: 0,
         };
+        const versionNumber = Number(version.version);
         return {
-          version: Number(version.version),
+          version: versionNumber,
           title: version.title || form.title,
           questionCount: version.questionCount || 0,
           createdAt: version.createdAt || null,
@@ -1467,6 +1501,8 @@ app.get('/forms/:formId/versions', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIE
           gaps: analysisStats.gaps,
           recommendations: analysisStats.recommendations,
           charts: analysisStats.charts,
+          responsesDetail: responseDetails.get(versionNumber) || [],
+          analyses: analysisDetails.get(versionNumber) || [],
         };
       }),
     });
