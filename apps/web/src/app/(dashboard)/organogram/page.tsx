@@ -228,6 +228,26 @@ function StructureInsightPanel({ rows, analysis }: { rows: OrgRow[]; analysis?: 
   );
 }
 
+function buildOrganogramReportSections(rows: OrgRow[], analysis?: PublishedAnalysis['analysis'] | null) {
+  const insights = buildStructureInsights(rows, analysis);
+  return [
+    {
+      heading: 'Structure insights',
+      lines: insights.insightNotes,
+    },
+    {
+      heading: 'Recommendation ownership',
+      lines: insights.ownershipItems.length > 0
+        ? insights.ownershipItems.map(item => `${item.title} - Owner: ${item.owner}${item.detail ? ` - ${item.detail}` : ''}`)
+        : ['No recommendation ownership has been published yet.'],
+    },
+    {
+      heading: 'Departments',
+      lines: insights.departments.length > 0 ? insights.departments : ['No departments were detected.'],
+    },
+  ];
+}
+
 // ─── Edit panel ───────────────────────────────────────────────────────────────
 
 interface EditPanelProps {
@@ -598,10 +618,15 @@ export default function OrganogramPage() {
             <div className="mb-6">
               <StructureInsightPanel rows={orgRows} analysis={selected?.analysis} />
             </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-base font-bold text-slate-900 mb-5">Reporting Structure</h2>
               {orgRows.length > 0
-                ? <OrgChart rows={orgRows} />
+                ? <OrgChart
+                    rows={orgRows}
+                    reportTitle={`${selected?.recipientName || 'Organisation'} organogram report`}
+                    reportSummary={selected?.analysis?.executiveSummary || 'Organisational structure and accountability report.'}
+                    reportSections={buildOrganogramReportSections(orgRows, selected?.analysis)}
+                  />
                 : <EmptyState icon="🏢" title="No structure data" description="The organogram structure could not be loaded." />
               }
             </div>
@@ -832,10 +857,15 @@ export default function OrganogramPage() {
                 )}
 
                 {/* Chart */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-x-auto">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Reporting structure</p>
                   {orgRows.length > 0
-                    ? <OrgChart rows={orgRows} />
+                    ? <OrgChart
+                        rows={orgRows}
+                        reportTitle={`${selected.recipientName || 'Organisation'} organogram report`}
+                        reportSummary={selected.analysis?.executiveSummary || 'Organisational structure and accountability report.'}
+                        reportSections={buildOrganogramReportSections(orgRows, selected.analysis)}
+                      />
                     : <EmptyState icon="🏢" title="No chart data" description="Edit the organogram to add nodes and links." />
                   }
                 </div>

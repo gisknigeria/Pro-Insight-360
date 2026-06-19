@@ -16,10 +16,10 @@ const DEPT_COLOURS = [
   { bg: '#f5f3ff', border: '#a855f7', text: '#581c87' }, // purple
 ];
 
-const NODE_W = 160;
-const NODE_H = 52;
-const H_GAP = 24;  // horizontal gap between siblings
-const V_GAP = 72;  // vertical gap between levels
+const NODE_W = 140;
+const NODE_H = 48;
+const H_GAP = 18;  // horizontal gap between siblings
+const V_GAP = 58;  // vertical gap between levels
 
 // ─── Tree node ────────────────────────────────────────────────────────────────
 interface TreeNode {
@@ -99,7 +99,14 @@ function buildLines(node: TreeNode, lines: Line[] = []): Line[] {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function OrgChart({ rows }: { rows: OrgRow[] }) {
+interface OrgChartProps {
+  rows: OrgRow[];
+  reportTitle?: string;
+  reportSummary?: string;
+  reportSections?: Array<{ heading: string; lines: string[] }>;
+}
+
+export default function OrgChart({ rows, reportTitle = 'Organogram report', reportSummary = '', reportSections = [] }: OrgChartProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -147,18 +154,118 @@ export default function OrgChart({ rows }: { rows: OrgRow[] }) {
     });
   }
 
-  function downloadSVG() {
-    if (!svgRef.current) return;
-    const source = new XMLSerializer().serializeToString(svgRef.current);
+  function escapeHtml(value: string) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function getSvgSource() {
+    if (!svgRef.current) return '';
+    const cloned = svgRef.current.cloneNode(true) as SVGSVGElement;
+    cloned.setAttribute('width', String(svgW));
+    cloned.setAttribute('height', String(svgH));
+    cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    return new XMLSerializer().serializeToString(cloned);
+  }
+
+  function svgToPngDataUrl() {
+    const source = getSvgSource();
+    if (!source) return Promise.reject(new Error('No organogram to export.'));
+    const img = new Image();
+    const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
+    return new Promise<string>((resolve, reject) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = svgW + 40;
+        canvas.height = svgH + 40;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          reject(new Error('Canvas export unavailable.'));
+          return;
+        }
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 20, 20);
+        const dataUrl = canvas.toDataURL('image/png');
+        URL.revokeObjectURL(url);
+        resolve(dataUrl);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Unable to render organogram image.'));
+      };
+      img.src = url;
+    });
+  }
+
+  async function downloadImage() {
+    const dataUrl = await svgToPngDataUrl();
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
-    a.download = 'organogram.svg';
+    a.href = dataUrl;
+    a.download = 'organogram.png';
     a.click();
+  }
+
+  async function downloadReportPdf() {
+    const imageUrl = await svgToPngDataUrl();
+    const roles = rows.map(row => `${row.name}${row.title ? ` - ${row.title}` : ''}${row.reportsTo ? `, reports to ${row.reportsTo}` : ', top level'}`);
+    const reportWindow = window.open('', '_blank', 'noopener,noreferrer,width=1024,height=768');
+    if (!reportWindow) return;
+    const sectionHtml = reportSections.map(section => `
+      <section>
+        <h2>${escapeHtml(section.heading)}</h2>
+        <ul>${section.lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+      </section>
+    `).join('');
+
+    reportWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${escapeHtml(reportTitle)}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #0f172a; margin: 32px; }
+            h1 { font-size: 24px; margin: 0 0 8px; }
+            h2 { font-size: 15px; margin: 24px 0 8px; color: #0f766e; text-transform: uppercase; letter-spacing: .04em; }
+            p { line-height: 1.5; color: #475569; }
+            img { width: 100%; max-height: 620px; object-fit: contain; border: 1px solid #e2e8f0; background: #f8fafc; margin-top: 18px; }
+            ul { margin: 0; padding-left: 18px; }
+            li { margin: 6px 0; line-height: 1.45; }
+            .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0; }
+            .meta div { background: #f1f5f9; padding: 12px; }
+            .meta strong { display: block; font-size: 20px; }
+            @media print { body { margin: 18mm; } }
+          </style>
+        </head>
+        <body>
+          <h1>${escapeHtml(reportTitle)}</h1>
+          ${reportSummary ? `<p>${escapeHtml(reportSummary)}</p>` : ''}
+          <div class="meta">
+            <div><strong>${rows.length}</strong><span>Roles</span></div>
+            <div><strong>${new Set(rows.map(row => row.title).filter(Boolean)).size}</strong><span>Departments</span></div>
+            <div><strong>${rows.filter(row => !row.reportsTo).length}</strong><span>Top-level roles</span></div>
+          </div>
+          <img src="${imageUrl}" alt="Organogram" />
+          ${sectionHtml}
+          <section>
+            <h2>Role list</h2>
+            <ul>${roles.map(role => `<li>${escapeHtml(role)}</li>`).join('')}</ul>
+          </section>
+          <script>window.onload = () => { window.focus(); window.print(); };</script>
+        </body>
+      </html>
+    `);
+    reportWindow.document.close();
   }
 
   async function downloadPNG() {
     if (!svgRef.current) return;
-    const source = new XMLSerializer().serializeToString(svgRef.current);
+    const source = getSvgSource();
     const img = new Image();
     const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
     img.onload = () => {
@@ -185,14 +292,14 @@ export default function OrgChart({ rows }: { rows: OrgRow[] }) {
   return (
     <div>
       {/* Download buttons */}
-      <div className="flex gap-2 mb-4">
-        <button onClick={downloadSVG}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
-          ⬇ SVG
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button onClick={() => void downloadReportPdf()}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition">
+          Download PDF report
         </button>
-        <button onClick={downloadPNG}
+        <button onClick={() => void downloadImage()}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
-          ⬇ PNG
+          Download organogram image
         </button>
       </div>
 
@@ -207,9 +314,9 @@ export default function OrgChart({ rows }: { rows: OrgRow[] }) {
       </div>
 
       {/* SVG chart */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <svg ref={svgRef} width={svgW} height={svgH}
-          style={{ background: '#f8fafc', display: 'block', minWidth: svgW }}>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <svg ref={svgRef} viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="xMidYMin meet"
+          style={{ background: '#f8fafc', display: 'block', width: '100%', height: 'auto', maxHeight: '68vh' }}>
 
           {/* Connector lines */}
           {lines.map((l, i) => (
