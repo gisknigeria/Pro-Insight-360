@@ -322,7 +322,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                       className="inline-flex shrink-0 items-center gap-1 bg-emerald-600 px-3 py-2 text-[11px] font-black text-white transition hover:bg-emerald-700"
                     >
                       <AppIcon name="copy" className="h-5 w-5" />
-                      {copiedFormId === f.id ? 'Copied' : 'Copy invite link'}
+                      {copiedFormId === f.id ? 'Copied' : ''}
                     </button>
                   
                     <Link href={`/forms/${f.id}`}
@@ -425,7 +425,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                   <button type="button" onClick={(event) => { event.stopPropagation(); void copyInviteLink(form.id); }} className="inline-flex items-center gap-1 bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700">
-                                    <AppIcon name="copy" className="h-5 w-5" /> {copiedFormId === form.id ? 'Copied' : 'Copy invite link'}
+                                    <AppIcon name="copy" className="h-5 w-5" /> {copiedFormId === form.id ? 'Copied' : ''}
                                   </button>
                                   <Link href={`/evaluations/${form.evaluationId}/diagnosis`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100">
                                     <AppIcon name="chart" className="h-3.5 w-3.5" /> Insight

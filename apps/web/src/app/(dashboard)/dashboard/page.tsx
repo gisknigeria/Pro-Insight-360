@@ -1252,10 +1252,9 @@ function SuperAdminDashboard() {
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive Portfolio Dashboard</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive Dashboard</h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              Switch from the full platform picture into any client organisation and compare activity, completion, form depth, report coverage, and response quality in one view.
-            </p>
+Centralised platform for managing client organisations, form rollouts, diagnostic workflows, implementation tracking, and governance reporting            </p>
           </div>
           <label className="min-w-[280px] text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
             Dashboard scope

@@ -118,12 +118,7 @@ export default function EvaluationDetailPage() {
             Review the live diagnosis generated for this evaluation and approve it once it matches the prompt output.
           </p>
         </div>
-        <Link
-          href="/evaluations"
-          className="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-        >
-          Back to evaluations
-        </Link>
+      
       </div>
 
       {!diagnosis ? (

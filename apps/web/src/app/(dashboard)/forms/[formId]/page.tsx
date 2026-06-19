@@ -332,10 +332,7 @@ export default function EditFormPage() {
   if (error || !definition) {
     return (
       <div className="max-w-3xl mx-auto py-12">
-        <Link href="/forms" className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
-          <AppIcon name="chevronRight" className="h-4 w-4 rotate-180" />
-          Back to forms
-        </Link>
+      
         <div className="bg-red-50 p-6 text-sm font-medium text-red-700 shadow-sm">
           {error || 'Unable to find this form.'}
         </div>
@@ -353,13 +350,7 @@ export default function EditFormPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/forms"
-            className="inline-flex items-center gap-2 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            <AppIcon name="chevronRight" className="h-4 w-4 rotate-180" />
-            Back to forms
-          </Link>
+         
           <button
             type="button"
             onClick={() => setPreviewOpen(true)}
