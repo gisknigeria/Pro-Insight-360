@@ -142,6 +142,59 @@ function getGapTimeline(score) {
   return 'Next quarter';
 }
 
+function getFormCurrentVersion(definition) {
+  const parsed = getJsonValue(definition) || {};
+  const version = Number(parsed.currentVersion || parsed.version || 1);
+  return Number.isFinite(version) && version > 0 ? Math.floor(version) : 1;
+}
+
+function buildFormVersionSnapshot(definition, fallbackVersion) {
+  const parsed = getJsonValue(definition) || {};
+  const version = Number(parsed.version || parsed.currentVersion || fallbackVersion || 1);
+  const pages = Array.isArray(parsed.pages) ? parsed.pages : [];
+  const questionCount = pages.reduce(
+    (count, page) => count + (Array.isArray(page.questions) ? page.questions.length : 0),
+    0,
+  );
+
+  return {
+    version: Number.isFinite(version) && version > 0 ? Math.floor(version) : 1,
+    title: parsed.title || '',
+    description: parsed.description || '',
+    questionCount,
+    pages,
+    conditionalLogic: Array.isArray(parsed.conditionalLogic) ? parsed.conditionalLogic : [],
+    accessMode: parsed.accessMode || 'REGISTERED',
+    unitContext: parsed.unitContext || null,
+    createdAt: parsed.versionCreatedAt || parsed.updatedAt || new Date().toISOString(),
+  };
+}
+
+function normalizeFormVersions(definition, updatedAt) {
+  const parsed = getJsonValue(definition) || {};
+  const currentVersion = getFormCurrentVersion(parsed);
+  const rawVersions = Array.isArray(parsed.versions) ? parsed.versions : [];
+  const versions = rawVersions
+    .filter(item => item && Number(item.version))
+    .map(item => ({ ...item, version: Number(item.version) }));
+
+  if (!versions.some(item => item.version === currentVersion)) {
+    versions.push({
+      ...buildFormVersionSnapshot(parsed, currentVersion),
+      version: currentVersion,
+      createdAt: parsed.versionCreatedAt || updatedAt?.toISOString?.() || new Date().toISOString(),
+    });
+  }
+
+  return versions.sort((a, b) => Number(a.version) - Number(b.version));
+}
+
+function getResponseFormVersion(response) {
+  const raw = getJsonValue(response?.rawCacheJson) || {};
+  const version = Number(raw.formVersion || raw.version || 1);
+  return Number.isFinite(version) && version > 0 ? Math.floor(version) : 1;
+}
+
 async function syncFormQuestions(formId, definition) {
   const parsed = getJsonValue(definition);
   const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
@@ -623,7 +676,13 @@ app.get('/forms/:formId/definition', async (req, res) => {
     if (!form) {
       return res.status(404).json({ message: 'Form not found.' });
     }
-    res.json(getJsonValue(form.definition));
+    const definition = getJsonValue(form.definition) || {};
+    res.json({
+      ...definition,
+      currentVersion: getFormCurrentVersion(definition),
+      version: getFormCurrentVersion(definition),
+      versions: normalizeFormVersions(definition, form.updatedAt),
+    });
   } catch (error) {
     console.error('Fetch form definition failed:', error);
     res.status(500).json({ message: 'Unable to load form definition.' });
@@ -1312,6 +1371,173 @@ app.put('/forms/:formId', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN'
   }
 });
 
+app.get('/forms/:formId/versions', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { formId } = req.params;
+    const form = await prisma.form.findUnique({
+      where: { id: formId },
+      include: { evaluation: { include: { organisation: true } } },
+    });
+    if (!form) {
+      return res.status(404).json({ message: 'Form not found.' });
+    }
+
+    const definition = getJsonValue(form.definition) || {};
+    const currentVersion = getFormCurrentVersion(definition);
+    const versions = normalizeFormVersions(definition, form.updatedAt);
+    const responses = await prisma.response.findMany({
+      where: { formId, status: 'SUBMITTED' },
+      select: { id: true, rawCacheJson: true, submittedAt: true, answers: { select: { id: true } } },
+    });
+    const logs = await prisma.auditLog.findMany({
+      where: { action: 'DIAGNOSIS_PUBLISHED' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const responseCounts = new Map();
+    responses.forEach((response) => {
+      const version = getResponseFormVersion(response);
+      const current = responseCounts.get(version) || { responses: 0, answers: 0, latestSubmittedAt: null };
+      current.responses += 1;
+      current.answers += response.answers.length;
+      if (!current.latestSubmittedAt || (response.submittedAt && response.submittedAt > current.latestSubmittedAt)) {
+        current.latestSubmittedAt = response.submittedAt;
+      }
+      responseCounts.set(version, current);
+    });
+
+    const analysisCounts = new Map();
+    logs.forEach((log) => {
+      const metadata = log.metadata && typeof log.metadata === 'object' ? log.metadata : {};
+      if (metadata.evaluationId !== form.evaluationId) return;
+      const version = Number(metadata.formVersion || metadata.analysis?.formVersion || metadata.analysis?.version || 1);
+      const safeVersion = Number.isFinite(version) && version > 0 ? Math.floor(version) : 1;
+      const current = analysisCounts.get(safeVersion) || {
+        published: 0,
+        latestPublishedAt: null,
+        latestSummary: '',
+        gaps: 0,
+        recommendations: 0,
+        charts: 0,
+      };
+      current.published += 1;
+      if (!current.latestPublishedAt || log.createdAt > current.latestPublishedAt) {
+        current.latestPublishedAt = log.createdAt;
+        current.latestSummary = metadata.analysis?.executiveSummary || metadata.summary || '';
+        current.gaps = Array.isArray(metadata.analysis?.gaps) ? metadata.analysis.gaps.length : 0;
+        current.recommendations = Array.isArray(metadata.analysis?.recommendations) ? metadata.analysis.recommendations.length : 0;
+        current.charts = Array.isArray(metadata.analysis?.charts) ? metadata.analysis.charts.length : 0;
+      }
+      analysisCounts.set(safeVersion, current);
+    });
+
+    res.json({
+      form: {
+        id: form.id,
+        title: form.title,
+        status: form.status,
+        evaluationId: form.evaluationId,
+        organisation: form.evaluation?.organisation
+          ? { id: form.evaluation.organisation.id, name: form.evaluation.organisation.name }
+          : null,
+      },
+      currentVersion,
+      versions: versions.map((version) => {
+        const responseStats = responseCounts.get(Number(version.version)) || { responses: 0, answers: 0, latestSubmittedAt: null };
+        const analysisStats = analysisCounts.get(Number(version.version)) || {
+          published: 0,
+          latestPublishedAt: null,
+          latestSummary: '',
+          gaps: 0,
+          recommendations: 0,
+          charts: 0,
+        };
+        return {
+          version: Number(version.version),
+          title: version.title || form.title,
+          questionCount: version.questionCount || 0,
+          createdAt: version.createdAt || null,
+          isCurrent: Number(version.version) === currentVersion,
+          responses: responseStats.responses,
+          answers: responseStats.answers,
+          latestSubmittedAt: responseStats.latestSubmittedAt,
+          publishedAnalyses: analysisStats.published,
+          latestPublishedAt: analysisStats.latestPublishedAt,
+          latestSummary: analysisStats.latestSummary,
+          gaps: analysisStats.gaps,
+          recommendations: analysisStats.recommendations,
+          charts: analysisStats.charts,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error('Fetch form versions failed:', error);
+    res.status(500).json({ message: 'Unable to fetch form versions.' });
+  }
+});
+
+app.post('/forms/:formId/republish-version', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { formId } = req.params;
+    const { note } = req.body || {};
+    const form = await prisma.form.findUnique({ where: { id: formId } });
+    if (!form) {
+      return res.status(404).json({ message: 'Form not found.' });
+    }
+
+    const definition = getJsonValue(form.definition) || {};
+    const currentVersion = getFormCurrentVersion(definition);
+    const nextVersion = currentVersion + 1;
+    const versions = normalizeFormVersions(definition, form.updatedAt);
+    const nextDefinition = {
+      ...definition,
+      version: nextVersion,
+      currentVersion: nextVersion,
+      previousVersion: currentVersion,
+      versionCreatedAt: new Date().toISOString(),
+      republishNote: String(note || '').trim(),
+      versions,
+    };
+
+    const updated = await prisma.form.update({
+      where: { id: formId },
+      data: {
+        definition: nextDefinition,
+        status: 'PUBLISHED',
+        updatedAt: new Date(),
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.sub,
+        action: 'FORM_REPUBLISHED_VERSION',
+        resourceType: 'Form',
+        resourceId: formId,
+        metadata: {
+          formId,
+          evaluationId: form.evaluationId,
+          previousVersion: currentVersion,
+          version: nextVersion,
+          note: String(note || '').trim(),
+          republishedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    res.json({
+      message: `Form republished as version ${nextVersion}. The invite link stays the same.`,
+      id: updated.id,
+      currentVersion: nextVersion,
+      status: updated.status,
+      updatedAt: updated.updatedAt,
+    });
+  } catch (error) {
+    console.error('Republish form version failed:', error);
+    res.status(500).json({ message: 'Unable to republish form version.' });
+  }
+});
+
 app.delete('/forms/:formId', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { formId } = req.params;
@@ -1554,6 +1780,14 @@ app.get('/responses/draft/:formId', async (req, res) => {
 });
 
 async function createOrUpdateResponse(formId, respondentId, status, answers) {
+  const form = await prisma.form.findUnique({ where: { id: formId } });
+  if (!form) {
+    throw new Error('Form not found.');
+  }
+
+  const formVersion = getFormCurrentVersion(form.definition);
+  const rawCacheJson = JSON.stringify({ answers, formVersion });
+
   let response = await prisma.response.findFirst({
     where: { formId, respondentId, status: 'DRAFT' },
   });
@@ -1564,14 +1798,14 @@ async function createOrUpdateResponse(formId, respondentId, status, answers) {
         formId,
         respondentId,
         status: 'DRAFT',
-        rawCacheJson: JSON.stringify({ answers }),
+        rawCacheJson,
       },
     });
   } else {
     response = await prisma.response.update({
       where: { id: response.id },
       data: {
-        rawCacheJson: JSON.stringify({ answers }),
+        rawCacheJson,
       },
     });
   }
@@ -1588,7 +1822,7 @@ async function createOrUpdateResponse(formId, respondentId, status, answers) {
   }
 
   const data = {
-    rawCacheJson: JSON.stringify({ answers }),
+    rawCacheJson,
   };
   if (status === 'SUBMITTED') {
     data.status = 'SUBMITTED';
@@ -2231,7 +2465,7 @@ app.get('/diagnoses', async (req, res) => {
 
 app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
-    const { recipientId, evaluationId, analysis } = req.body;
+    const { recipientId, evaluationId, analysis, formVersion } = req.body;
     if (!recipientId || !analysis || typeof analysis !== 'object') {
       return res.status(400).json({ message: 'recipientId and analysis are required.' });
     }
@@ -2249,16 +2483,23 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
     }
 
     let publishOrganisation = recipient.organisation;
+    let publishFormVersion = Number(formVersion) || null;
     let diagnosisId = null;
     if (evaluationId) {
       const evaluation = await prisma.evaluation.findUnique({
         where: { id: evaluationId },
-        include: { organisation: { select: { id: true, name: true } } },
+        include: {
+          organisation: { select: { id: true, name: true } },
+          forms: { select: { definition: true } },
+        },
       });
       if (!evaluation) {
         return res.status(404).json({ message: 'Evaluation not found.' });
       }
       publishOrganisation = evaluation.organisation || publishOrganisation;
+      if (!publishFormVersion && evaluation.forms.length > 0) {
+        publishFormVersion = Math.max(...evaluation.forms.map(form => getFormCurrentVersion(form.definition)));
+      }
 
       const existingDiagnosis = await prisma.diagnosis.findFirst({ where: { evaluationId } });
       if (existingDiagnosis) {
@@ -2299,6 +2540,7 @@ app.post('/diagnoses/publish', authenticate, roleGuard(['SUPER_ADMIN', 'CONSULTA
           organisationId: publishOrganisation?.id || null,
           organisationName: publishOrganisation?.name || null,
           evaluationId: evaluationId || null,
+          formVersion: publishFormVersion || 1,
           publishedById: req.user.sub,
           publishedByEmail: req.user.email,
           summary: String(analysis.executiveSummary || ''),
@@ -2471,6 +2713,7 @@ app.get('/published-analyses', authenticate, async (req, res) => {
           organisationId: metadata.organisationId || null,
           organisationName: metadata.organisationName || null,
           evaluationId: metadata.evaluationId || null,
+          formVersion: metadata.formVersion || 1,
           summary: metadata.summary || '',
           analysis: metadata.analysis || null,
           sidebarPinned: Boolean(metadata.sidebarPinned),
@@ -2505,6 +2748,7 @@ app.get('/published-analyses/all', authenticate, roleGuard(['SUPER_ADMIN', 'CONS
         organisationId: metadata.organisationId || null,
         organisationName: metadata.organisationName || null,
         evaluationId: metadata.evaluationId || null,
+        formVersion: metadata.formVersion || 1,
         summary: metadata.summary || '',
         analysis: metadata.analysis || null,
         sidebarPinned: Boolean(metadata.sidebarPinned),
@@ -2540,6 +2784,7 @@ app.get('/published-analyses/sidebar', authenticate, async (req, res) => {
           organisationId: metadata.organisationId || null,
           organisationName: metadata.organisationName || null,
           evaluationId: metadata.evaluationId || null,
+          formVersion: metadata.formVersion || 1,
           publishedAt: log.createdAt,
           sidebarPinned: Boolean(metadata.sidebarPinned),
         };
@@ -3181,6 +3426,7 @@ app.post('/diagnosis/evaluations/:id/detect-conflicts', async (req, res) => {
 app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
   try {
     const { id } = req.params;
+    const requestedVersion = Number(req.query.formVersion || 0);
     const hasAccess = await isAssignedToEvaluation(req.user, id);
     if (!hasAccess) {
       return res.status(404).json({ message: 'Evaluation not found.' });
@@ -3223,13 +3469,25 @@ app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
       );
     }, 0);
 
-    const totalAnswers = responses.reduce((sum, response) => sum + response.answers.length, 0);
-    const averageCompletion = questionCount > 0 && responses.length > 0
-      ? Math.round((totalAnswers / (responses.length * questionCount)) * 100)
+    const selectedResponses = requestedVersion > 0
+      ? responses.filter(response => getResponseFormVersion(response) === requestedVersion)
+      : responses;
+    const versionBreakdown = Array.from(responses.reduce((map, response) => {
+      const version = getResponseFormVersion(response);
+      const current = map.get(version) || { version, responses: 0, answers: 0 };
+      current.responses += 1;
+      current.answers += response.answers.length;
+      map.set(version, current);
+      return map;
+    }, new Map()).values()).sort((a, b) => a.version - b.version);
+
+    const totalAnswers = selectedResponses.reduce((sum, response) => sum + response.answers.length, 0);
+    const averageCompletion = questionCount > 0 && selectedResponses.length > 0
+      ? Math.round((totalAnswers / (selectedResponses.length * questionCount)) * 100)
       : 0;
 
     const sampleAnswers = [];
-    for (const response of responses) {
+    for (const response of selectedResponses) {
       for (const answer of response.answers) {
         if (sampleAnswers.length >= 8) break;
         const rawValue = getJsonValue(answer.value);
@@ -3245,10 +3503,12 @@ app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
     }
 
     res.json({
-      totalResponses: responses.length,
+      totalResponses: selectedResponses.length,
       totalAnswers,
       questionCount,
       averageCompletion,
+      selectedVersion: requestedVersion > 0 ? requestedVersion : null,
+      versionBreakdown,
       sampleAnswers,
     });
   } catch (error) {
@@ -3260,6 +3520,7 @@ app.get('/diagnosis/evaluations/:id/responses', async (req, res) => {
 app.get('/diagnosis/evaluations/:id/responses/full', async (req, res) => {
   try {
     const { id } = req.params;
+    const requestedVersion = Number(req.query.formVersion || 0);
     const hasAccess = await isAssignedToEvaluation(req.user, id);
     if (!hasAccess) {
       return res.status(404).json({ message: 'Evaluation not found.' });
@@ -3303,13 +3564,25 @@ app.get('/diagnosis/evaluations/:id/responses/full', async (req, res) => {
       );
     }, 0);
 
-    const totalAnswers = responses.reduce((sum, response) => sum + response.answers.length, 0);
-    const averageCompletion = questionCount > 0 && responses.length > 0
-      ? Math.round((totalAnswers / (responses.length * questionCount)) * 100)
+    const selectedResponses = requestedVersion > 0
+      ? responses.filter(response => getResponseFormVersion(response) === requestedVersion)
+      : responses;
+    const versionBreakdown = Array.from(responses.reduce((map, response) => {
+      const version = getResponseFormVersion(response);
+      const current = map.get(version) || { version, responses: 0, answers: 0 };
+      current.responses += 1;
+      current.answers += response.answers.length;
+      map.set(version, current);
+      return map;
+    }, new Map()).values()).sort((a, b) => a.version - b.version);
+
+    const totalAnswers = selectedResponses.reduce((sum, response) => sum + response.answers.length, 0);
+    const averageCompletion = questionCount > 0 && selectedResponses.length > 0
+      ? Math.round((totalAnswers / (selectedResponses.length * questionCount)) * 100)
       : 0;
 
     const sampleAnswers = [];
-    for (const response of responses) {
+    for (const response of selectedResponses) {
       for (const answer of response.answers) {
         if (sampleAnswers.length >= 8) break;
         const rawValue = getJsonValue(answer.value);
@@ -3324,10 +3597,11 @@ app.get('/diagnosis/evaluations/:id/responses/full', async (req, res) => {
       if (sampleAnswers.length >= 8) break;
     }
 
-    const formattedResponses = responses.map((response) => ({
+    const formattedResponses = selectedResponses.map((response) => ({
       id: response.id,
       respondent: response.respondent?.name || response.respondent?.email || 'Anonymous',
       submittedAt: response.submittedAt ? response.submittedAt.toISOString() : null,
+      formVersion: getResponseFormVersion(response),
       answers: response.answers.map((answer) => ({
         question: answer.question?.label || answer.questionId,
         answer: formatAnswerValue(getJsonValue(answer.value)),
@@ -3335,10 +3609,12 @@ app.get('/diagnosis/evaluations/:id/responses/full', async (req, res) => {
     }));
 
     res.json({
-      totalResponses: responses.length,
+      totalResponses: selectedResponses.length,
       totalAnswers,
       questionCount,
       averageCompletion,
+      selectedVersion: requestedVersion > 0 ? requestedVersion : null,
+      versionBreakdown,
       sampleAnswers,
       responses: formattedResponses,
     });
