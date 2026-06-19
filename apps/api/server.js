@@ -1771,10 +1771,27 @@ app.get('/responses', async (req, res) => {
 
     const responses = await prisma.response.findMany({
       where: query,
-      include: {
-        form: { include: { evaluation: { include: { organisation: true } } } },
-        respondent: true,
-        answers: true,
+      select: {
+        id: true,
+        status: true,
+        submittedAt: true,
+        createdAt: true,
+        form: {
+          select: {
+            id: true,
+            title: true,
+            definition: true,
+            evaluation: {
+              select: {
+                id: true,
+                title: true,
+                organisation: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        respondent: { select: { id: true, name: true, email: true } },
+        answers: { select: { id: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -1810,7 +1827,7 @@ app.get('/responses', async (req, res) => {
         respondent: {
           id: response.respondent?.id || null,
           name: getResponseRespondentLabel(response),
-          email: response.respondent?.email || response.respondentEmail || '',
+          email: response.respondent?.email || '',
         },
         status: response.status,
         completionPercentage,
@@ -1822,7 +1839,12 @@ app.get('/responses', async (req, res) => {
 
     res.json(mapped);
   } catch (error) {
-    console.error('Fetch responses failed:', error);
+    console.error('Fetch responses failed:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack,
+    });
     res.status(500).json({ message: 'Unable to fetch responses.' });
   }
 });
