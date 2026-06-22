@@ -220,7 +220,7 @@ function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: st
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${cfg.bg} p-5 shadow-lg shadow-slate-950/15 ring-1 ${cfg.ring} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl animate-fade-in-up`}
+      className={`group relative overflow-hidden  bg-gradient-to-br ${cfg.bg} p-5 shadow-lg shadow-slate-950/15 ring-1 ${cfg.ring} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl animate-fade-in-up`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <div className="absolute inset-x-0 top-0 h-px bg-white/25" />
@@ -1323,10 +1323,10 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Client organisations" value={loadingStats ? '...' : selectedOrgId === 'ALL' ? orgSummaries.length : 1} icon={<DashboardIcon name="building" />} color="blue" delay={0} />
-        <StatCard label="Responses captured" value={loadingStats ? '...' : selectedSummary.responses} icon={<DashboardIcon name="check" />} color="green" delay={50} />
-        <StatCard label="Avg completion" value={loadingStats ? '...' : `${selectedSummary.averageCompletion}%`} icon={<DashboardIcon name="chart" />} color="yellow" delay={100} />
-        <StatCard label="Published insights" value={loadingStats ? '...' : selectedSummary.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
+        <StatCard label="Organisations" value={loadingStats ? '...' : selectedOrgId === 'ALL' ? orgSummaries.length : 1} icon={<DashboardIcon name="building" />} color="blue" delay={0} />
+        <StatCard label="Unique Respondents" value={loadingStats ? '...' : selectedSummary.responses} icon={<DashboardIcon name="check" />} color="green" delay={50} />
+        <StatCard label="Avg Response Rate" value={loadingStats ? '...' : `${selectedSummary.averageCompletion}%`} icon={<DashboardIcon name="chart" />} color="yellow" delay={100} />
+        <StatCard label="Reports" value={loadingStats ? '...' : selectedSummary.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
