@@ -28,6 +28,7 @@ export type AppIconName =
   | "lock"
   | "logOut"
   | "mail"
+  | "menu"
   | "map"
   | "pause"
   | "play"
@@ -66,6 +67,7 @@ const paths: Record<AppIconName, ReactNode> = {
   lock: <><path d="M6 10h12v11H6Z" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
   logOut: <><path d="M10 6H6v12h4" /><path d="M14 16l4-4-4-4M8 12h10" /></>,
   mail: <><path d="M4 6h16v12H4Z" /><path d="m4 7 8 6 8-6" /></>,
+  menu: <><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></>,
   map: <><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z" /><path d="M9 3v15M15 6v15" /></>,
   pause: <path d="M8 5h3v14H8Zm5 0h3v14h-3Z" />,
   play: <path d="m8 5 12 7-12 7Z" />,

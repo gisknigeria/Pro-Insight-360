@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SidebarNav, type UserRole } from '@/components/layout/sidebar-nav';
+import { AppIcon } from '@/components/ui/app-icons';
 
 interface UserSession {
   id: string;
@@ -84,11 +85,7 @@ export default function DashboardLayout({
                 onClick={() => setIsNavOpen(true)}
                 className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-50"
               >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <rect x="1" y="3" width="16" height="1.5" rx="0.75" fill="currentColor" />
-                  <rect x="1" y="8.25" width="16" height="1.5" rx="0.75" fill="currentColor" />
-                  <rect x="1" y="13.5" width="16" height="1.5" rx="0.75" fill="currentColor" />
-                </svg>
+                <AppIcon name="menu" className="h-[18px] w-[18px]" />
                 Menu
               </button>
 
@@ -99,7 +96,7 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          <div className={`max-w-[1500px] mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-7 ${mounted ? 'animate-fade-in-up' : ''}`}>
+          <div className={`dashboard-content max-w-[1500px] mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-7 ${mounted ? 'animate-fade-in-up' : ''}`}>
             {children}
           </div>
 

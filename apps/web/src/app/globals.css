@@ -214,6 +214,123 @@ img {
     linear-gradient(180deg, #f8fafc 0%, #eef3f7 100%);
 }
 
+.dashboard-shell main,
+.dashboard-shell main * {
+  border-radius: 0 !important;
+}
+
+.dashboard-content > div > div:first-child {
+  margin-bottom: 1.25rem !important;
+  border: 1px solid #111827 !important;
+  background: #020617 !important;
+  color: #ffffff !important;
+  padding: 1.65rem 1.75rem !important;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18) !important;
+}
+
+.dashboard-content > div > div:first-child h1 {
+  color: #ffffff !important;
+  font-size: clamp(1.75rem, 2vw, 2.35rem) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+.dashboard-content > div > div:first-child p:first-child,
+.dashboard-content > div > div:first-child [class*="uppercase"] {
+  color: #22d3ee !important;
+  letter-spacing: 0.26em !important;
+}
+
+.dashboard-content > div > div:first-child p:not(:first-child),
+.dashboard-content > div > div:first-child span {
+  color: #cbd5e1 !important;
+}
+
+.dashboard-content > div > div:first-child a,
+.dashboard-content > div > div:first-child button {
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  background: #111827 !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.dashboard-content > div > div:first-child a:hover,
+.dashboard-content > div > div:first-child button:hover {
+  border-color: rgba(34, 211, 238, 0.8) !important;
+  color: #ffffff !important;
+}
+
+.dashboard-content > div > div:nth-child(2).grid > div,
+.dashboard-content > div > div:nth-child(3).grid > div {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.34) !important;
+  background: linear-gradient(135deg, #172033 0%, #101827 58%, #08111f 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16) !important;
+}
+
+.dashboard-content > div > div:nth-child(2).grid > div:nth-child(2),
+.dashboard-content > div > div:nth-child(3).grid > div:nth-child(2) {
+  background: linear-gradient(135deg, #172033 0%, #102d2c 58%, #052e25 100%) !important;
+}
+
+.dashboard-content > div > div:nth-child(2).grid > div:nth-child(3),
+.dashboard-content > div > div:nth-child(3).grid > div:nth-child(3) {
+  background: linear-gradient(135deg, #252334 0%, #33251f 58%, #431407 100%) !important;
+}
+
+.dashboard-content > div > div:nth-child(2).grid > div:nth-child(4),
+.dashboard-content > div > div:nth-child(3).grid > div:nth-child(4) {
+  background: linear-gradient(135deg, #111827 0%, #0f172a 68%, #020617 100%) !important;
+}
+
+.dashboard-content > div > div:nth-child(2).grid > div::before,
+.dashboard-content > div > div:nth-child(3).grid > div::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.dashboard-content > div > div:nth-child(2).grid > div p,
+.dashboard-content > div > div:nth-child(2).grid > div span,
+.dashboard-content > div > div:nth-child(2).grid > div div,
+.dashboard-content > div > div:nth-child(2).grid > div h2,
+.dashboard-content > div > div:nth-child(2).grid > div h3,
+.dashboard-content > div > div:nth-child(2).grid > div h4,
+.dashboard-content > div > div:nth-child(3).grid > div p,
+.dashboard-content > div > div:nth-child(3).grid > div span,
+.dashboard-content > div > div:nth-child(3).grid > div div,
+.dashboard-content > div > div:nth-child(3).grid > div h2,
+.dashboard-content > div > div:nth-child(3).grid > div h3,
+.dashboard-content > div > div:nth-child(3).grid > div h4 {
+  color: #ffffff !important;
+}
+
+.dashboard-content > div > div:nth-child(2).grid > div svg,
+.dashboard-content > div > div:nth-child(3).grid > div svg {
+  color: #ffffff !important;
+}
+
+.dashboard-shell main table thead tr {
+  background: #0f172a !important;
+}
+
+.dashboard-shell main table thead th {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.dashboard-shell main input,
+.dashboard-shell main select,
+.dashboard-shell main textarea {
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
 .dashboard-panel {
   border: 1px solid rgba(203, 213, 225, 0.85);
   background: rgba(255, 255, 255, 0.98);
