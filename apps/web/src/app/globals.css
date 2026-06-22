@@ -390,20 +390,6 @@ img {
   color: #ffffff !important;
 }
 
-.dashboard-shell main .bg-slate-950 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-slate-900 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-slate-800 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-gray-900 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-blue-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-emerald-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-green-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-primary :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-red-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-teal-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-violet-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li) {
-  color: #ffffff !important;
-}
-
 .dashboard-shell main :is(button, a).bg-slate-950,
 .dashboard-shell main :is(button, a).bg-slate-900,
 .dashboard-shell main :is(button, a).bg-slate-800,
