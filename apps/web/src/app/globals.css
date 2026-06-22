@@ -94,14 +94,14 @@ button, a, [role="button"] {
 .dashboard-shell main a[role="button"],
 .dashboard-shell main a.inline-flex,
 .dashboard-shell main a.flex {
-  color: #18130a !important;
+  color: #18130a ;
 }
 
 .dashboard-shell main button:hover,
 .dashboard-shell main a[role="button"]:hover,
 .dashboard-shell main a.inline-flex:hover,
 .dashboard-shell main a.flex:hover {
-  color: #7c4a03 !important;
+  color: #7c4a03 ;
 }
 
 input, select, textarea {
@@ -206,16 +206,16 @@ img {
 }
 
 .dashboard-content > div > div:first-child {
-  margin-bottom: 1.25rem !important;
-  border: 1px solid #111827 !important;
-  background: #020617 !important;
-  color: #ffffff !important;
+  margin-bottom: 1.25rem ;
+  border: 1px solid #111827 ;
+  background: #020617 ;
+  color: #ffffff ;
   padding: 1.65rem 1.75rem !important;
   box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18) !important;
 }
 
 .dashboard-content > div > div:first-child h1 {
-  color: #ffffff !important;
+  color: #ffffff ;
   font-size: clamp(1.75rem, 2vw, 2.35rem) !important;
   font-weight: 800 !important;
   letter-spacing: 0 !important;
@@ -223,45 +223,45 @@ img {
 
 .dashboard-content > div > div:first-child p:first-child,
 .dashboard-content > div > div:first-child [class*="uppercase"] {
-  color: #22d3ee !important;
-  letter-spacing: 0.26em !important;
+  color: #22d3ee ;
+  letter-spacing: 0.26em ;
 }
 
 .dashboard-content > div > div:first-child p:not(:first-child),
 .dashboard-content > div > div:first-child span {
-  color: #cbd5e1 !important;
+  color: #cbd5e1 ;
 }
 
 .dashboard-content > div > div:first-child a,
 .dashboard-content > div > div:first-child button {
-  border: 1px solid rgba(148, 163, 184, 0.42) !important;
-  background: #111827 !important;
-  background-image: none !important;
-  color: #ffffff !important;
-  box-shadow: none !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) ;
+  background: #111827 ;
+  background-image: none ;
+  color: #ffffff ;
+  box-shadow: none ;
 }
 
 .dashboard-content > div > div:first-child a:hover,
 .dashboard-content > div > div:first-child button:hover {
-  border-color: rgba(34, 211, 238, 0.8) !important;
-  color: #ffffff !important;
+  border-color: rgba(34, 211, 238, 0.8) ;
+  color: #ffffff ;
 }
 
 .dashboard-shell main table thead tr {
-  background: #0f172a !important;
+  background: #0f172a ;
 }
 
 .dashboard-shell main table thead th {
-  color: #ffffff !important;
+  color: #ffffff ;
   font-weight: 800 !important;
 }
 
 .dashboard-shell main input,
 .dashboard-shell main select,
 .dashboard-shell main textarea {
-  border: 1px solid #cbd5e1 !important;
-  background: #ffffff !important;
-  color: #0f172a !important;
+  border: 1px solid #cbd5e1 ;
+  background: #ffffff ;
+  color: #0f172a ;
 }
 
 .dashboard-shell main .bg-white,
@@ -313,7 +313,7 @@ img {
 .dashboard-shell main .bg-yellow-50,
 .dashboard-shell main .bg-yellow-100,
 .dashboard-shell main .bg-yellow-200 {
-  color: #0f172a !important;
+  color: #0f172a ;
 }
 
 .dashboard-shell main .bg-white *,
@@ -366,14 +366,14 @@ img {
 .dashboard-shell main .bg-yellow-50 *,
 .dashboard-shell main .bg-yellow-100 *,
 .dashboard-shell main .bg-yellow-200 * {
-  color: #0f172a !important;
+  color: #0f172a ;
 }
 
 .dashboard-shell main button:disabled,
 .dashboard-shell main button:disabled *,
 .dashboard-shell main a[aria-disabled="true"],
 .dashboard-shell main a[aria-disabled="true"] * {
-  color: #475569 !important;
+  color: #475569 ;
 }
 
 .dashboard-shell main .bg-slate-950,
@@ -387,7 +387,7 @@ img {
 .dashboard-shell main .bg-red-600,
 .dashboard-shell main .bg-teal-600,
 .dashboard-shell main .bg-violet-600 {
-  color: #ffffff !important;
+  color: #ffffff ;
 }
 
 .dashboard-shell main :is(button, a).bg-slate-950,
@@ -410,7 +410,7 @@ img {
 .dashboard-shell main :is(button, a).bg-red-600 *,
 .dashboard-shell main :is(button, a).bg-teal-600 *,
 .dashboard-shell main :is(button, a).bg-violet-600 * {
-  color: #ffffff !important;
+  color: #ffffff ;
 }
 
 .dashboard-panel {
@@ -432,8 +432,8 @@ img {
 
 .super-admin-dashboard select,
 .super-admin-dashboard select option {
-  background-color: #0f172a !important;
-  color: #ffffff !important;
+  background-color: #0f172a ;
+  color: #ffffff ;
 }
 
 .dashboard-shell main .force-readable-light,
