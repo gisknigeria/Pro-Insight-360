@@ -193,28 +193,31 @@ function AnalysisCard({
   if (!a) return null;
 
   const sectionTabs = [
-    { id: 'overview' as const,        label: 'Overview',         emoji: 'ðŸ“‹' },
-    { id: 'gaps' as const,            label: `Gaps (${parsedGaps.length})`, emoji: 'âš ï¸' },
-    { id: 'recommendations' as const, label: 'Recommendations',  emoji: 'ðŸ’¡' },
-    { id: 'action' as const,          label: `Action Plan (${a.actionPlan?.length ?? 0})`, emoji: 'ðŸ—‚' },
-    { id: 'charts' as const,          label: `Charts (${a.charts?.length ?? 0})`, emoji: 'ðŸ“Š' },
-    ...(orgRows.length > 0 ? [{ id: 'org' as const, label: 'Organogram', emoji: 'ðŸ¢' }] : []),
-    ...(a.questions && a.questions.length > 0 ? [{ id: 'questions' as const, label: `Responses (${a.questions.length})`, emoji: 'ðŸ’¬' }] : []),
+    { id: 'overview' as const,        label: 'Overview',         icon: 'clipboard' as const },
+    { id: 'gaps' as const,            label: `Gaps (${parsedGaps.length})`, icon: 'alert' as const },
+    { id: 'recommendations' as const, label: 'Recommendations',  icon: 'info' as const },
+    { id: 'action' as const,          label: `Action Plan (${a.actionPlan?.length ?? 0})`, icon: 'folder' as const },
+    { id: 'charts' as const,          label: `Charts (${a.charts?.length ?? 0})`, icon: 'chart' as const },
+    ...(orgRows.length > 0 ? [{ id: 'org' as const, label: 'Organogram', icon: 'building' as const }] : []),
+    ...(a.questions && a.questions.length > 0 ? [{ id: 'questions' as const, label: `Responses (${a.questions.length})`, icon: 'form' as const }] : []),
   ];
 
   return (
     <div className={`rounded-3xl border transition-all overflow-hidden bg-white ${expanded ? 'border-blue-300 shadow-xl' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
       {/* Header */}
       <button type="button" className="flex w-full items-start gap-4 p-5 text-left" onClick={() => setExpanded(v => !v)}>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-xl shadow-md">ðŸ“Š</div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md"><AppIcon name="chart" className="h-5 w-5" /></div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <p className="text-sm font-bold text-slate-900 truncate">{evaluation?.title ?? published.summary ?? 'Published analysis'}</p>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">âœ“ Published</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+              <AppIcon name="check" className="h-3.5 w-3.5" />
+              Published
+            </span>
           </div>
           <p className="text-xs text-slate-500">
             {new Date(published.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-            {published.publishedBy ? ` Â· ${published.publishedBy}` : ''}
+            {published.publishedBy ? ` - ${published.publishedBy}` : ''}
           </p>
           {a.executiveSummary && !expanded && (
             <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{a.executiveSummary}</p>
@@ -229,7 +232,7 @@ function AnalysisCard({
             </div>
           )}
         </div>
-        <span className="text-slate-400 text-sm shrink-0 mt-1">{expanded ? 'â–²' : 'â–¼'}</span>
+        <AppIcon name="chevronRight" className={`mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`} />
       </button>
       {onSidebarPinChange && (
         <div className="border-t border-slate-100 px-5 py-3">
@@ -256,13 +259,13 @@ function AnalysisCard({
                   activeSection === tab.id ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <span>{tab.emoji}</span>{tab.label}
+                <AppIcon name={tab.icon} className="h-4 w-4" />{tab.label}
               </button>
             ))}
           </div>
 
           <div className="p-5">
-            {/* â”€â”€ OVERVIEW â”€â”€ */}
+                            View <AppIcon name="chevronRight" className="h-3.5 w-3.5" />
             {activeSection === 'overview' && (
               <div className="space-y-5">
                 {a.executiveSummary && (
@@ -280,7 +283,7 @@ function AnalysisCard({
                       <ul className="space-y-2">
                         {a.strengths.map((s, i) => (
                           <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
-                            <span className="text-emerald-500 shrink-0 mt-0.5 font-bold">âœ“</span>{s}
+                            <AppIcon name="check" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{s}
                           </li>
                         ))}
                       </ul>
@@ -294,7 +297,7 @@ function AnalysisCard({
                       <ul className="space-y-2">
                         {a.weaknesses.map((s, i) => (
                           <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
-                            <span className="text-red-400 shrink-0 mt-0.5 font-bold">âœ•</span>{s}
+                            <AppIcon name="x" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />{s}
                           </li>
                         ))}
                       </ul>
@@ -308,7 +311,7 @@ function AnalysisCard({
                       <ul className="space-y-2">
                         {a.opportunities.map((s, i) => (
                           <li key={i} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
-                            <span className="text-amber-500 shrink-0 mt-0.5 font-bold">â†’</span>{s}
+                            <AppIcon name="chevronRight" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />{s}
                           </li>
                         ))}
                       </ul>
@@ -319,7 +322,7 @@ function AnalysisCard({
                   <div className="flex justify-end pt-2">
                     <Link href={`/evaluations/${evaluation.id}/diagnosis`}
                       className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-sm">
-                      View full diagnosis â†’
+                      View full diagnosis <AppIcon name="chevronRight" className="h-3.5 w-3.5" />
                     </Link>
                   </div>
                 )}
@@ -421,7 +424,7 @@ function AnalysisCard({
                       </div>
                       <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 sm:col-span-1 col-span-full">
                         <p className="font-bold text-slate-600 mb-0.5">How</p>
-                        <p className="text-slate-600 leading-relaxed">{item.how || 'â€”'}</p>
+                        <p className="text-slate-600 leading-relaxed">{item.how || 'Not specified'}</p>
                       </div>
                     </div>
                   </div>
@@ -476,7 +479,7 @@ function AnalysisCard({
                 <div className="mt-4 flex flex-wrap gap-2">
                   {[...new Set(a.organogram?.nodes?.map(n => n.group).filter(Boolean))].map((dept, i) => (
                     <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                      ðŸ¢ {dept}
+                      <AppIcon name="building" className="h-3.5 w-3.5" />{dept}
                     </span>
                   ))}
                 </div>
@@ -948,7 +951,7 @@ export default function InsightPage() {
       completionSum  += m.averageCompletion;
       count++;
       formData.push({
-        name: ev.title.length > 20 ? ev.title.slice(0, 20) + 'â€¦' : ev.title,
+        name: ev.title.length > 20 ? `${ev.title.slice(0, 20)}...` : ev.title,
         responses: m.totalResponses,
         completion: m.averageCompletion,
       });
@@ -990,7 +993,7 @@ export default function InsightPage() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <div className="h-10 w-10 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin mb-4" />
-        <p className="text-sm text-slate-500">Loading your insightsâ€¦</p>
+        <p className="text-sm text-slate-500">Loading your insights...</p>
       </div>
     );
   }
@@ -1025,17 +1028,17 @@ export default function InsightPage() {
           <div className="mb-6 border-b border-slate-200">
             <nav className="flex gap-1">
               {([
-                { id: 'overview',    label: 'Overview',          icon: 'ðŸ“ˆ' },
-                { id: 'reports',     label: 'Published reports',  icon: 'ðŸ“‹', badge: publishedAnalyses.length },
-                { id: 'evaluations', label: 'Projects',           icon: 'ðŸ“', badge: orgEvals.length },
-                { id: 'forms',       label: 'Forms',              icon: 'ðŸ“„', badge: orgForms.length },
+                { id: 'overview',    label: 'Overview',          icon: 'activity' as const },
+                { id: 'reports',     label: 'Published reports', icon: 'clipboard' as const, badge: publishedAnalyses.length },
+                { id: 'evaluations', label: 'Projects',          icon: 'folder' as const, badge: orgEvals.length },
+                { id: 'forms',       label: 'Forms',             icon: 'file' as const, badge: orgForms.length },
               ] as const).map(tab => (
                 <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
                     activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  <span>{tab.icon}</span>
+                  <AppIcon name={tab.icon} className="h-4 w-4" />
                   {tab.label}
                   {'badge' in tab && tab.badge > 0 && (
                     <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full px-1 text-[10px] font-bold ${
@@ -1047,7 +1050,7 @@ export default function InsightPage() {
             </nav>
           </div>
 
-          {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ OVERVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                            View <AppIcon name="chevronRight" className="h-3.5 w-3.5" />
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Response stats + completion chart */}
@@ -1081,7 +1084,7 @@ export default function InsightPage() {
                         <div key={i}>
                           <div className="flex justify-between text-xs mb-1">
                             <span className="text-slate-700 font-medium truncate max-w-[65%]">{f.name}</span>
-                            <span className="text-slate-500 font-semibold">{f.responses} responses Â· {f.completion}%</span>
+                            <span className="text-slate-500 font-semibold">{f.responses} responses - {f.completion}%</span>
                           </div>
                           <CompletionBar pct={f.completion} />
                         </div>
@@ -1089,7 +1092,7 @@ export default function InsightPage() {
                     </div>
                   ) : (
                     <div className="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center">
-                      <p className="text-sm text-slate-400">Loading evaluation dataâ€¦</p>
+                      <p className="text-sm text-slate-400">Loading evaluation data...</p>
                     </div>
                   )}
                 </div>
@@ -1117,7 +1120,7 @@ export default function InsightPage() {
                     </div>
                   ) : (
                     <div className="flex h-64 items-center justify-center rounded-2xl bg-slate-50 text-sm text-slate-400">
-                      No data yet â€” evaluations are loading.
+                      No data yet. Evaluations are loading.
                     </div>
                   )}
 
@@ -1170,7 +1173,7 @@ export default function InsightPage() {
                                   <SeverityBadge severity={gap.severity} />
                                 </div>
                                 <p className="text-xs text-slate-600 mb-1.5">{gap.recommendedAction}</p>
-                                <p className="text-xs text-slate-400">Owner: <strong>{gap.who}</strong> Â· {gap.when}</p>
+                                <p className="text-xs text-slate-400">Owner: <strong>{gap.who}</strong> - {gap.when}</p>
                               </div>
                             ))}
                           </div>
@@ -1220,7 +1223,7 @@ export default function InsightPage() {
               {publishedAnalyses.length > 0 && (
                 <div className="rounded-3xl border border-blue-200 bg-blue-50/50 p-6 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-base shadow-md">ðŸ“Š</span>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md"><AppIcon name="chart" className="h-4 w-4" /></span>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-slate-900">Latest published analysis</p>
                       <p className="text-xs text-slate-500">
@@ -1229,7 +1232,7 @@ export default function InsightPage() {
                     </div>
                     <button type="button" onClick={() => setActiveTab('reports')}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-sm">
-                      See all â†’
+                      See all <AppIcon name="chevronRight" className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   {publishedAnalyses[0].analysis?.executiveSummary && (
@@ -1255,7 +1258,7 @@ export default function InsightPage() {
                 </span>
               </div>
               {publishedAnalyses.length === 0 ? (
-                <EmptyState icon="ðŸ“Š" title="No published reports yet" description="When the super admin publishes an analysis to your account, it will appear here." />
+                <EmptyState icon="chart" title="No published reports yet" description="When the super admin publishes an analysis to your account, it will appear here." />
               ) : (
                 publishedAnalyses.map(pa => (
                   <AnalysisCard
@@ -1284,7 +1287,7 @@ export default function InsightPage() {
                 </span>
               </div>
               {orgEvals.length === 0 ? (
-                <EmptyState icon="ðŸ“" title="No projects yet" description="Projects created for your organisation will appear here." />
+                <EmptyState icon="folder" title="No projects yet" description="Projects created for your organisation will appear here." />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {orgEvals.map(ev => {
@@ -1296,7 +1299,7 @@ export default function InsightPage() {
                       <div key={ev.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300 hover:shadow-md transition-all">
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-base">ðŸ“</div>
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><AppIcon name="folder" className="h-4 w-4" /></div>
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-slate-900 truncate">{ev.title}</p>
                               <p className="text-xs text-slate-400 mt-0.5">
@@ -1306,7 +1309,7 @@ export default function InsightPage() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {hasAnalysis && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">âœ“ Analysed</span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700"><AppIcon name="check" className="h-3 w-3" /> Analysed</span>
                             )}
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>{sc.label}</span>
                           </div>
@@ -1335,11 +1338,11 @@ export default function InsightPage() {
                         <div className="flex gap-2 mt-4">
                           <Link href={`/evaluations/${ev.id}/diagnosis`}
                             className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors">
-                            ðŸ“Š Analysis
+                            <AppIcon name="chart" className="h-3.5 w-3.5" /> Analysis
                           </Link>
                           <Link href={`/evaluations/${ev.id}`}
                             className="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
-                            View â†’
+                            View <AppIcon name="chevronRight" className="h-3.5 w-3.5" />
                           </Link>
                         </div>
                       </div>
@@ -1365,7 +1368,7 @@ export default function InsightPage() {
                 </span>
               </div>
               {orgForms.length === 0 ? (
-                <EmptyState icon="ðŸ“„" title="No forms yet" description="Forms created for your organisation will appear here once published." />
+                <EmptyState icon="file" title="No forms yet" description="Forms created for your organisation will appear here once published." />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {orgForms.map(form => {
@@ -1386,15 +1389,15 @@ export default function InsightPage() {
                         {/* Header */}
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-base">ðŸ“„</div>
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><AppIcon name="file" className="h-4 w-4" /></div>
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-slate-900 truncate">{form.title}</p>
-                              <p className="text-xs text-slate-400 mt-0.5">{form.questionCount} questions · {form.responseCount || 0} respondent{form.responseCount === 1 ? '' : 's'}</p>
+                              <p className="text-xs text-slate-400 mt-0.5">{form.questionCount} questions - {form.responseCount || 0} respondent{form.responseCount === 1 ? '' : 's'}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {hasAnalysis && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">âœ“ Analysed</span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700"><AppIcon name="check" className="h-3 w-3" /> Analysed</span>
                             )}
                             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${sc.bg} ${sc.text}`}>
                               <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />{sc.label}
@@ -1428,11 +1431,11 @@ export default function InsightPage() {
                           <div className="flex gap-2 mt-4">
                             <Link href={`/evaluations/${ev.id}/diagnosis`}
                               className="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors">
-                              ðŸ“Š View analysis
+                            <AppIcon name="chart" className="h-3.5 w-3.5" /> Analysis
                             </Link>
                             <Link href={`/evaluations/${ev.id}/diagnosis`}
                               className="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
-                              View responses â†’
+                              View responses <AppIcon name="chevronRight" className="h-3.5 w-3.5" />
                             </Link>
                           </div>
                         )}
@@ -1448,3 +1451,4 @@ export default function InsightPage() {
     </DashboardPageFrame>
   );
 }
+

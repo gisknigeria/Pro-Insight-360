@@ -89,6 +89,13 @@ interface UserItem {
   createdAt?: string;
 }
 
+interface DepartmentSummary {
+  id: string;
+  name: string;
+  organisation?: Organisation | null;
+  organisationId?: string | null;
+}
+
 interface ChartDataPoint {
   name: string;
   value: number;
@@ -116,6 +123,7 @@ interface OrgDashboardSummary {
   id: string;
   name: string;
   sector: string;
+  departments: number;
   users: number;
   evaluations: number;
   activeEvaluations: number;
@@ -687,7 +695,7 @@ function OrganisationDecisionChartPack({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <DecisionChartPanel title="Enquiry tools: form depth and uptake" description="Largest questionnaires compared with responses received.">
+        <DecisionChartPanel title="Enquiry tools" description="Largest questionnaires compared with responses received.">
           {formDepthData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={formDepthData} layout="vertical" margin={{ top: 8, right: 16, left: 25, bottom: 8 }}>
@@ -1226,6 +1234,7 @@ function SuperAdminDashboard() {
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [forms, setForms] = useState<FormSummary[]>([]);
+  const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
   const [reports, setReports] = useState<PublishedAnalysis[]>([]);
   const [responses, setResponses] = useState<ResponseItem[]>([]);
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -1236,10 +1245,11 @@ function SuperAdminDashboard() {
     let active = true;
     async function loadStats() {
       try {
-        const [orgData, evaluationData, formData, reportData, responseData, userData] = await Promise.all([
+        const [orgData, evaluationData, formData, departmentData, reportData, responseData, userData] = await Promise.all([
           apiFetch<Organisation[]>('/organisations').catch(() => []),
           apiFetch<Evaluation[]>('/evaluations').catch(() => []),
           apiFetch<FormSummary[]>('/forms').catch(() => []),
+          apiFetch<DepartmentSummary[]>('/departments').catch(() => []),
           apiFetch<PublishedAnalysis[]>('/published-analyses/all').catch(() => []),
           apiFetch<ResponseItem[]>('/responses').catch(() => []),
           apiFetch<UserItem[]>('/users').catch(() => []),
@@ -1248,6 +1258,7 @@ function SuperAdminDashboard() {
         setOrganisations(orgData);
         setEvaluations(evaluationData);
         setForms(formData);
+        setDepartments(departmentData);
         setReports(reportData);
         setResponses(responseData);
         setUsers(userData);
@@ -1264,6 +1275,7 @@ function SuperAdminDashboard() {
       const orgEvaluations = evaluations.filter((evaluation) => evaluation.organisation?.id === org.id);
       const evaluationIds = new Set(orgEvaluations.map((evaluation) => evaluation.id));
       const orgForms = forms.filter((form) => form.organisationId === org.id || form.organisation?.id === org.id || (form.evaluationId ? evaluationIds.has(form.evaluationId) : false));
+      const orgDepartments = departments.filter((department) => department.organisationId === org.id || department.organisation?.id === org.id);
       const orgResponses = responses.filter((response) => response.form.evaluation?.organisation?.id === org.id);
       const orgUsers = users.filter((user) => user.organisation?.id === org.id);
       const orgReports = reports.filter((report) => report.evaluationId ? evaluationIds.has(report.evaluationId) : false);
@@ -1284,6 +1296,7 @@ function SuperAdminDashboard() {
         id: org.id,
         name: org.name,
         sector: org.sector || 'Unclassified',
+        departments: orgDepartments.length,
         users: orgUsers.length || org._count?.users || 0,
         evaluations: orgEvaluations.length,
         activeEvaluations: orgEvaluations.filter((evaluation) => evaluation.status === 'ACTIVE').length,
@@ -1297,7 +1310,7 @@ function SuperAdminDashboard() {
         lastActivity,
       };
     }).sort((a, b) => b.responses - a.responses || b.evaluations - a.evaluations);
-  }, [evaluations, forms, organisations, reports, responses, users]);
+  }, [departments, evaluations, forms, organisations, reports, responses, users]);
 
   const selectedSummary = useMemo<OrgDashboardSummary>(() => {
     if (selectedOrgId !== 'ALL') {
@@ -1305,6 +1318,7 @@ function SuperAdminDashboard() {
         id: selectedOrgId,
         name: 'Selected organisation',
         sector: 'Unclassified',
+        departments: 0,
         users: 0,
         evaluations: 0,
         activeEvaluations: 0,
@@ -1321,6 +1335,7 @@ function SuperAdminDashboard() {
 
     const totals = orgSummaries.reduce((acc, summary) => ({
       ...acc,
+      departments: acc.departments + summary.departments,
       users: acc.users + summary.users,
       evaluations: acc.evaluations + summary.evaluations,
       activeEvaluations: acc.activeEvaluations + summary.activeEvaluations,
@@ -1333,6 +1348,7 @@ function SuperAdminDashboard() {
       id: 'ALL',
       name: 'General overview',
       sector: 'All sectors',
+      departments: 0,
       users: 0,
       evaluations: 0,
       activeEvaluations: 0,
@@ -1546,7 +1562,13 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Organisations" value={loadingStats ? '...' : selectedOrgId === 'ALL' ? orgSummaries.length : 1} icon={<DashboardIcon name="building" />} color="blue" delay={0} />
+        <StatCard
+          label={selectedOrgId === 'ALL' ? 'Org/Dep' : 'Departments'}
+          value={loadingStats ? '...' : selectedOrgId === 'ALL' ? `${orgSummaries.length}/${selectedSummary.departments}` : selectedSummary.departments}
+          icon={<DashboardIcon name="building" />}
+          color="blue"
+          delay={0}
+        />
         <StatCard label="Unique Respondents" value={loadingStats ? '...' : selectedSummary.responses} icon={<DashboardIcon name="check" />} color="green" delay={50} />
         <StatCard label="Avg Response Rate" value={loadingStats ? '...' : `${selectedSummary.averageCompletion}%`} icon={<DashboardIcon name="chart" />} color="yellow" delay={100} />
         <StatCard label="Reports" value={loadingStats ? '...' : selectedSummary.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />

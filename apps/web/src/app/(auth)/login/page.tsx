@@ -1,10 +1,12 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { AppIcon } from '@/components/ui/app-icons';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [error, setError] = useState('');
@@ -63,7 +65,7 @@ export default function LoginPage() {
 
   return (
     <main className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background px-4 py-12">
-      {/* ── Animated background orbs ── */}
+      {/* â”€â”€ Animated background orbs â”€â”€ */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/20 to-accent/10 blur-3xl animate-float" style={{ animationDuration: '8s' }} />
         <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-success/10 to-primary/15 blur-3xl animate-float" style={{ animationDuration: '10s', animationDelay: '2s' }} />
@@ -71,7 +73,7 @@ export default function LoginPage() {
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* ── Brand header ── */}
+        {/* â”€â”€ Brand header â”€â”€ */}
         <div className="text-center mb-10 animate-fade-in-up">
           <div className="inline-flex items-center gap-2.5 rounded-full glass px-5 py-2 text-xs font-bold uppercase tracking-[0.28em] text-foreground shadow-sm">
             <span className="relative flex h-2 w-2">
@@ -88,7 +90,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* ── Login card ── */}
+        {/* â”€â”€ Login card â”€â”€ */}
         <div className="relative animate-fade-in-up" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
           {/* Decorative gradient border */}
           <div className="absolute -inset-[1px] rounded-[2rem] bg-gradient-to-b from-primary/30 via-accent/20 to-transparent opacity-20 blur-[2px]" />
@@ -109,7 +111,7 @@ export default function LoginPage() {
                   className="mb-5 rounded-xl border border-red-200/50 bg-gradient-to-r from-red-50 to-red-100/50 px-4 py-3 text-sm text-red-700 shadow-sm animate-scale-in"
                 >
                   <div className="flex items-center gap-2">
-                    <span>⚠️</span>
+                    <AppIcon name="alert" className="h-4 w-4 shrink-0" />
                     <span>{error}</span>
                   </div>
                 </div>
@@ -131,7 +133,7 @@ export default function LoginPage() {
                       placeholder="you@organisation.com"
                       className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 pl-11 text-sm text-foreground placeholder-muted shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
                     />
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-base">✉️</span>
+                    <AppIcon name="mail" className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                   </div>
                   <p className="mt-2 text-xs text-muted">
                     Use the email address your administrator invited you with.
@@ -145,15 +147,23 @@ export default function LoginPage() {
                   <div className="relative">
                     <input
                       id="password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 pl-11 text-sm text-foreground placeholder-muted shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
+                      className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 pl-11 pr-12 text-sm text-foreground placeholder-muted shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
                     />
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-base">🔒</span>
+                    <AppIcon name="lock" className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      className="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted transition-colors hover:bg-slate-100 hover:text-slate-900"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      <AppIcon name={showPassword ? 'eyeOff' : 'eye'} className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
 
@@ -204,12 +214,12 @@ export default function LoginPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Signing in…
+                      Signing in...
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-2">
                       Sign in
-                      <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                      <AppIcon name="chevronRight" className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </span>
                   )}
                 </span>
@@ -218,7 +228,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* ── Footer ── */}
+        {/* â”€â”€ Footer â”€â”€ */}
         <p className="text-center text-xs text-muted mt-8 animate-fade-in" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
           Need access? Contact your GIS Konsult administrator.
         </p>
@@ -226,3 +236,5 @@ export default function LoginPage() {
     </main>
   );
 }
+
+
