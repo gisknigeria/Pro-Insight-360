@@ -1890,7 +1890,9 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-950">Organisation Performance Dashboard</h1>
+                          <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Client Admin</p>
+
+              <h1 className="text-3xl font-bold tracking-tight text-slate-950">Organisation Dashboard</h1>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-200">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-300 opacity-75" />

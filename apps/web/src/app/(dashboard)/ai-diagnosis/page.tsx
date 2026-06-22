@@ -349,7 +349,7 @@ export default function AIDiagnosisPage() {
       <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Analytics</p>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
             <h1 className="text-3xl font-bold tracking-tight text-white">AI Diagnosis & Analysis</h1>
             <p className="mt-1.5 text-sm text-slate-300">
               Copy form responses → paste to ChatGPT or Claude → import the result here → approve and publish to your client.

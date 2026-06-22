@@ -1001,7 +1001,7 @@ export default function InsightPage() {
       <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-1 text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Client Admin / Insights</p>
+                          <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Client Admin</p>
             <h1 className="text-3xl font-bold tracking-tight text-white">Company insights</h1>
             <p className="mt-1.5 text-sm text-slate-300">Real-time response stats, gap analysis, and published reports for your organisation.</p>
           </div>

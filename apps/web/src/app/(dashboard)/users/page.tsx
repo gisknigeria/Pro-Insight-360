@@ -149,7 +149,7 @@ export default function UsersPage() {
       {/* ── Header ── */}
       <div className="flex flex-col gap-5 border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Access</p>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight text-white">Users</h1>
             <span className="inline-flex items-center justify-center border border-cyan-300/30 bg-slate-900 px-3 py-1 text-xs font-bold text-cyan-200">

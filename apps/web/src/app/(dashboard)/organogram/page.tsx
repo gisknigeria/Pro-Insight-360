@@ -583,7 +583,7 @@ export default function OrganogramPage() {
     return (
       <DashboardPageFrame>
         <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
-          <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">GISKonsult · Organisational Structure</p>
+                          <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Client Admin</p>
           <h1 className="text-3xl font-bold tracking-tight text-white">Organogram</h1>
           <p className="mt-1.5 text-sm text-slate-300">Your organisation's hierarchy, reporting structure, ownership lines, and published accountability report.</p>
         </div>
@@ -644,7 +644,7 @@ export default function OrganogramPage() {
       <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">Super Admin · Organograms</p>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
             <h1 className="text-3xl font-bold tracking-tight text-white">Organisation Charts</h1>
             <p className="mt-1.5 text-sm text-slate-300">
               View, edit, and publish organograms across all client organisations.
