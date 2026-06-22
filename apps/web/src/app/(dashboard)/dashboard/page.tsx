@@ -648,7 +648,7 @@ function OrganizationInsightCharts({
     ];
 
     return (
-      <div className="dashboard-panel rounded-2xl p-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-foreground">Company insight preview</h2>
@@ -721,7 +721,7 @@ function OrganizationInsightCharts({
   }
 
   return (
-    <div className="dashboard-panel flex flex-col rounded-2xl p-6">
+    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-foreground">Published insight charts</h2>
@@ -1297,7 +1297,7 @@ function SuperAdminDashboard() {
   const viewLabel = selectedOrgId === 'ALL' ? 'General overview' : selectedSummary.name;
 
   return (
-    <div className="super-admin-dashboard space-y-5">
+    <div className="space-y-5">
       <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
@@ -1330,7 +1330,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-950">Activity trend for {viewLabel}</h2>
@@ -1354,7 +1354,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
           </div>
         </div>
 
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-950">Portfolio maturity signal</h2>
@@ -1377,7 +1377,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <h2 className="text-base font-bold text-slate-950">What exists in scope</h2>
           <p className="mb-4 text-xs text-slate-500">Record volume by operational object.</p>
           <div className="h-64">
@@ -1397,7 +1397,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
           </div>
         </div>
 
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <h2 className="text-base font-bold text-slate-950">Evaluation status mix</h2>
           <p className="mb-4 text-xs text-slate-500">Shows where active delivery attention is sitting.</p>
           {statusData.length > 0 ? (
@@ -1419,7 +1419,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
           )}
         </div>
 
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <h2 className="text-base font-bold text-slate-950">Completion distribution</h2>
           <p className="mb-4 text-xs text-slate-500">Response quality split by submitted completion band.</p>
           <div className="h-64">
@@ -1437,7 +1437,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-950">
@@ -1488,7 +1488,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
           )}
         </div>
 
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <h2 className="text-base font-bold text-slate-950">Sector footprint</h2>
           <p className="mb-4 text-xs text-slate-500">Client portfolio spread by recorded sector.</p>
           {sectorData.length > 0 ? (
@@ -1512,7 +1512,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
       </div>
 
       <div className="grid gap-4">
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <h2 className="text-base font-bold text-slate-950">Form depth and uptake</h2>
           <p className="mb-4 text-xs text-slate-500">Largest instruments compared with responses received.</p>
           {formDepthData.length > 0 ? (
@@ -1574,7 +1574,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
       )}
 
       <div className="grid gap-4">
-        <div className="dashboard-panel border-slate-300 p-5">
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-950">Organisation summaries</h2>
@@ -1636,7 +1636,7 @@ function EvaluationStatCard({ evaluation }: { evaluation: Evaluation }) {
   const barColor = completion >= 75 ? '#10b981' : completion >= 50 ? '#2563eb' : '#f59e0b';
 
   return (
-    <div className="dashboard-panel rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm text-white">
@@ -1886,7 +1886,7 @@ export default function DashboardPage() {
   return (
     <div className={`${mounted ? 'animate-fade-in' : ''} mx-auto max-w-screen-2xl space-y-6`}>
       {/* ── Header ── */}
-      <div className="dashboard-card-dark rounded-2xl p-6 text-slate-900">
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 text-slate-900 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
@@ -1931,7 +1931,7 @@ export default function DashboardPage() {
 
   {/* ── Only show charts if there is real data ── */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="dashboard-panel rounded-2xl p-5">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <p className="text-sm font-semibold text-foreground">{primaryChartTitle}</p>
                 <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
@@ -1949,7 +1949,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="dashboard-panel rounded-2xl p-5">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <p className="text-sm font-semibold text-foreground">{secondaryChartTitle}</p>
                 <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
@@ -1983,7 +1983,7 @@ export default function DashboardPage() {
           />
 
           {/* ── Latest published insight ── */}
-          <div className="dashboard-panel rounded-2xl p-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
             <div className="flex items-center justify-between gap-4 mb-5">
               <div>
                 <h2 className="text-lg font-bold text-foreground">Latest report brief</h2>

@@ -58,7 +58,7 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen dashboard-shell">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       <div className="lg:flex">
         {isNavOpen && (
           <button
@@ -96,7 +96,7 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          <div className={`dashboard-content max-w-[1500px] mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-7 ${mounted ? 'animate-fade-in-up' : ''}`}>
+          <div className={`max-w-[1500px] mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-7 ${mounted ? 'animate-fade-in-up' : ''}`}>
             {children}
           </div>
 
