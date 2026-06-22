@@ -243,7 +243,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
           </button>
           <button type="button"
             onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
-            className="inline-flex items-center gap-1.5 bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 transition shadow-sm">
+            className="inline-flex items-center gap-1.5 bg-primary px-3 py-2 text-xs font-bold text-slate-900 hover:bg-primary/90 transition shadow-sm">
             <AppIcon name="plus" className="h-6 w-6" /> Form
           </button>
         </div>

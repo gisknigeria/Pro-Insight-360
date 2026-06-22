@@ -708,7 +708,7 @@ function SuperAdminInsightPage() {
           <div className="mb-6 grid gap-3 md:grid-cols-3">
             {insightTabs.map(filter => (
               <button key={filter.id} type="button" onClick={() => setActiveFilter(filter.id)}
-                className={`flex items-center justify-between gap-3 px-4 py-3 text-left transition-all ${activeFilter === filter.id ? 'bg-primary text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-700 hover:border-primary/30'}`}
+                className={`flex items-center justify-between gap-3 px-4 py-3 text-left transition-all ${activeFilter === filter.id ? 'bg-primary text-slate-900 shadow-sm' : 'border border-slate-200 bg-white text-slate-700 hover:border-primary/30'}`}
               >
                 <span>
                   <span className="block text-sm font-bold">{filter.label}</span>

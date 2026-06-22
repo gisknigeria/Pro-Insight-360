@@ -1311,7 +1311,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
             <select
               value={selectedOrgId}
               onChange={(event) => setSelectedOrgId(event.target.value)}
-              className="force-readable-light mt-2 w-full border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-cyan-300"
+              className="force-readable-light mt-2 w-full border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold normal-case tracking-normal text-slate-950 outline-none focus:border-cyan-300"
             >
               <option value="ALL">General overview - all organisations</option>
               {organisations.map((org) => (
@@ -1614,28 +1614,6 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ['Browse organisations', '/organisations', 'building'],
-          ['Review evaluations', '/evaluations', 'clipboard'],
-          ['Open AI diagnosis', '/ai-diagnosis', 'bot'],
-          ['Manage forms', '/forms', 'form'],
-        ].map(([label, href, icon]) => (
-          <Link
-            key={href}
-            href={href}
-            className="group flex items-center justify-between border border-slate-300 bg-white px-4 py-4 text-sm font-bold text-slate-900 shadow-sm transition hover:border-slate-950"
-          >
-            <span className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-slate-950 text-white">
-                <DashboardIcon name={icon as DashboardIconName} className="h-4 w-4" />
-              </span>
-              {label}
-            </span>
-            <DashboardIcon name="arrowRight" className="h-4 w-4 text-teal-700" />
-          </Link>
-        ))}
-      </div>
     </div>
   );
 }
