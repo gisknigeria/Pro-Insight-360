@@ -261,6 +261,7 @@ img {
 .dashboard-shell main textarea {
   border: 1px solid #cbd5e1 !important;
   background: #ffffff !important;
+  color: #0f172a !important;
 }
 
 .dashboard-shell main .bg-white,
@@ -288,10 +289,30 @@ img {
   color: #0f172a !important;
 }
 
-.dashboard-shell main .bg-white :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-slate-50 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
-.dashboard-shell main .bg-gray-50 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li) {
-  color: inherit;
+.dashboard-shell main .bg-white *,
+.dashboard-shell main .bg-white\/60 *,
+.dashboard-shell main .bg-white\/70 *,
+.dashboard-shell main .bg-slate-50 *,
+.dashboard-shell main .bg-slate-50\/50 *,
+.dashboard-shell main .bg-slate-50\/60 *,
+.dashboard-shell main .bg-slate-50\/80 *,
+.dashboard-shell main .bg-gray-50 *,
+.dashboard-shell main .bg-gray-50\/50 *,
+.dashboard-shell main .bg-gray-100 *,
+.dashboard-shell main .bg-amber-50 *,
+.dashboard-shell main .bg-blue-50 *,
+.dashboard-shell main .bg-cyan-50 *,
+.dashboard-shell main .bg-emerald-50 *,
+.dashboard-shell main .bg-green-50 *,
+.dashboard-shell main .bg-indigo-50 *,
+.dashboard-shell main .bg-orange-50 *,
+.dashboard-shell main .bg-purple-50 *,
+.dashboard-shell main .bg-red-50 *,
+.dashboard-shell main .bg-teal-50 *,
+.dashboard-shell main .bg-violet-50 *,
+.dashboard-shell main .bg-yellow-50,
+.dashboard-shell main .bg-yellow-50 * {
+  color: #0f172a !important;
 }
 
 .dashboard-shell main .bg-slate-950,
@@ -319,6 +340,29 @@ img {
 .dashboard-shell main .bg-red-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
 .dashboard-shell main .bg-teal-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li),
 .dashboard-shell main .bg-violet-600 :is(p, span, div, h1, h2, h3, h4, h5, h6, label, td, li) {
+  color: #ffffff !important;
+}
+
+.dashboard-shell main :is(button, a).bg-slate-950,
+.dashboard-shell main :is(button, a).bg-slate-900,
+.dashboard-shell main :is(button, a).bg-slate-800,
+.dashboard-shell main :is(button, a).bg-blue-600,
+.dashboard-shell main :is(button, a).bg-emerald-600,
+.dashboard-shell main :is(button, a).bg-green-600,
+.dashboard-shell main :is(button, a).bg-primary,
+.dashboard-shell main :is(button, a).bg-red-600,
+.dashboard-shell main :is(button, a).bg-teal-600,
+.dashboard-shell main :is(button, a).bg-violet-600,
+.dashboard-shell main :is(button, a).bg-slate-950 *,
+.dashboard-shell main :is(button, a).bg-slate-900 *,
+.dashboard-shell main :is(button, a).bg-slate-800 *,
+.dashboard-shell main :is(button, a).bg-blue-600 *,
+.dashboard-shell main :is(button, a).bg-emerald-600 *,
+.dashboard-shell main :is(button, a).bg-green-600 *,
+.dashboard-shell main :is(button, a).bg-primary *,
+.dashboard-shell main :is(button, a).bg-red-600 *,
+.dashboard-shell main :is(button, a).bg-teal-600 *,
+.dashboard-shell main :is(button, a).bg-violet-600 * {
   color: #ffffff !important;
 }
 
