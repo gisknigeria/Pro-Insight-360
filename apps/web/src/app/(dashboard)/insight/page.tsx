@@ -996,19 +996,19 @@ export default function InsightPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <DashboardPageFrame>
       {/* â”€â”€ Header â”€â”€ */}
-      <div className="mb-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-1">Client Admin Â· Insights</p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Company insights</h1>
-            <p className="mt-1.5 text-sm text-slate-500">Real-time response stats, gap analysis, and published reports for your organisation.</p>
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Client Admin / Insights</p>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Company insights</h1>
+            <p className="mt-1.5 text-sm text-slate-300">Real-time response stats, gap analysis, and published reports for your organisation.</p>
           </div>
           {userOrg && (
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-sm font-bold text-slate-800">{userOrg.name}</span>
+            <div className="inline-flex items-center gap-2 border border-white/10 bg-white/10 px-4 py-2.5">
+              <span className="h-2 w-2 animate-pulse bg-emerald-400" />
+              <span className="text-sm font-bold text-white">{userOrg.name}</span>
             </div>
           )}
         </div>
@@ -1445,6 +1445,6 @@ export default function InsightPage() {
           )}
         </>
       )}
-    </div>
+    </DashboardPageFrame>
   );
 }

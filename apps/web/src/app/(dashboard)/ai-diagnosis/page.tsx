@@ -394,19 +394,20 @@ export default function AIDiagnosisPage() {
       </div>
 
       {/* ── Stats bar ── */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Total analyses', value: diagnoses.length, icon: '📊', color: 'from-blue-500 to-indigo-600' },
           { label: 'Pending review', value: diagnoses.filter((d) => d.status === 'PENDING_REVIEW').length, icon: '⏳', color: 'from-amber-400 to-orange-500' },
           { label: 'Approved', value: diagnoses.filter((d) => d.status === 'APPROVED').length, icon: '✅', color: 'from-emerald-400 to-green-600' },
           { label: 'AI generated', value: diagnoses.filter((d) => d.isAiGenerated).length, icon: '🤖', color: 'from-violet-500 to-purple-600' },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.color} text-lg shadow-md`}>
+          <div key={stat.label} className="border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-5 text-white shadow-xl shadow-slate-900/10">
+            <div className={`mb-3 inline-flex h-12 w-12 items-center justify-center border border-white/10 bg-white/10 text-lg text-white`}>
               {stat.icon}
             </div>
-            <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-            <p className="text-xs font-medium text-slate-500 mt-0.5">{stat.label}</p>
+            <p className="mt-8 text-3xl font-black text-white">{stat.value}</p>
+            <div className="mt-4 h-px w-full bg-white/15"><div className="h-px w-2/3 bg-white/70" /></div>
+            <p className="mt-3 text-xs font-bold text-slate-300">{stat.label}</p>
           </div>
         ))}
       </div>

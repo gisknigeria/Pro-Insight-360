@@ -7,6 +7,7 @@ import { isClientAdmin as checkClientAdmin } from '@/lib/auth';
 import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AppIcon } from '@/components/ui/app-icons';
+import { DashboardHero, DashboardMetricCard, DashboardPageFrame } from '@/components/ui/dashboard-chrome';
 import type { OrgRow } from '@/components/organogram/OrgChartUploader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -580,11 +581,11 @@ export default function OrganogramPage() {
   // ── CLIENT ADMIN view ────────────────────────────────────────────────────────
   if (clientRole) {
     return (
-      <div className="min-h-screen bg-slate-50/50">
-        <div className="mb-8">
+      <DashboardPageFrame>
+        <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
           <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">GISKonsult · Organisational Structure</p>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Organogram</h1>
-          <p className="mt-1.5 text-sm text-slate-500">Your organisation's hierarchy and reporting structure.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Organogram</h1>
+          <p className="mt-1.5 text-sm text-slate-300">Your organisation's hierarchy, reporting structure, ownership lines, and published accountability report.</p>
         </div>
         {analyses.length === 0 ? (
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -606,19 +607,13 @@ export default function OrganogramPage() {
                 ))}
               </div>
             )}
-            <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
-                { label: 'Total Roles', value: orgRows.length, icon: 'users' as const, grad: 'from-teal-500 to-emerald-600' },
-                { label: 'Departments', value: departments.length, icon: 'building' as const, grad: 'from-blue-500 to-indigo-600' },
-                { label: 'Report Date', value: selected ? new Date(selected.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-', icon: 'calendar' as const, grad: 'from-violet-500 to-purple-600' },
+                { label: 'Total Roles', value: orgRows.length, icon: 'users' as const, tone: 'teal' as const },
+                { label: 'Departments', value: departments.length, icon: 'building' as const, tone: 'blue' as const },
+                { label: 'Report Date', value: selected ? new Date(selected.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-', icon: 'calendar' as const, tone: 'violet' as const },
               ].map(stat => (
-                <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.grad} text-white shadow-md`}>
-                    <AppIcon name={stat.icon} className="h-5 w-5" />
-                  </div>
-                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-                  <p className="text-xs font-semibold text-slate-500 mt-0.5">{stat.label}</p>
-                </div>
+                <DashboardMetricCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} tone={stat.tone} />
               ))}
             </div>
             <div className="mb-6">
@@ -638,37 +633,37 @@ export default function OrganogramPage() {
             </div>
           </>
         )}
-      </div>
+      </DashboardPageFrame>
     );
   }
 
   // ── SUPER ADMIN view ─────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <DashboardPageFrame>
       {/* Header */}
-      <div className="mb-8">
+      <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">Super Admin · Organograms</p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Organisation Charts</h1>
-            <p className="mt-1.5 text-sm text-slate-500">
+            <h1 className="text-3xl font-bold tracking-tight text-white">Organisation Charts</h1>
+            <p className="mt-1.5 text-sm text-slate-300">
               View, edit, and publish organograms across all client organisations.
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-            <span className="h-2 w-2 rounded-full bg-teal-500" />
-            <span className="text-sm font-bold text-slate-700">{analyses.length} organisation{analyses.length !== 1 ? 's' : ''}</span>
+          <div className="inline-flex items-center gap-2 border border-white/10 bg-white/10 px-4 py-2.5">
+            <span className="h-2 w-2 bg-teal-400" />
+            <span className="text-sm font-bold text-white">{analyses.length} organisation{analyses.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href="/organogram-intake"
             target="_blank"
-            className="inline-flex items-center justify-center rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100"
+            className="inline-flex items-center justify-center border border-cyan-300/30 bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:border-cyan-300 hover:bg-slate-800"
           >
             Open standalone intake form
           </Link>
-          <p className="flex items-center text-xs font-medium text-slate-500">
+          <p className="flex items-center text-xs font-medium text-slate-300">
             Send this to a CEO or HR lead, then paste the generated prompt into ChatGPT or Claude.
           </p>
         </div>
@@ -885,6 +880,6 @@ export default function OrganogramPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardPageFrame>
   );
 }
