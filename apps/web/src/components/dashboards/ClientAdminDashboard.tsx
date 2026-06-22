@@ -31,10 +31,10 @@ const sampleDeptScores: DepartmentScore[] = [
 
 function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-      <AppIcon name="mail" className="mb-3 h-9 w-9 text-gray-400" />
-      <h4 className="font-semibold text-gray-700 mb-1">{title}</h4>
-      <p className="text-sm text-gray-500 mb-4 max-w-sm">{description}</p>
+    <div className="flex flex-col items-center justify-center border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+      <AppIcon name="mail" className="mb-3 h-9 w-9 text-slate-400" />
+      <h4 className="mb-1 font-semibold text-slate-900">{title}</h4>
+      <p className="mb-4 max-w-sm text-sm text-slate-500">{description}</p>
       {action}
     </div>
   );
@@ -42,12 +42,20 @@ function EmptyState({ title, description, action }: { title: string; description
 
 // ── Stat Card ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon }: { label: string; value: string | number; icon: AppIconName; color?: string }) {
+function StatCard({ label, value, icon, tone = "slate" }: { label: string; value: string | number; icon: AppIconName; color?: string; tone?: "blue" | "teal" | "amber" | "rose" | "slate" }) {
+  const toneMap = {
+    blue: "from-slate-900 via-slate-800 to-blue-950",
+    teal: "from-slate-900 via-teal-950 to-emerald-950",
+    amber: "from-slate-900 via-stone-900 to-amber-950",
+    rose: "from-slate-900 via-rose-950 to-red-950",
+    slate: "from-slate-950 via-slate-900 to-slate-950",
+  };
+
   return (
-    <div className="border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-5 text-white shadow-xl shadow-slate-900/10">
-      <div className="flex items-center justify-between mb-2">
+    <div className={`border border-slate-800 bg-gradient-to-br ${toneMap[tone]} p-5 text-white shadow-xl shadow-slate-900/10`}>
+      <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-bold text-slate-300">{label}</span>
-        <span className={`border border-white/10 bg-white/10 p-3 text-white`}>
+        <span className="border border-white/10 bg-white/10 p-3 text-white">
           <AppIcon name={icon} className="h-5 w-5" />
         </span>
       </div>
@@ -74,6 +82,8 @@ export default function ClientAdminDashboard() {
     return Math.round(avg);
   }, [deptScores]);
 
+  const completionPercent = Math.round((sampleRespondentStats.completed / sampleRespondentStats.totalRespondents) * 100);
+
   return (
     <div className="mx-auto max-w-7xl space-y-5">
       <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
@@ -84,53 +94,62 @@ export default function ClientAdminDashboard() {
 
       {/* ── Stats Row ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <StatCard label="Assigned Forms" value={forms.length} icon="clipboard" color="blue" />
-        <StatCard label="Completion Rate" value={`${completionRate}%`} icon="check" color="green" />
-        <StatCard label="Overdue Forms" value={overdueCount} icon="alert" color={overdueCount > 0 ? "red" : "green"} />
-        <StatCard label="Org Score" value={orgScore} icon="chart" color="yellow" />
+        <StatCard label="Assigned Forms" value={forms.length} icon="clipboard" tone="blue" />
+        <StatCard label="Completion Rate" value={`${completionRate}%`} icon="check" tone="teal" />
+        <StatCard label="Overdue Forms" value={overdueCount} icon="alert" tone={overdueCount > 0 ? "rose" : "teal"} />
+        <StatCard label="Org Score" value={orgScore} icon="chart" tone="amber" />
       </div>
 
       {/* ── Main Content ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Respondent Completion */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Respondent Completion</h3>
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-slate-950">Respondent Completion</h3>
+              <p className="mt-1 text-xs text-slate-500">Current participation status across assigned questionnaires.</p>
+            </div>
+            <span className="border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Live</span>
+          </div>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Total Respondents</span>
-              <span className="font-semibold">{sampleRespondentStats.totalRespondents}</span>
+              <span className="text-sm text-slate-600">Total Respondents</span>
+              <span className="font-semibold text-slate-950">{sampleRespondentStats.totalRespondents}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Completed</span>
-              <span className="font-semibold text-green-600">{sampleRespondentStats.completed}</span>
+              <span className="text-sm text-slate-600">Completed</span>
+              <span className="font-semibold text-emerald-700">{sampleRespondentStats.completed}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">In Progress</span>
-              <span className="font-semibold text-yellow-600">{sampleRespondentStats.inProgress}</span>
+              <span className="text-sm text-slate-600">In Progress</span>
+              <span className="font-semibold text-amber-700">{sampleRespondentStats.inProgress}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Not Started</span>
-              <span className="font-semibold text-gray-600">{sampleRespondentStats.notStarted}</span>
+              <span className="text-sm text-slate-600">Not Started</span>
+              <span className="font-semibold text-slate-700">{sampleRespondentStats.notStarted}</span>
             </div>
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <div className="h-3 w-full bg-slate-200">
               <div
-                className="bg-green-500 h-3 rounded-full"
-                style={{ width: `${(sampleRespondentStats.completed / sampleRespondentStats.totalRespondents) * 100}%` }}
+                className="h-3 bg-emerald-500"
+                style={{ width: `${completionPercent}%` }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1 text-center">
-              {Math.round((sampleRespondentStats.completed / sampleRespondentStats.totalRespondents) * 100)}% overall completion
+            <p className="mt-2 text-center text-xs font-semibold text-slate-500">
+              {completionPercent}% overall completion
             </p>
           </div>
         </div>
 
         {/* Assigned Forms */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-gray-800">Assigned Forms</h3>
-            <button className="text-sm text-primary hover:underline">View All</button>
+        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] lg:col-span-2">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-slate-950">Assigned Forms</h3>
+              <p className="mt-1 text-xs text-slate-500">Questionnaires currently driving the organisation insight pipeline.</p>
+            </div>
+            <button className="border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 hover:bg-slate-50">View All</button>
           </div>
           {forms.length === 0 ? (
             <EmptyState
@@ -141,48 +160,48 @@ export default function ClientAdminDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-gray-600">
-                    <th className="text-left py-2 px-3 font-medium">Form Name</th>
-                    <th className="text-left py-2 px-3 font-medium">Status</th>
-                    <th className="text-left py-2 px-3 font-medium">Due Date</th>
-                    <th className="text-left py-2 px-3 font-medium">Progress</th>
+                  <tr className="bg-slate-950 text-white">
+                    <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-widest">Form Name</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-widest">Status</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-widest">Due Date</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-widest">Progress</th>
                   </tr>
                 </thead>
                 <tbody>
                   {forms.map((form) => (
-                    <tr key={form.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-3 font-medium text-gray-800">{form.formName}</td>
+                    <tr key={form.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-3 py-3 font-medium text-slate-900">{form.formName}</td>
                       <td className="py-3 px-3">
                         <span
-                          className={`px-2 py-1 text-xs rounded-full ${
+                          className={`px-2 py-1 text-xs font-bold ${
                             form.status === "completed"
-                              ? "bg-green-100 text-green-700"
+                              ? "bg-emerald-50 text-emerald-700"
                               : form.status === "in_progress"
                               ? "bg-amber-100 text-amber-800"
                               : form.status === "overdue"
                               ? "bg-red-100 text-red-700"
-                              : "bg-gray-100 text-gray-600"
+                              : "bg-slate-100 text-slate-600"
                           }`}
                         >
                           {form.status.replace("_", " ")}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-gray-600">{form.dueDate}</td>
+                      <td className="py-3 px-3 text-slate-600">{form.dueDate}</td>
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                          <div className="h-2 w-20 bg-slate-200">
                             <div
-                              className={`h-2 rounded-full ${
+                              className={`h-2 ${
                                 form.progress === 100
-                                  ? "bg-green-500"
+                                  ? "bg-emerald-500"
                                   : form.progress > 0
                                   ? "bg-amber-500"
-                                  : "bg-gray-300"
+                                  : "bg-slate-300"
                               }`}
                               style={{ width: `${form.progress}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-600 w-8">{form.progress}%</span>
+                          <span className="w-8 text-xs text-slate-600">{form.progress}%</span>
                         </div>
                       </td>
                     </tr>
@@ -195,8 +214,9 @@ export default function ClientAdminDashboard() {
       </div>
 
       {/* ── Department Scores ────────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-        <h3 className="font-semibold text-gray-800 mb-4">Department-Level Scores</h3>
+      <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+        <h3 className="mb-1 font-bold text-slate-950">Department-Level Scores</h3>
+        <p className="mb-4 text-xs text-slate-500">Department readiness and completion metrics for management review.</p>
         {deptScores.length === 0 ? (
           <EmptyState
             title="No score data available"
@@ -206,23 +226,23 @@ export default function ClientAdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-gray-600">
-                  <th className="text-left py-2 px-3 font-medium">Department</th>
-                  <th className="text-left py-2 px-3 font-medium">Digital Readiness</th>
-                  <th className="text-left py-2 px-3 font-medium">GIS Readiness</th>
-                  <th className="text-left py-2 px-3 font-medium">Completion Rate</th>
+                <tr className="bg-slate-950 text-white">
+                  <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-widest">Department</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-widest">Digital Readiness</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-widest">GIS Readiness</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-widest">Completion Rate</th>
                 </tr>
               </thead>
               <tbody>
                 {deptScores.map((dept) => (
-                  <tr key={dept.name} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-3 font-medium text-gray-800">{dept.name}</td>
+                  <tr key={dept.name} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-3 py-3 font-medium text-slate-900">{dept.name}</td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold w-8">{dept.digitalReadiness}</span>
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <span className="w-8 font-semibold text-slate-900">{dept.digitalReadiness}</span>
+                        <div className="h-2 w-24 bg-slate-200">
                           <div
-                            className="bg-amber-500 h-2 rounded-full"
+                            className="h-2 bg-amber-500"
                             style={{ width: `${dept.digitalReadiness}%` }}
                           />
                         </div>
@@ -230,17 +250,17 @@ export default function ClientAdminDashboard() {
                     </td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold w-8">{dept.gisReadiness}</span>
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <span className="w-8 font-semibold text-slate-900">{dept.gisReadiness}</span>
+                        <div className="h-2 w-24 bg-slate-200">
                           <div
-                            className="bg-green-500 h-2 rounded-full"
+                            className="h-2 bg-emerald-500"
                             style={{ width: `${dept.gisReadiness}%` }}
                           />
                         </div>
                       </div>
                     </td>
                     <td className="py-3 px-3">
-                      <span className="font-semibold text-gray-700">{dept.completionRate}%</span>
+                      <span className="font-semibold text-slate-700">{dept.completionRate}%</span>
                     </td>
                   </tr>
                 ))}
