@@ -94,6 +94,24 @@ interface ChartDataPoint {
   value: number;
 }
 
+interface ActivityTrendPoint {
+  name: string;
+  responses: number;
+  projects: number;
+  reports: number;
+}
+
+interface PortfolioRadarPoint {
+  subject: string;
+  score: number;
+}
+
+interface FormDepthPoint {
+  name: string;
+  questions: number;
+  responses: number;
+}
+
 interface OrgDashboardSummary {
   id: string;
   name: string;
@@ -300,6 +318,45 @@ function normalizeAnalysisChartData(chart: { data?: Array<{ label?: string; name
       }))
       .filter((row) => Number.isFinite(row.value))
     : [];
+}
+
+function findAnalysisChartData(published: PublishedAnalysis | null | undefined, terms: string[], fallback: ChartDataPoint[]) {
+  const charts = published?.analysis?.charts || [];
+  const match = charts.find((chart) => {
+    const title = String(chart.title || '').toLowerCase();
+    return terms.some((term) => title.includes(term.toLowerCase()));
+  });
+  const data = match ? normalizeAnalysisChartData(match) : [];
+  return data.length > 0 ? data : fallback;
+}
+
+function buildReportSignalData(published: PublishedAnalysis | null | undefined, fallback: ChartDataPoint[]) {
+  if (!published?.analysis) return fallback;
+  const analysis = published.analysis;
+  return [
+    { name: 'Gaps', value: analysis.gaps?.length || analysis.weaknesses?.length || 0 },
+    { name: 'Recommendations', value: analysis.recommendations?.length || 0 },
+    { name: 'Charts', value: analysis.charts?.length || 0 },
+    { name: 'Actions', value: analysis.actionPlan?.length || 0 },
+  ];
+}
+
+function buildGapSeverityData(publishedAnalyses: PublishedAnalysis[]) {
+  const counts: Record<'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW', number> = {
+    CRITICAL: 0,
+    HIGH: 0,
+    MEDIUM: 0,
+    LOW: 0,
+  };
+  publishedAnalyses.forEach((published) => {
+    const gaps = published.analysis?.gaps || published.analysis?.weaknesses || [];
+    gaps.forEach((gap) => {
+      counts[parseAnalysisGap(gap).severity] += 1;
+    });
+  });
+  return Object.entries(counts)
+    .map(([name, value]) => ({ name, value }))
+    .filter((item) => item.value > 0);
 }
 
 function cleanChartTitle(title?: string) {
@@ -555,6 +612,174 @@ function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ 
           </ResponsiveContainer>
         </div>
       )}
+    </div>
+  );
+}
+
+function DecisionChartPanel({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+      <h2 className="text-base font-bold text-slate-950">{title}</h2>
+      <p className="mb-4 text-xs text-slate-500">{description}</p>
+      <div className="h-72">{children}</div>
+    </div>
+  );
+}
+
+function OrganisationDecisionChartPack({
+  viewLabel,
+  activityTrendData,
+  portfolioRadarData,
+  formDepthData,
+  sectorData,
+  latestPublished,
+  publishedAnalyses,
+  fallbackWorkspaceData,
+}: {
+  viewLabel: string;
+  activityTrendData: ActivityTrendPoint[];
+  portfolioRadarData: PortfolioRadarPoint[];
+  formDepthData: FormDepthPoint[];
+  sectorData: ChartDataPoint[];
+  latestPublished: PublishedAnalysis | null;
+  publishedAnalyses: PublishedAnalysis[];
+  fallbackWorkspaceData: ChartDataPoint[];
+}) {
+  const reportSignals = buildReportSignalData(latestPublished, fallbackWorkspaceData);
+  const gapSeverityData = buildGapSeverityData(publishedAnalyses);
+  const digitalReadinessData = findAnalysisChartData(latestPublished, ['digital readiness', 'digital'], reportSignals);
+  const gisReadinessData = findAnalysisChartData(latestPublished, ['gis readiness', 'gis'], reportSignals);
+  const technicalProficiencyData = findAnalysisChartData(latestPublished, ['technical proficiency', 'technical', 'skill'], reportSignals);
+  const operationalChallengeData = findAnalysisChartData(latestPublished, ['operational challenge', 'challenge', 'constraint'], reportSignals);
+  const diagnosticChecklistData = findAnalysisChartData(latestPublished, ['diagnostic checklist', 'diagnostic', 'checklist'], reportSignals);
+  const gapData = gapSeverityData.length > 0 ? gapSeverityData : reportSignals.filter((item) => item.name === 'Gaps' || item.name === 'Recommendations' || item.name === 'Actions');
+  const colors = ['#2563eb', '#0f766e', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+        <DecisionChartPanel title="Activity trend" description={`Responses, projects, and published reports for ${viewLabel}.`}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={activityTrendData} margin={{ top: 12, right: 18, left: -8, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="responses" fill="#0f766e" fillOpacity={0.18} stroke="#0f766e" strokeWidth={2} />
+              <Bar dataKey="projects" fill="#2563eb" radius={[0, 0, 0, 0]} />
+              <Line type="monotone" dataKey="reports" stroke="#f97316" strokeWidth={3} dot={{ r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </DecisionChartPanel>
+
+        <DecisionChartPanel title="Portfolio" description="Completion, response depth, active work, reports, and user coverage.">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart data={portfolioRadarData} outerRadius={92}>
+              <PolarGrid stroke="#cbd5e1" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: '#334155', fontSize: 10 }} />
+              <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
+              <Radar name="Score" dataKey="score" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.22} />
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </DecisionChartPanel>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <DecisionChartPanel title="Enquiry tools: form depth and uptake" description="Largest questionnaires compared with responses received.">
+          {formDepthData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={formDepthData} layout="vertical" margin={{ top: 8, right: 16, left: 25, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} width={90} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="questions" fill="#7c3aed" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="responses" fill="#0f766e" radius={[0, 0, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No form data yet.</div>
+          )}
+        </DecisionChartPanel>
+
+        <DecisionChartPanel title="Sector footprint" description="The organisation sector or portfolio sector spread.">
+          {sectorData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={sectorData} dataKey="value" nameKey="name" outerRadius={94}>
+                  {sectorData.map((entry, index) => <Cell key={entry.name} fill={colors[index % colors.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                <Legend iconType="square" wrapperStyle={{ color: '#334155', fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No sector data yet.</div>
+          )}
+        </DecisionChartPanel>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        {[
+          ['Digital readiness', 'Digital process maturity from the latest published analysis.', digitalReadinessData, '#2563eb'],
+          ['GIS readiness', 'GIS capability and adoption signals from the latest analysis.', gisReadinessData, '#0f766e'],
+          ['Technical proficiency', 'Skills, support capacity, and technical readiness indicators.', technicalProficiencyData, '#7c3aed'],
+        ].map(([title, description, data, color]) => (
+          <DecisionChartPanel key={title as string} title={title as string} description={description as string}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data as ChartDataPoint[]} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                <Bar dataKey="value" fill={color as string} radius={[0, 0, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </DecisionChartPanel>
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <DecisionChartPanel title="Operational challenge" description="Main pressure points and operating constraints from the analysis.">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={operationalChallengeData} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
+              <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+              <Area type="monotone" dataKey="value" stroke="#f97316" fill="#fed7aa" fillOpacity={0.78} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </DecisionChartPanel>
+
+        <DecisionChartPanel title="Diagnostic checklist" description="Report signal mix from the latest diagnostic checklist.">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={diagnosticChecklistData} margin={{ top: 10, right: 12, left: -12, bottom: 34 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={54} />
+              <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+              <Bar dataKey="value" fill="#0891b2" radius={[0, 0, 0, 0]} />
+              <Line type="monotone" dataKey="value" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </DecisionChartPanel>
+
+        <DecisionChartPanel title="Gap severity" description="Critical, high, medium, and low gaps from published analysis.">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={gapData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={88} paddingAngle={0}>
+                {gapData.map((entry, index) => <Cell key={entry.name} fill={colors[index % colors.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+              <Legend iconType="square" wrapperStyle={{ color: '#334155', fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </DecisionChartPanel>
+      </div>
     </div>
   );
 }
@@ -1327,6 +1552,8 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
         <StatCard label="Reports" value={loadingStats ? '...' : selectedSummary.reports} icon={<DashboardIcon name="insight" />} color="slate" delay={150} />
       </div>
 
+      {selectedOrgId === 'ALL' && (
+        <>
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
           <div className="mb-4 flex items-start justify-between gap-4">
@@ -1532,25 +1759,27 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
           )}
         </div>
       </div>
+        </>
+      )}
 
       {selectedOrgId !== 'ALL' && (
         <div className="space-y-4">
-          <OrganizationInsightCharts
+          <OrganisationDecisionChartPack
+            viewLabel={selectedSummary.name}
+            activityTrendData={monthlyTrendData}
+            portfolioRadarData={maturityRadarData}
+            formDepthData={formDepthData}
+            sectorData={sectorData}
+            latestPublished={selectedOrgLatestReport}
             publishedAnalyses={scopedReports}
-            evaluations={scopedEvaluations}
-            completionDistribution={completionDistribution}
-            projectStatusData={statusData}
-            workspaceSummaryData={selectedOrgWorkspaceData}
+            fallbackWorkspaceData={selectedOrgWorkspaceData}
           />
 
           <div className="border border-slate-300 bg-white p-5 shadow-sm">
             <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">Selected organisation analysis</p>
-                <h2 className="mt-1 text-xl font-black text-slate-950">Latest published analysis for {selectedSummary.name}</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Super admin preview of what this organisation will see: professional summary, gaps, recommendations, action plan, and every chart published in the analysis.
-                </p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">Latest report brief</p>
+                <h2 className="mt-1 text-xl font-black text-slate-950">A short executive note. The decision charts are shown above.</h2>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Pill label={`${scopedReports.length} published`} color={scopedReports.length > 0 ? 'green' : 'amber'} />
@@ -1559,7 +1788,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
             </div>
 
             {selectedOrgLatestReport ? (
-              <LatestPublishedAnalysis published={selectedOrgLatestReport} evaluation={selectedOrgLatestEvaluation} />
+              <LatestReportBriefChart published={selectedOrgLatestReport} evaluation={selectedOrgLatestEvaluation} />
             ) : (
               <div className="border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                 <DashboardIcon name="chart" className="mx-auto h-9 w-9 text-slate-500" />
@@ -1831,6 +2060,86 @@ export default function DashboardPage() {
     [companyEvaluations.length, companyGaps.length, companyResponses.length, filteredPublishedAnalyses.length],
   );
 
+  const totalResponses = companyResponses.length;
+  const totalAnswers = companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
+  const averageCompletion = companyResponses.length > 0
+    ? Math.round(companyResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / companyResponses.length)
+    : 0;
+
+  const companyMonthlyTrendData = useMemo<ActivityTrendPoint[]>(() => {
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (5 - index));
+      return {
+        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+        name: date.toLocaleDateString(undefined, { month: 'short' }),
+        responses: 0,
+        projects: 0,
+        reports: 0,
+      };
+    });
+    const byKey = Object.fromEntries(months.map((month) => [month.key, month]));
+    companyResponses.forEach((response) => {
+      const rawDate = response.submittedAt || response.createdAt;
+      if (!rawDate) return;
+      const date = new Date(rawDate);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (byKey[key]) byKey[key].responses += 1;
+    });
+    companyEvaluations.forEach((evaluation) => {
+      const date = new Date(evaluation.createdAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (byKey[key]) byKey[key].projects += 1;
+    });
+    filteredPublishedAnalyses.forEach((report) => {
+      const date = new Date(report.publishedAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (byKey[key]) byKey[key].reports += 1;
+    });
+    return months;
+  }, [companyEvaluations, companyResponses, filteredPublishedAnalyses]);
+
+  const companyPortfolioRadarData = useMemo<PortfolioRadarPoint[]>(() => {
+    const activeProjects = companyEvaluations.filter((evaluation) => evaluation.status === 'ACTIVE').length;
+    const activeRate = companyEvaluations.length ? Math.round((activeProjects / companyEvaluations.length) * 100) : 0;
+    const responseDepth = companyEvaluations.length ? Math.min(100, Math.round((companyResponses.length / companyEvaluations.length) * 20)) : 0;
+    const reportCoverage = companyEvaluations.length ? Math.min(100, Math.round((filteredPublishedAnalyses.length / companyEvaluations.length) * 100)) : 0;
+    const userCoverage = Math.min(100, (userOrg?._count?.users || 0) * 10);
+    return [
+      { subject: 'Completion', score: averageCompletion },
+      { subject: 'Response depth', score: responseDepth },
+      { subject: 'Active work', score: activeRate },
+      { subject: 'Insight coverage', score: reportCoverage },
+      { subject: 'User coverage', score: userCoverage },
+    ];
+  }, [averageCompletion, companyEvaluations, companyResponses.length, filteredPublishedAnalyses.length, userOrg?._count?.users]);
+
+  const companyFormDepthData = useMemo<FormDepthPoint[]>(() => {
+    const byForm = new Map<string, FormDepthPoint>();
+    companyResponses.forEach((response) => {
+      const current = byForm.get(response.form.id) || {
+        name: response.form.title.length > 18 ? `${response.form.title.slice(0, 18)}...` : response.form.title,
+        questions: response.questionCount || 0,
+        responses: 0,
+      };
+      current.questions = Math.max(current.questions, response.questionCount || 0);
+      current.responses += 1;
+      byForm.set(response.form.id, current);
+    });
+    const responseForms = Array.from(byForm.values()).sort((a, b) => b.questions - a.questions || b.responses - a.responses);
+    if (responseForms.length > 0) return responseForms.slice(0, 7);
+    return companyEvaluations.slice(0, 7).map((evaluation) => ({
+      name: evaluation.title.length > 18 ? `${evaluation.title.slice(0, 18)}...` : evaluation.title,
+      questions: evaluation._count?.forms || 0,
+      responses: 0,
+    }));
+  }, [companyEvaluations, companyResponses]);
+
+  const companySectorData = useMemo<ChartDataPoint[]>(() => {
+    const sector = userOrg?.sector || 'Unclassified';
+    return userOrg ? [{ name: sector, value: 1 }] : [];
+  }, [userOrg]);
+
   const primaryChartData = completionDistribution.some((item) => item.value > 0)
     ? completionDistribution
     : projectStatusData;
@@ -1844,11 +2153,6 @@ export default function DashboardPage() {
     ? 'Top evaluations'
     : 'Workspace overview';
 
-  const totalResponses = companyResponses.length;
-  const totalAnswers = companyResponses.reduce((sum, response) => sum + Math.round((response.completionPercentage * response.questionCount) / 100), 0);
-  const averageCompletion = companyResponses.length > 0
-    ? Math.round(companyResponses.reduce((sum, response) => sum + response.completionPercentage, 0) / companyResponses.length)
-    : 0;
   const latestPublished = filteredPublishedAnalyses[0] || null;
   const latestPublishedEvaluation = latestPublished ? companyEvaluations.find((evaluation) => evaluation.id === latestPublished.evaluationId) : undefined;
 
@@ -1928,7 +2232,7 @@ export default function DashboardPage() {
 
 
   {/* ── Only show charts if there is real data ── */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="hidden">
             <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <p className="text-sm font-semibold text-slate-950">{primaryChartTitle}</p>
@@ -1972,12 +2276,15 @@ export default function DashboardPage() {
 
          
 
-          <OrganizationInsightCharts
+          <OrganisationDecisionChartPack
+            viewLabel={userOrg?.name || 'this organisation'}
+            activityTrendData={companyMonthlyTrendData}
+            portfolioRadarData={companyPortfolioRadarData}
+            formDepthData={companyFormDepthData}
+            sectorData={companySectorData}
+            latestPublished={latestPublished}
             publishedAnalyses={filteredPublishedAnalyses}
-            evaluations={companyEvaluations}
-            completionDistribution={completionDistribution}
-            projectStatusData={projectStatusData}
-            workspaceSummaryData={workspaceSummaryData}
+            fallbackWorkspaceData={workspaceSummaryData}
           />
 
           {/* ── Latest published insight ── */}
