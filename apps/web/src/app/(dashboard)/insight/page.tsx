@@ -676,7 +676,7 @@ function SuperAdminInsightPage() {
     <DashboardPageFrame>
       <DashboardHero
         eyebrow="Super Admin"
-        title="Insights"
+        title="Insights Engine"
         description="Review every organisation's forms, published analyses, draft insight work, and client-facing visibility from one executive workspace."
         meta={<span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Insight command center</span>}
       />
