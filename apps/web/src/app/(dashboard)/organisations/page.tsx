@@ -238,12 +238,12 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => setShowUnit(true)}
-            className="inline-flex items-center gap-1.5 bg-violet-100 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-100 transition">
+            className="inline-flex items-center gap-1.5 border border-violet-200 bg-violet-100 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-violet-200 transition">
             <AppIcon name="plus" className="h-6 w-6" /> Unit
           </button>
           <button type="button"
             onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
-            className="inline-flex items-center gap-1.5 bg-primary px-3 py-2 text-xs font-bold text-slate-900 hover:bg-primary/90 transition shadow-sm">
+            className="inline-flex items-center gap-1.5 border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-slate-950 hover:bg-amber-50 transition shadow-sm">
             <AppIcon name="plus" className="h-6 w-6" /> Form
           </button>
         </div>
@@ -298,7 +298,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
             <div className="py-6 text-center">
               <p className="text-sm text-slate-400 mb-3">No forms yet.</p>
               <button type="button" onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
-                className="inline-flex items-center gap-1.5 bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition">
+                className="inline-flex items-center gap-1.5 border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-50 transition">
                 <AppIcon name="plus" className="h-3.5 w-3.5" /> Create first form
               </button>
             </div>

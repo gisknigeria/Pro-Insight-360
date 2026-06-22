@@ -1311,7 +1311,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
             <select
               value={selectedOrgId}
               onChange={(event) => setSelectedOrgId(event.target.value)}
-              className="force-readable-light mt-2 w-full border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold normal-case tracking-normal text-slate-950 outline-none focus:border-cyan-300"
+              className="mt-2 w-full border border-slate-500 bg-white px-3 py-3 text-sm font-semibold normal-case tracking-normal text-slate-950 outline-none focus:border-cyan-300"
             >
               <option value="ALL">General overview - all organisations</option>
               {organisations.map((org) => (

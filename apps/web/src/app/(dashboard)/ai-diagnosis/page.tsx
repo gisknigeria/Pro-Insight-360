@@ -485,7 +485,7 @@ export default function AIDiagnosisPage() {
                 type="button"
                 onClick={handleParseChatOutput}
                 disabled={!chatOutput.trim()}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-primary/90 hover:shadow-md disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-primary/90 hover:shadow-md disabled:bg-slate-200 disabled:text-slate-700 disabled:cursor-not-allowed transition-all"
               >
                 Parse & render analysis
               </button>

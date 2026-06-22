@@ -708,13 +708,13 @@ function SuperAdminInsightPage() {
           <div className="mb-6 grid gap-3 md:grid-cols-3">
             {insightTabs.map(filter => (
               <button key={filter.id} type="button" onClick={() => setActiveFilter(filter.id)}
-                className={`flex items-center justify-between gap-3 px-4 py-3 text-left transition-all ${activeFilter === filter.id ? 'bg-primary text-slate-900 shadow-sm' : 'border border-slate-200 bg-white text-slate-700 hover:border-primary/30'}`}
+                className={`flex items-center justify-between gap-3 px-4 py-3 text-left transition-all ${activeFilter === filter.id ? 'bg-slate-950 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-700 hover:border-primary/30'}`}
               >
                 <span>
-                  <span className="block text-sm font-bold">{filter.label}</span>
-                  <span className={`block text-xs ${activeFilter === filter.id ? 'text-white/80' : 'text-slate-500'}`}>{filter.helper}</span>
+                  <span className={`block text-sm font-bold ${activeFilter === filter.id ? 'text-white' : 'text-slate-950'}`}>{filter.label}</span>
+                  <span className={`block text-xs ${activeFilter === filter.id ? 'text-slate-200' : 'text-slate-500'}`}>{filter.helper}</span>
                 </span>
-                <span className={`px-2 py-1 text-xs font-bold ${activeFilter === filter.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{filter.count}</span>
+                <span className={`px-2 py-1 text-xs font-bold ${activeFilter === filter.id ? 'bg-white text-slate-950' : 'bg-slate-100 text-slate-700'}`}>{filter.count}</span>
               </button>
             ))}
           </div>
@@ -788,7 +788,7 @@ function SuperAdminInsightPage() {
                             </div>
 
                             <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                              <span className={`px-2 py-1 font-bold ${item.hasAnalysis ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                              <span className={`px-2 py-1 font-bold ${item.hasAnalysis ? 'bg-emerald-50 text-slate-950' : 'bg-amber-50 text-slate-950'}`}>
                                 {item.hasAnalysis ? 'Published insight' : 'Draft insight'}
                               </span>
                               {item.kind === 'PUBLISHED' ? <span>{item.formCount} linked form{item.formCount !== 1 ? 's' : ''}</span> : <span>{item.questionCount ?? 0} question{item.questionCount !== 1 ? 's' : ''}</span>}
