@@ -75,12 +75,15 @@ function EmptyState({ title, description, action }: { title: string; description
 
 function StatCard({ label, value, icon, trend }: { label: string; value: string | number; icon: AppIconName; trend?: "up" | "down" | "neutral" }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+    <div className="border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-5 text-white shadow-xl shadow-slate-900/10">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-500">{label}</span>
-        <AppIcon name={icon} className="h-5 w-5 text-primary" />
+        <span className="text-sm font-bold text-slate-300">{label}</span>
+        <span className="border border-white/10 bg-white/10 p-3 text-white">
+          <AppIcon name={icon} className="h-5 w-5" />
+        </span>
       </div>
-      <div className="text-2xl font-bold text-gray-800">{value}</div>
+      <div className="mt-8 text-3xl font-black text-white">{value}</div>
+      <div className="mt-4 h-px w-full bg-white/15"><div className="h-px w-2/3 bg-white/70" /></div>
       {trend && (
         <div className={`text-xs mt-1 ${trend === "up" ? "text-green-600" : trend === "down" ? "text-red-600" : "text-gray-500"}`}>
           {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"} vs last week
@@ -103,10 +106,11 @@ export default function ConsultantDashboard() {
   const overallProgress = totalRespondents > 0 ? Math.round((totalResponses / totalRespondents) * 100) : 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Consultant Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Overview of your active evaluations and AI diagnosis status</p>
+    <div className="mx-auto max-w-7xl space-y-5">
+      <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Consultant</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">Consultant Dashboard</h1>
+        <p className="mt-2 text-sm leading-relaxed text-slate-300">Track active evaluations, response coverage, draft work, and diagnosis progress across client engagements.</p>
       </div>
 
       {/* ── Filters ────────────────────────────────────────────────────── */}
@@ -154,7 +158,7 @@ export default function ConsultantDashboard() {
       </div>
 
       {/* ── Stats Row ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <StatCard label="Active Evaluations" value={activeCount} icon="chart" trend="up" />
         <StatCard label="Draft Evaluations" value={draftCount} icon="edit" />
         <StatCard label="Total Responses" value={totalResponses} icon="check" trend="up" />

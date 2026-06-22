@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppIcon } from '@/components/ui/app-icons';
+import { DashboardPageFrame } from '@/components/ui/dashboard-chrome';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -549,24 +550,24 @@ export default function OrganisationsPage() {
   const selected = orgs.find(o => o.id === selectedId) ?? null;
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <DashboardPageFrame>
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-5 border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Clients</p>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Organisations</h1>
-            <span className="inline-flex items-center justify-center bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">{orgs.length}</span>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Organisations</h1>
+            <span className="inline-flex items-center justify-center border border-cyan-300/30 bg-slate-900 px-3 py-1 text-xs font-bold text-cyan-200">{orgs.length}</span>
           </div>
-          <p className="mt-1 text-sm text-slate-500">Manage client organisations, forms, units and projects.</p>
+          <p className="mt-1 text-sm text-slate-300">Manage client organisations, forms, units and projects.</p>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => router.push('/forms/new')}
-            className="inline-flex items-center gap-2 bg-amber-100 px-4 py-2.5 text-sm font-bold text-amber-800 hover:bg-amber-100 transition shadow-sm">
+            className="inline-flex items-center gap-2 border border-amber-300/30 bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-slate-950/20 transition-colors hover:bg-amber-300">
             <AppIcon name="plus" className="h-6 w-6" /> Create Form
           </button>
           <Link href="/organisations/new"
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-primary/80 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+            className="inline-flex items-center gap-2 border border-cyan-300/30 bg-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-slate-950/20 transition-colors hover:border-cyan-300 hover:bg-slate-800">
             <AppIcon name="plus" className="h-6 w-6" /> Organisation
           </Link>
         </div>
@@ -651,6 +652,6 @@ export default function OrganisationsPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardPageFrame>
   );
 }

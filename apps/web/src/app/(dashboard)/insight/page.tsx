@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AppIcon } from '@/components/ui/app-icons';
+import { DashboardHero, DashboardMetricCard, DashboardPageFrame } from '@/components/ui/dashboard-chrome';
 import { apiFetch } from '@/lib/api';
 import { getUserRole } from '@/lib/auth';
 import OrgChart from '@/components/organogram/OrgChart';
@@ -672,36 +673,26 @@ function SuperAdminInsightPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary">Super Admin / Insights</p>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Insights</h1>
-            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">{items.length}</span>
-          </div>
-          <p className="mt-1.5 text-sm text-slate-500">Review every organisation's projects and forms, then open Insight to create or update the analysis.</p>
-        </div>
-      </div>
+    <DashboardPageFrame>
+      <DashboardHero
+        eyebrow="Super Admin"
+        title="Insights"
+        description="Review every organisation's forms, published analyses, draft insight work, and client-facing visibility from one executive workspace."
+        meta={<span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Insight command center</span>}
+      />
 
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-medium text-red-700">{error}</div>
       ) : (
         <>
-          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
-              { label: 'Organisations', value: organisationSectors.length, icon: 'building' as const, grad: 'from-blue-500 to-indigo-600' },
-              { label: 'All work', value: items.length, icon: 'chart' as const, grad: 'from-cyan-500 to-blue-600' },
-              { label: 'Published insights', value: items.filter(item => item.hasAnalysis).length, icon: 'check' as const, grad: 'from-emerald-400 to-green-600' },
-              { label: 'Draft insights', value: items.filter(item => !item.hasAnalysis).length, icon: 'edit' as const, grad: 'from-amber-400 to-orange-600' },
+              { label: 'Organisations', value: organisationSectors.length, icon: 'building' as const, tone: 'blue' as const },
+              { label: 'All work', value: items.length, icon: 'chart' as const, tone: 'violet' as const },
+              { label: 'Published insights', value: items.filter(item => item.hasAnalysis).length, icon: 'check' as const, tone: 'teal' as const },
+              { label: 'Draft insights', value: items.filter(item => !item.hasAnalysis).length, icon: 'edit' as const, tone: 'amber' as const },
             ].map(s => (
-              <div key={s.label} className="border border-slate-200 bg-white p-5 shadow-sm">
-                <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center bg-gradient-to-br ${s.grad} text-white shadow-md`}>
-                  <AppIcon name={s.icon} className="h-5 w-5 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-                <p className="mt-0.5 text-xs font-medium text-slate-500">{s.label}</p>
-              </div>
+              <DashboardMetricCard key={s.label} label={s.label} value={s.value} icon={s.icon} tone={s.tone} />
             ))}
           </div>
 
@@ -834,7 +825,7 @@ function SuperAdminInsightPage() {
           )}
         </>
       )}
-    </div>
+    </DashboardPageFrame>
   );
 }
 

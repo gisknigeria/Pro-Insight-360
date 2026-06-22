@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { AppIcon } from '@/components/ui/app-icons';
+import { DashboardHero, DashboardPanel } from '@/components/ui/dashboard-chrome';
 
 interface FieldOption {
   value: string;
@@ -77,32 +79,25 @@ export default function QuickCreatePage({
   }
 
   return (
-    <div className="max-w-2xl animate-fade-in">
-      {/* ── Header ── */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">{title}</h1>
-        </div>
-        <p className="text-sm text-muted">{subtitle}</p>
-      </div>
+    <div className="max-w-3xl animate-fade-in space-y-5">
+      <DashboardHero eyebrow={resourceLabel} title={title} description={subtitle} />
 
-      {/* ── Card ── */}
-      <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-sm">
+      <DashboardPanel className="p-6 sm:p-8">
         {done ? (
           <div className="text-center animate-scale-in py-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-success/20 to-success/10 flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg shadow-success/10">
-              ✅
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-lg shadow-emerald-100">
+              <AppIcon name="check" className="h-7 w-7" />
             </div>
-            <p className="text-lg font-bold text-foreground">{resourceLabel} created</p>
-            <p className="text-sm text-muted mt-1">{successMessage}</p>
-            <p className="text-sm text-muted mt-2 animate-pulse">Redirecting you back to the list…</p>
+            <p className="text-lg font-bold text-slate-950">{resourceLabel} created</p>
+            <p className="text-sm text-slate-500 mt-1">{successMessage}</p>
+            <p className="text-sm text-slate-500 mt-2 animate-pulse">Redirecting you back to the list...</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-6">
             {error && (
-              <div role="alert" className="rounded-xl border border-red-200/50 bg-gradient-to-r from-red-50 to-red-100/50 p-4 text-sm text-red-700 shadow-sm animate-scale-in">
+              <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-sm animate-scale-in">
                 <div className="flex items-center gap-2">
-                  <span>⚠️</span>
+                  <AppIcon name="alert" className="h-4 w-4" />
                   <span>{error}</span>
                 </div>
               </div>
@@ -110,9 +105,9 @@ export default function QuickCreatePage({
 
             {fields.map((field, idx) => (
               <div key={field.name} className="group animate-fade-in-up" style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}>
-                <label htmlFor={field.name} className="block text-sm font-semibold text-foreground mb-2">
+                <label htmlFor={field.name} className="mb-2 block text-sm font-semibold text-slate-950">
                   {field.label}
-                  {field.required ? <span className="ml-1 text-danger">*</span> : null}
+                  {field.required ? <span className="ml-1 text-red-600">*</span> : null}
                 </label>
                 {field.textarea ? (
                   <textarea
@@ -123,7 +118,7 @@ export default function QuickCreatePage({
                     }
                     placeholder={field.placeholder}
                     rows={4}
-                    className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground placeholder-muted shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
+                    className="w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 placeholder-slate-400 shadow-sm transition-all focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-100"
                   />
                 ) : field.type === 'select' ? (
                   <select
@@ -132,7 +127,7 @@ export default function QuickCreatePage({
                     onChange={(event) =>
                       setValues((current) => ({ ...current, [field.name]: event.target.value }))
                     }
-                    className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
+                    className="w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 shadow-sm transition-all focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-100"
                   >
                     <option value="" disabled>
                       {field.placeholder || `Select ${field.label}`}
@@ -152,7 +147,7 @@ export default function QuickCreatePage({
                       setValues((current) => ({ ...current, [field.name]: event.target.value }))
                     }
                     placeholder={field.placeholder}
-                    className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground placeholder-muted shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface"
+                    className="w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 placeholder-slate-400 shadow-sm transition-all focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-100"
                   />
                 )}
               </div>
@@ -161,24 +156,23 @@ export default function QuickCreatePage({
             <div className="flex gap-3 pt-4">
               <Link
                 href={backHref}
-                className="rounded-xl border border-border bg-surface px-5 py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-surface-muted transition-all active:scale-[0.98]"
+                className="border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-50"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
                 disabled={saving}
-                className="group relative flex-1 rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 overflow-hidden"
+                className="group relative flex-1 bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/20 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-700"
               >
-                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 <span className="relative">
                   {saving ? (
                     <span className="inline-flex items-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Creating…
+                      Creating...
                     </span>
                   ) : submitLabel}
                 </span>
@@ -186,7 +180,7 @@ export default function QuickCreatePage({
             </div>
           </form>
         )}
-      </div>
+      </DashboardPanel>
     </div>
   );
 }

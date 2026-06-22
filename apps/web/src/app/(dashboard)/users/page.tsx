@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AppIcon, type AppIconName } from '@/components/ui/app-icons';
+import { DashboardMetricCard, DashboardPageFrame } from '@/components/ui/dashboard-chrome';
 import {
   BarChart,
   Bar,
@@ -144,22 +145,22 @@ export default function UsersPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <DashboardPageFrame>
       {/* ── Header ── */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-5 border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Access</p>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Users</h1>
-            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary ring-1 ring-primary/20">
+            <h1 className="text-3xl font-bold tracking-tight text-white">Users</h1>
+            <span className="inline-flex items-center justify-center border border-cyan-300/30 bg-slate-900 px-3 py-1 text-xs font-bold text-cyan-200">
               {users.length}
             </span>
           </div>
-          <p className="mt-1.5 text-sm text-slate-500">Manage system users, roles, and access permissions.</p>
+          <p className="mt-1.5 text-sm text-slate-300">Manage system users, roles, and access permissions.</p>
         </div>
         <Link
           href="/users/new"
-          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+          className="inline-flex items-center gap-2 border border-cyan-300/30 bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-950/20 transition-colors hover:border-cyan-300 hover:bg-slate-800"
         >
           <AppIcon name="plus" className="h-4 w-4" />
           Add User
@@ -167,16 +168,16 @@ export default function UsersPage() {
       </div>
 
       {/* ── Stats + Chart ── */}
-      <div className="mb-8 grid gap-4 xl:grid-cols-[1fr_320px]">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {userStats.map((s) => (
-            <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.grad} text-lg shadow-md`}>
-                <AppIcon name={s.icon} className="h-5 w-5 text-white" />
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-              <p className="text-xs font-medium text-slate-500 mt-0.5">{s.label}</p>
-            </div>
+            <DashboardMetricCard
+              key={s.label}
+              label={s.label}
+              value={s.value}
+              icon={s.icon}
+              tone={s.label === 'Active' ? 'teal' : s.label === 'Locked' ? 'rose' : s.label === 'Inactive' ? 'slate' : 'blue'}
+            />
           ))}
         </div>
 
@@ -314,6 +315,6 @@ export default function UsersPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardPageFrame>
   );
 }

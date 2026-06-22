@@ -66,22 +66,17 @@ function SyncBanner({
 
 // ── Stat Card ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon, color = "blue" }: { label: string; value: string | number; icon: AppIconName; color?: string }) {
-  const colorClasses: Record<string, string> = {
-    blue: "bg-amber-50 text-primary",
-    green: "bg-green-50 text-green-600",
-    yellow: "bg-yellow-50 text-yellow-600",
-    red: "bg-red-50 text-red-600",
-  };
+function StatCard({ label, value, icon }: { label: string; value: string | number; icon: AppIconName; color?: string }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+    <div className="border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-5 text-white shadow-xl shadow-slate-900/10">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-500">{label}</span>
-        <span className={`p-2 rounded ${colorClasses[color] || colorClasses.blue}`}>
+        <span className="text-sm font-bold text-slate-300">{label}</span>
+        <span className="border border-white/10 bg-white/10 p-3 text-white">
           <AppIcon name={icon} className="h-5 w-5" />
         </span>
       </div>
-      <div className="text-2xl font-bold text-gray-800">{value}</div>
+      <div className="mt-8 text-3xl font-black text-white">{value}</div>
+      <div className="mt-4 h-px w-full bg-white/15"><div className="h-px w-2/3 bg-white/70" /></div>
     </div>
   );
 }
@@ -103,10 +98,11 @@ export default function RespondentDashboard() {
   const isOffline = typeof window !== "undefined" && !navigator.onLine;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">My Forms</h1>
-        <p className="text-sm text-gray-500 mt-1">Complete your assigned evaluation forms</p>
+    <div className="mx-auto max-w-7xl space-y-5">
+      <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Respondent</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">My Forms</h1>
+        <p className="mt-2 text-sm leading-relaxed text-slate-300">Complete assigned evaluation forms, track progress, and keep responses ready for sync.</p>
       </div>
 
       {/* ── Sync Status Banner ─────────────────────────────────────────── */}
@@ -124,7 +120,7 @@ export default function RespondentDashboard() {
       )}
 
       {/* ── Stats Row ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <StatCard label="Total Forms" value={forms.length} icon="clipboard" color="blue" />
         <StatCard label="Completed" value={stats.completed} icon="check" color="green" />
         <StatCard label="In Progress" value={stats.inProgress} icon="activity" color="yellow" />

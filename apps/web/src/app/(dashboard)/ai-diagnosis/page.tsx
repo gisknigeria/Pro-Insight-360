@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AppIcon } from '@/components/ui/app-icons';
+import { DashboardMetricCard, DashboardPageFrame } from '@/components/ui/dashboard-chrome';
 import { apiFetch } from '@/lib/api';
 import RadarChart from '@/components/charts/RadarChart';
 import OrgChart from '@/components/organogram/OrgChart';
@@ -342,25 +344,25 @@ export default function AIDiagnosisPage() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <DashboardPageFrame>
       {/* ── Page header ── */}
-      <div className="mb-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Super Admin · Analytics</p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">AI Diagnosis & Analysis</h1>
-            <p className="mt-1.5 text-sm text-slate-500">
+            <h1 className="text-3xl font-bold tracking-tight text-white">AI Diagnosis & Analysis</h1>
+            <p className="mt-1.5 text-sm text-slate-300">
               Copy form responses → paste to ChatGPT or Claude → import the result here → approve and publish to your client.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm text-sm">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              <span className="font-medium text-slate-700">{diagnoses.filter((d) => d.status === 'APPROVED').length} approved</span>
+            <div className="hidden items-center gap-2 border border-white/10 bg-white/10 px-4 py-2.5 text-sm sm:flex">
+              <span className="h-2 w-2 bg-emerald-400" />
+              <span className="font-medium text-white">{diagnoses.filter((d) => d.status === 'APPROVED').length} approved</span>
             </div>
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm text-sm">
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-              <span className="font-medium text-slate-700">{diagnoses.filter((d) => d.status === 'PENDING_REVIEW').length} pending</span>
+            <div className="flex items-center gap-2 border border-white/10 bg-white/10 px-4 py-2.5 text-sm">
+              <span className="h-2 w-2 bg-amber-400" />
+              <span className="font-medium text-white">{diagnoses.filter((d) => d.status === 'PENDING_REVIEW').length} pending</span>
             </div>
           </div>
         </div>
@@ -991,6 +993,6 @@ export default function AIDiagnosisPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardPageFrame>
   );
 }
