@@ -224,18 +224,16 @@ function StatCard({ label, value, icon, color = 'blue', delay = 0 }: { label: st
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <div className="absolute inset-x-0 top-0 h-px bg-white/25" />
-      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full border border-white/10 bg-white/[0.04]" />
-
       <div className="relative">
         <div className="flex items-center justify-between gap-4 mb-3">
           <span className={`text-sm font-semibold tracking-tight ${cfg.subtext}`}>{label}</span>
-          <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${cfg.accent} ${cfg.text} text-lg shadow-sm ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105`}>
+          <span className={`inline-flex h-11 w-11 items-center justify-center ${cfg.accent} ${cfg.text} text-lg shadow-sm ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105`}>
             {typeof icon === 'string' ? iconForStatLabel(label) : icon}
           </span>
         </div>
         <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
-        <div className="mt-3 h-px w-full rounded-full bg-white/15">
-          <div className="h-px w-2/3 rounded-full bg-white/55" />
+        <div className="mt-3 h-px w-full bg-white/15">
+          <div className="h-px w-2/3 bg-white/55" />
         </div>
       </div>
     </div>
@@ -250,7 +248,7 @@ function Pill({ label, color = 'slate' }: { label: string; color?: 'slate' | 'bl
     amber: 'bg-amber-50 text-amber-700 ring-1 ring-amber-500/20',
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${colors[color]}`}>
+    <span className={`inline-flex items-center px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${colors[color]}`}>
       {label}
     </span>
   );
@@ -314,10 +312,10 @@ function cleanChartTitle(title?: string) {
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-5">
+    <div className="border border-slate-300 bg-white p-5">
       <div className="flex items-center justify-between mb-3">
         <div className="skeleton h-4 w-24" />
-        <div className="skeleton h-11 w-11 rounded-xl" />
+        <div className="skeleton h-11 w-11" />
       </div>
       <div className="skeleton h-9 w-20" />
     </div>
@@ -334,9 +332,9 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
   return (
     <div className="space-y-4">
       {analysis?.charts?.length ? (
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-          <h4 className="mb-4 flex items-center gap-2 text-sm font-bold text-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+        <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-sm">
+          <h4 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-950">
+            <span className="h-1.5 w-1.5 bg-cyan-500" />
             Supporting charts
           </h4>
           <div className="grid gap-4 xl:grid-cols-2">
@@ -348,26 +346,26 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       ) : null}
 
       {analysis?.executiveSummary ? (
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+        <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-sm">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-950">
+            <span className="h-1.5 w-1.5 bg-cyan-500" />
             Executive summary
           </h3>
-          <p className="line-clamp-3 text-sm leading-relaxed text-muted">{analysis.executiveSummary}</p>
+          <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">{analysis.executiveSummary}</p>
         </div>
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-2">
         {analysis?.strengths ? (
-          <div className="rounded-2xl border border-green-200/50 bg-gradient-to-br from-green-50/50 to-surface p-5 shadow-sm">
-            <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+          <div className="border border-green-200 bg-green-50 p-5 text-slate-950 shadow-sm">
+            <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-950">
               <span className="text-green-500">✦</span>
               Top strengths
             </h4>
-            <ul className="space-y-2 text-sm text-muted">
+            <ul className="space-y-2 text-sm text-slate-700">
               {analysis.strengths.map((item, idx) => (
                 <li key={idx} className="flex gap-2.5 items-start">
-                  <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-green-400" />
+                  <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 bg-green-500" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -375,15 +373,15 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
           </div>
         ) : null}
         {analysis?.weaknesses ? (
-          <div className="rounded-2xl border border-orange-200/50 bg-gradient-to-br from-orange-50/50 to-surface p-5 shadow-sm">
-            <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+          <div className="border border-orange-200 bg-orange-50 p-5 text-slate-950 shadow-sm">
+            <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-950">
               <AppIcon name="alert" className="h-4 w-4 text-orange-500" />
               Key weaknesses
             </h4>
-            <ul className="space-y-2 text-sm text-muted">
+            <ul className="space-y-2 text-sm text-slate-700">
               {analysis.weaknesses.map((item, idx) => (
                 <li key={idx} className="flex gap-2.5 items-start">
-                  <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-orange-400" />
+                  <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 bg-orange-500" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -393,15 +391,15 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       </div>
 
       {analysis?.opportunities ? (
-        <div className="rounded-2xl border border-amber-200/50 bg-gradient-to-br from-blue-50/50 to-surface p-5 shadow-sm">
-          <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+        <div className="border border-blue-200 bg-blue-50 p-5 text-slate-950 shadow-sm">
+          <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-950">
             <span className="text-blue-500">✦</span>
             Primary opportunities
           </h4>
-          <ul className="space-y-2 text-sm text-muted">
+          <ul className="space-y-2 text-sm text-slate-700">
             {analysis.opportunities.map((item, idx) => (
               <li key={idx} className="flex gap-2.5 items-start">
-                <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 bg-blue-500" />
                 <span>{item}</span>
               </li>
             ))}
@@ -410,15 +408,15 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       ) : null}
 
       {analysis?.recommendations ? (
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-          <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+        <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-sm">
+          <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-950">
+            <span className="h-1.5 w-1.5 bg-cyan-500" />
             Recommendations
           </h4>
-          <ul className="space-y-2 text-sm text-muted">
+          <ul className="space-y-2 text-sm text-slate-700">
             {analysis.recommendations.map((item, idx) => (
               <li key={idx} className="flex gap-2.5 items-start">
-                <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-accent" />
+                <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 bg-cyan-500" />
                 <span>{item}</span>
               </li>
             ))}
@@ -427,26 +425,26 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       ) : null}
 
       {analysis?.actionPlan?.length ? (
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-          <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+        <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-sm">
+          <h4 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-950">
+            <span className="h-1.5 w-1.5 bg-emerald-500" />
             Action plan
           </h4>
-          <div className="space-y-3 text-sm text-muted">
+          <div className="space-y-3 text-sm text-slate-600">
             {analysis.actionPlan.map((item, idx) => (
-              <div key={idx} className="rounded-xl bg-surface-muted p-4 border border-border transition-all hover:border-primary/30 hover:shadow-sm">
-                <p className="font-bold text-foreground">{item.what || 'Action item'}</p>
-                <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted">
+              <div key={idx} className="border border-slate-200 bg-slate-50 p-4 text-slate-950 transition-all hover:border-cyan-300 hover:shadow-sm">
+                <p className="font-bold text-slate-950">{item.what || 'Action item'}</p>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                    <span className="h-1.5 w-1.5 bg-cyan-500" />
                     Who: {item.who || 'TBD'}
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60" />
+                    <span className="h-1.5 w-1.5 bg-amber-500" />
                     When: {item.when || 'TBD'}
                   </span>
                 </div>
-                {item.how && <p className="text-sm text-muted mt-2 leading-relaxed">{item.how}</p>}
+                {item.how && <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.how}</p>}
               </div>
             ))}
           </div>
@@ -454,15 +452,15 @@ function LatestPublishedAnalysis({ published, evaluation }: { published: Publish
       ) : null}
 
       {orgRows.length > 0 ? (
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+        <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-sm">
           <div className="flex items-center justify-between gap-4 mb-4">
-            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <h4 className="flex items-center gap-2 text-sm font-bold text-slate-950">
+              <span className="h-1.5 w-1.5 bg-cyan-500" />
               Organogram
             </h4>
-            <span className="text-[11px] text-muted font-medium uppercase tracking-wider">Leadership structure</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Leadership structure</span>
           </div>
-          <div className="overflow-auto rounded-xl border border-border bg-surface-muted p-4">
+          <div className="overflow-auto border border-slate-200 bg-slate-50 p-4">
             <OrgChart rows={orgRows} />
           </div>
         </div>
@@ -509,7 +507,7 @@ function LatestReportBriefChart({ published, evaluation }: { published: Publishe
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
               <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
               <Bar dataKey="value" radius={[0, 0, 0, 0]}>
                 {metricData.map((item) => <Cell key={item.name} fill={item.fill} />)}
               </Bar>
@@ -526,10 +524,10 @@ function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ 
   const chartData = normalizeAnalysisChartData(chart);
 
   return (
-    <div className="rounded-xl border border-border bg-surface-muted p-4 min-w-0">
-      <p className="font-semibold text-foreground mb-3">{cleanChartTitle(chart.title)}</p>
+    <div className="min-w-0 border border-slate-300 bg-white p-4 text-slate-950">
+      <p className="mb-3 font-semibold text-slate-950">{cleanChartTitle(chart.title)}</p>
       {chartData.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border/60 bg-surface p-5 text-sm text-muted">No chart data available.</div>
+        <div className="border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">No chart data available.</div>
       ) : (
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
@@ -548,11 +546,11 @@ function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ 
                 contentStyle={{
                   backgroundColor: '#fff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   fontSize: 12,
                 }}
               />
-              <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="value" fill="#2563eb" radius={[0, 0, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -648,16 +646,16 @@ function OrganizationInsightCharts({
     ];
 
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+      <div className="border border-slate-300 bg-white p-6 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Company insight preview</h2>
-            <p className="text-sm text-muted">No published analysis yet, so this uses available activity data to show what the company should watch.</p>
+            <h2 className="text-lg font-bold text-slate-950">Company insight preview</h2>
+            <p className="text-sm text-slate-500">No published analysis yet, so this uses available activity data to show what the company should watch.</p>
           </div>
           <Pill label="No analysis yet" color="amber" />
         </div>
         <div className="grid gap-4 xl:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="border border-slate-300 bg-white p-5 text-slate-950">
             <h3 className="mb-1 text-sm font-bold text-slate-950">Readiness signal</h3>
             <p className="mb-4 text-xs text-slate-500">Estimated from projects, responses, and completion shape.</p>
             <div className="h-64">
@@ -667,12 +665,12 @@ function OrganizationInsightCharts({
                   <PolarAngleAxis dataKey="subject" tick={{ fill: '#334155', fontSize: 10 }} />
                   <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
                   <Radar dataKey="score" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.24} />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="border border-slate-300 bg-white p-5 text-slate-950">
             <h3 className="mb-1 text-sm font-bold text-slate-950">Current operating picture</h3>
             <p className="mb-4 text-xs text-slate-500">What exists before formal GISKonsult analysis.</p>
             <div className="h-64">
@@ -681,14 +679,14 @@ function OrganizationInsightCharts({
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                  <Bar dataKey="value" fill="#0f766e" radius={[6, 6, 0, 0]} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                  <Bar dataKey="value" fill="#0f766e" radius={[0, 0, 0, 0]} />
                   <Line type="monotone" dataKey="value" stroke="#f97316" strokeWidth={3} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="border border-slate-300 bg-white p-5 text-slate-950">
             <h3 className="mb-1 text-sm font-bold text-slate-950">Completion shape</h3>
             <p className="mb-4 text-xs text-slate-500">Response depth available before analysis.</p>
             <div className="h-64">
@@ -697,7 +695,7 @@ function OrganizationInsightCharts({
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
                   <Area type="monotone" dataKey="value" stroke="#2563eb" fill="#93c5fd" fillOpacity={0.7} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -710,7 +708,7 @@ function OrganizationInsightCharts({
             ['Likely management focus', evaluations.length ? 'Compare project completion and response quality before publishing insight.' : 'Create an evaluation project and assign forms to begin data collection.'],
             ['What will improve', 'Once analysis is published, this section changes to gap severity, recommendations, and uploaded analysis charts.'],
           ].map(([label, text]) => (
-            <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div key={label} className="border border-slate-300 bg-slate-50 p-4 text-slate-950">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
               <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-800">{text}</p>
             </div>
@@ -721,18 +719,18 @@ function OrganizationInsightCharts({
   }
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+    <div className="flex flex-col border border-slate-300 bg-white p-6 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Published insight charts</h2>
-          <p className="text-sm text-muted">Visual summary of the latest GISKonsult findings shared with this organisation.</p>
+          <h2 className="text-lg font-bold text-slate-950">Published insight charts</h2>
+          <p className="text-sm text-slate-500">Visual summary of the latest GISKonsult findings shared with this organisation.</p>
         </div>
         <Pill label={`${publishedAnalyses.length} published`} color="green" />
       </div>
 
       <div className="order-4 mb-5 grid gap-4">
         {analysisShowcases.map((analysis) => (
-          <div key={analysis.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div key={analysis.id} className="border border-slate-300 bg-white p-5 text-slate-950 shadow-sm">
             <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
@@ -741,27 +739,27 @@ function OrganizationInsightCharts({
                 <h3 className="mt-1 text-lg font-black text-slate-950">{analysis.name}</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-100">{analysis.gaps.length} gaps</span>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">{analysis.recommendations.length} recommendations</span>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-100">{analysis.chartCount} charts</span>
+                <span className="bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-100">{analysis.gaps.length} gaps</span>
+                <span className="bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">{analysis.recommendations.length} recommendations</span>
+                <span className="bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-100">{analysis.chartCount} charts</span>
               </div>
             </div>
 
             {analysis.summary ? (
-              <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-4 border border-slate-300 bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Brief summary</p>
                 <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-800">{analysis.summary}</p>
               </div>
             ) : null}
 
             <div className="grid gap-3 xl:grid-cols-3">
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+              <div className="border border-emerald-100 bg-emerald-50 p-4">
                 <p className="text-xs font-black uppercase tracking-wider text-emerald-700">What looks strong</p>
                 {analysis.strengths.length > 0 ? (
                   <ul className="mt-3 space-y-2">
                     {analysis.strengths.map((item, index) => (
                       <li key={index} className="flex gap-2 text-sm leading-relaxed text-slate-800">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 bg-emerald-500" />
                         {item}
                       </li>
                     ))}
@@ -771,7 +769,7 @@ function OrganizationInsightCharts({
                 )}
               </div>
 
-              <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+              <div className="border border-red-100 bg-red-50 p-4">
                 <p className="text-xs font-black uppercase tracking-wider text-red-700">Gaps to address</p>
                 {analysis.gaps.length > 0 ? (
                   <ul className="mt-3 space-y-2">
@@ -779,7 +777,7 @@ function OrganizationInsightCharts({
                       const parsed = parseAnalysisGap(item);
                       return (
                         <li key={index} className="flex gap-2 text-sm leading-relaxed text-slate-800">
-                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 bg-red-500" />
                           <span><strong className="text-red-700">{parsed.severity}:</strong> {parsed.text}</span>
                         </li>
                       );
@@ -790,13 +788,13 @@ function OrganizationInsightCharts({
                 )}
               </div>
 
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+              <div className="border border-blue-100 bg-blue-50 p-4">
                 <p className="text-xs font-black uppercase tracking-wider text-blue-700">Client actions</p>
                 {analysis.recommendations.length > 0 ? (
                   <ul className="mt-3 space-y-2">
                     {analysis.recommendations.map((item, index) => (
                       <li key={index} className="flex gap-2 text-sm leading-relaxed text-slate-800">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 bg-blue-500" />
                         {item}
                       </li>
                     ))}
@@ -810,12 +808,12 @@ function OrganizationInsightCharts({
             {(analysis.opportunities.length > 0 || analysis.actionPlan.length > 0) && (
               <div className="mt-3 grid gap-3 xl:grid-cols-2">
                 {analysis.opportunities.length > 0 && (
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                  <div className="border border-amber-100 bg-amber-50 p-4">
                     <p className="text-xs font-black uppercase tracking-wider text-amber-700">Opportunities</p>
                     <ul className="mt-3 space-y-2">
                       {analysis.opportunities.map((item, index) => (
                         <li key={index} className="flex gap-2 text-sm leading-relaxed text-slate-800">
-                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 bg-amber-500" />
                           {item}
                         </li>
                       ))}
@@ -823,11 +821,11 @@ function OrganizationInsightCharts({
                   </div>
                 )}
                 {analysis.actionPlan.length > 0 && (
-                  <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
+                  <div className="border border-violet-100 bg-violet-50 p-4">
                     <p className="text-xs font-black uppercase tracking-wider text-violet-700">Action plan</p>
                     <div className="mt-3 space-y-2">
                       {analysis.actionPlan.map((item, index) => (
-                        <div key={index} className="rounded-xl bg-white/70 p-3 text-sm text-slate-800 ring-1 ring-violet-100">
+                        <div key={index} className="bg-white/70 p-3 text-sm text-slate-800 ring-1 ring-violet-100">
                           <p className="font-bold text-slate-950">{item.what || 'Action item'}</p>
                           <p className="mt-1 text-xs text-slate-600">Who: {item.who || 'TBD'} · When: {item.when || 'TBD'}</p>
                           {item.how ? <p className="mt-2 leading-relaxed">{item.how}</p> : null}
@@ -848,7 +846,7 @@ function OrganizationInsightCharts({
             const data = normalizeAnalysisChartData(item.chart);
             const palette = ['#2563eb', '#10b981', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
             return (
-              <div key={`${item.reportName}-${item.title}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div key={`${item.reportName}-${item.title}-${index}`} className="border border-slate-300 bg-white p-5 text-slate-950">
                 <p className="text-sm font-bold text-slate-950">{item.title}</p>
                 <p className="mb-4 mt-1 text-xs text-slate-500">{item.reportName}</p>
                 <div className="h-64">
@@ -858,8 +856,8 @@ function OrganizationInsightCharts({
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
                         <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                        <Bar dataKey="value" radius={[0, 0, 0, 0]}>
                           {data.map((row, rowIndex) => <Cell key={row.name} fill={palette[rowIndex % palette.length]} />)}
                         </Bar>
                       </BarChart>
@@ -868,7 +866,7 @@ function OrganizationInsightCharts({
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
                         <YAxis tick={{ fill: '#475569', fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
                         <Area type="monotone" dataKey="value" stroke="#0891b2" fill="#67e8f9" fillOpacity={0.72} />
                       </AreaChart>
                     ) : (
@@ -876,7 +874,7 @@ function OrganizationInsightCharts({
                         <Pie data={data} dataKey="value" nameKey="name" outerRadius={82}>
                           {data.map((row, rowIndex) => <Cell key={row.name} fill={palette[rowIndex % palette.length]} />)}
                         </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
                         <Legend iconType="square" wrapperStyle={{ fontSize: 10 }} />
                       </PieChart>
                     )}
@@ -889,7 +887,7 @@ function OrganizationInsightCharts({
       )}
 
       <div className="order-2 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="border border-slate-300 bg-white p-5 text-slate-950">
           <h3 className="mb-1 text-sm font-bold text-slate-950">Gap severity</h3>
           <p className="mb-4 text-xs text-slate-500">Where the organisation needs attention across all reports.</p>
           <div className="h-72">
@@ -898,13 +896,13 @@ function OrganizationInsightCharts({
                 <Pie data={severityData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={92} paddingAngle={2}>
                   {severityData.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="border border-slate-300 bg-white p-5 text-slate-950">
           <h3 className="mb-1 text-sm font-bold text-slate-950">Report insight mix</h3>
           <p className="mb-4 text-xs text-slate-500">Gaps, recommendations, and supporting charts by published analysis.</p>
           <div className="h-72">
@@ -913,10 +911,10 @@ function OrganizationInsightCharts({
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={64} />
                 <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="gaps" fill="#ef4444" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="recommendations" fill="#10b981" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="gaps" fill="#ef4444" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="recommendations" fill="#10b981" radius={[0, 0, 0, 0]} />
                 <Line type="monotone" dataKey="charts" stroke="#2563eb" strokeWidth={3} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -934,7 +932,7 @@ function OrganizationInsightCharts({
               LOW: 'border-emerald-200 bg-emerald-50 text-emerald-700',
             }[gap.severity];
             return (
-              <div key={`${gap.report}-${index}`} className={`rounded-2xl border p-4 ${cfg}`}>
+              <div key={`${gap.report}-${index}`} className={`border p-4 ${cfg}`}>
                 <p className="text-[11px] font-black uppercase tracking-wider">{gap.severity}</p>
                 <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-900">{gap.text}</p>
                 <p className="mt-3 truncate text-xs font-medium opacity-75">{gap.report}</p>
@@ -943,7 +941,7 @@ function OrganizationInsightCharts({
           })}
         </div>
       ) : (
-        <div className="order-3 mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+        <div className="order-3 mt-4 border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
           No explicit gap list was included in the published analyses yet, but recommendations and charts are available below.
         </div>
       )}
@@ -966,19 +964,19 @@ function DashboardSkeleton() {
         {[1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)}
       </div>
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-2xl border border-border bg-surface p-6">
+        <div className="border border-slate-300 bg-white p-6">
           <div className="skeleton h-6 w-40 mb-2" />
           <div className="skeleton h-4 w-64 mb-6" />
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton h-20 w-full rounded-xl" />
+              <div key={i} className="skeleton h-20 w-full" />
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-border bg-surface p-6">
+        <div className="border border-slate-300 bg-white p-6">
           <div className="skeleton h-6 w-48 mb-2" />
           <div className="skeleton h-4 w-56 mb-6" />
-          <div className="skeleton h-40 w-full rounded-xl" />
+          <div className="skeleton h-40 w-full" />
         </div>
       </div>
     </div>
@@ -991,7 +989,7 @@ function DashboardSkeleton() {
 function EmptyDashboard({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 animate-fade-in">
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-3xl mb-4 shadow-lg shadow-primary/5">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center bg-slate-900 text-3xl shadow-lg shadow-primary/5">
         <DashboardIcon name="chart" className="h-7 w-7 text-primary" />
       </div>
       <p className="text-sm text-muted text-center max-w-md">{message}</p>
@@ -1636,22 +1634,22 @@ function EvaluationStatCard({ evaluation }: { evaluation: Evaluation }) {
   const barColor = completion >= 75 ? '#10b981' : completion >= 50 ? '#2563eb' : '#f59e0b';
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <div className="border border-slate-300 bg-white p-4 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm text-white">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-slate-900 text-sm text-white">
             <DashboardIcon name="clipboard" className="h-4 w-4" />
           </div>
-          <p className="text-sm font-semibold text-foreground truncate">{evaluation.title}</p>
+          <p className="truncate text-sm font-semibold text-slate-950">{evaluation.title}</p>
         </div>
-        <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+        <span className={`shrink-0 px-2 py-0.5 text-[11px] font-bold ${
           evaluation.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
         }`}>{evaluation.status}</span>
       </div>
 
       {loadingMetrics ? (
         <div className="grid grid-cols-3 gap-2">
-          {[1,2,3].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />)}
+          {[1,2,3].map((i) => <div key={i} className="h-10 animate-pulse bg-slate-100" />)}
         </div>
       ) : metrics ? (
         <>
@@ -1661,21 +1659,21 @@ function EvaluationStatCard({ evaluation }: { evaluation: Evaluation }) {
               { label: 'Answers',   value: metrics.totalAnswers },
               { label: 'Completion',value: `${metrics.averageCompletion}%` },
             ].map((s) => (
-              <div key={s.label} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-center">
-                <p className="text-base font-bold text-foreground">{s.value}</p>
-                <p className="text-[10px] text-muted">{s.label}</p>
+              <div key={s.label} className="border border-slate-200 bg-slate-50 p-2 text-center">
+                <p className="text-base font-bold text-slate-950">{s.value}</p>
+                <p className="text-[10px] text-slate-500">{s.label}</p>
               </div>
             ))}
           </div>
-          <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
+          <div className="h-1.5 w-full overflow-hidden bg-slate-200">
             <div
-              className="h-full rounded-full transition-all"
+              className="h-full transition-all"
               style={{ width: `${Math.min(100, metrics.averageCompletion)}%`, backgroundColor: barColor }}
             />
           </div>
         </>
       ) : (
-        <p className="text-xs text-muted">No response data yet.</p>
+        <p className="text-xs text-slate-500">No response data yet.</p>
       )}
     </div>
   );
@@ -1886,35 +1884,33 @@ export default function DashboardPage() {
   return (
     <div className={`${mounted ? 'animate-fade-in' : ''} mx-auto max-w-screen-2xl space-y-6`}>
       {/* ── Header ── */}
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 text-slate-900 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+      <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-                          <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Client Admin</p>
-
-              <h1 className="text-3xl font-bold tracking-tight text-slate-950">Organisation Dashboard</h1>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-200">
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Client Admin</p>
+              <span className="inline-flex items-center gap-1.5 border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-300 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-300" />
+                  <span className="absolute inline-flex h-full w-full animate-ping bg-emerald-300 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 bg-emerald-300" />
                 </span>
                 Live
               </span>
             </div>
-            <p className="text-sm text-slate-500">Executive view of response activity, readiness signals, priority gaps, and published GISKonsult findings.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Organisation Performance Dashboard</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-300">Executive view of response activity, readiness signals, priority gaps, and published GISKonsult findings.</p>
           </div>
           {userOrg && (
-            <div className="inline-flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 shadow-sm">
-              <span className="flex-shrink-0 w-2 h-2 rounded-full bg-success" />
-              <span className="font-bold">Current organisation</span>
-              <span className="text-slate-500">{userOrg.name}</span>
+            <div className="min-w-[280px] border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Current organisation</p>
+              <p className="mt-1 font-bold text-white">{userOrg.name}</p>
             </div>
           )}
         </div>
       </div>
 
       {error ? (
-        <div className="rounded-2xl border border-red-200/50 bg-gradient-to-r from-red-50 to-red-100/50 p-5 text-sm text-red-700 mb-6 shadow-sm animate-fade-in">
+        <div className="mb-6 border border-red-200 bg-red-50 p-5 text-sm text-red-700 shadow-sm animate-fade-in">
           <div className="flex items-center gap-3">
             <AppIcon name="alert" className="h-5 w-5" />
             <span>{error}</span>
@@ -1933,10 +1929,10 @@ export default function DashboardPage() {
 
   {/* ── Only show charts if there is real data ── */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+            <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
               <div className="flex items-center justify-between gap-4 mb-4">
-                <p className="text-sm font-semibold text-foreground">{primaryChartTitle}</p>
-                <span className="text-xs uppercase tracking-[0.24em] text-muted">Live</span>
+                <p className="text-sm font-semibold text-slate-950">{primaryChartTitle}</p>
+                <span className="text-xs uppercase tracking-[0.24em] text-slate-500">Live</span>
               </div>
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1944,17 +1940,17 @@ export default function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                    <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                    <Bar dataKey="value" fill="#2563eb" radius={[0, 0, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+            <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
               <div className="flex items-center justify-between gap-4 mb-4">
-                <p className="text-sm font-semibold text-foreground">{secondaryChartTitle}</p>
-                <span className="text-xs uppercase tracking-[0.24em] text-muted">Latest</span>
+                <p className="text-sm font-semibold text-slate-950">{secondaryChartTitle}</p>
+                <span className="text-xs uppercase tracking-[0.24em] text-slate-500">Latest</span>
               </div>
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1962,8 +1958,8 @@ export default function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={55} />
                     <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }} />
-                    <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
+                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
+                    <Bar dataKey="value" fill="#16a34a" radius={[0, 0, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1985,11 +1981,11 @@ export default function DashboardPage() {
           />
 
           {/* ── Latest published insight ── */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+          <div className="border border-slate-300 bg-white p-6 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
             <div className="flex items-center justify-between gap-4 mb-5">
               <div>
-                <h2 className="text-lg font-bold text-foreground">Latest report brief</h2>
-                <p className="text-sm text-muted mt-0.5">A short executive note. The decision charts are shown above.</p>
+                <h2 className="text-lg font-bold text-slate-950">Latest report brief</h2>
+                <p className="mt-0.5 text-sm text-slate-500">A short executive note. The decision charts are shown above.</p>
               </div>
               <span className="text-2xl font-bold text-accent">{filteredPublishedAnalyses.length}</span>
             </div>
