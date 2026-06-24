@@ -396,9 +396,11 @@ ${categoryScores || '- None'}
 Dimension scores:
 ${dimensionScores || '- None'}
 
-Return only valid JSON with the properties: executiveSummary, strengths, weaknesses, opportunities, recommendations, actionPlan.
+Return only valid JSON with the properties: executiveSummary, strengths, weaknesses, opportunities, threats, recommendations, actionPlan.
 
 Each item in actionPlan should include: who, what, how, when.
+Each item in threats should describe a concrete risk or exposure that could block successful implementation, service delivery, data integrity, compliance, or adoption.
+The evaluation and implementation plan must be framed as a 6-month programme. Every recommendation, threat, and action-plan timeline should be realistic within that 6-month window, using milestones such as Month 1, Months 2-3, Months 4-5, or Month 6.
 
 Example:
 {
@@ -406,6 +408,7 @@ Example:
   "strengths": ["..."],
   "weaknesses": ["..."],
   "opportunities": ["..."],
+  "threats": ["..."],
   "recommendations": ["..."],
   "actionPlan": [
     {
@@ -417,7 +420,7 @@ Example:
   ]
 }
 
-Keep the diagnosis concise, grounded in the submitted form answers, and focused on practical organisational recommendations. Link each action to who owns it, how it should be delivered, and when it should be completed.`;
+Keep the diagnosis concise, grounded in the submitted form answers, and focused on practical organisational recommendations for the 6-month evaluation period. Link each action to who owns it, how it should be delivered, and when it should be completed within the 6-month programme.`;
 }
 
 async function generateAiDiagnosis({ evaluation, scores, conflictCount, responseSummary, sampleAnswers }) {
@@ -455,6 +458,7 @@ async function generateAiDiagnosis({ evaluation, scores, conflictCount, response
     strengths: Array.isArray(content.strengths) ? content.strengths.slice(0, 5).map(String) : [],
     weaknesses: Array.isArray(content.weaknesses) ? content.weaknesses.slice(0, 5).map(String) : [],
     opportunities: Array.isArray(content.opportunities) ? content.opportunities.slice(0, 5).map(String) : [],
+    threats: Array.isArray(content.threats) ? content.threats.slice(0, 6).map(String) : Array.isArray(content.risks) ? content.risks.slice(0, 6).map(String) : [],
     recommendations: Array.isArray(content.recommendations) ? content.recommendations.slice(0, 8).map(String) : [],
     actionPlan,
   };
@@ -2583,6 +2587,7 @@ app.get('/diagnoses', async (req, res) => {
           strengths: content.strengths || [],
           weaknesses: content.weaknesses || [],
           opportunities: content.opportunities || [],
+          threats: content.threats || content.risks || [],
           recommendations: content.recommendations || [],
           actionPlan: Array.isArray(content.actionPlan) ? content.actionPlan : [],
           charts: Array.isArray(content.charts) ? content.charts : [],

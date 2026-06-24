@@ -163,6 +163,8 @@ interface PublishedAnalysis {
     weaknesses?: string[];
     opportunities?: string[];
     recommendations?: string[];
+    threats?: string[];
+    risks?: string[];
     gaps?: string[];
     actionPlan?: Array<{ who?: string; what?: string; how?: string; when?: string }>;
     charts?: Array<{ title?: string; data?: Array<{ label?: string; name?: string; value?: number; count?: number }> }>;
@@ -344,9 +346,21 @@ function buildReportSignalData(published: PublishedAnalysis | null | undefined, 
   return [
     { name: 'Gaps', value: analysis.gaps?.length || analysis.weaknesses?.length || 0 },
     { name: 'Recommendations', value: analysis.recommendations?.length || 0 },
-    { name: 'Charts', value: analysis.charts?.length || 0 },
+    { name: 'Threats', value: countThreatSignals(published) },
     { name: 'Actions', value: analysis.actionPlan?.length || 0 },
   ];
+}
+
+function countThreatSignals(published: PublishedAnalysis | null | undefined) {
+  const analysis = published?.analysis;
+  if (!analysis) return 0;
+  const directThreats = analysis.threats?.length || analysis.risks?.length || 0;
+  if (directThreats > 0) return directThreats;
+  const gaps = analysis.gaps || analysis.weaknesses || [];
+  return gaps.filter((gap) => {
+    const severity = parseAnalysisGap(gap).severity;
+    return severity === 'CRITICAL' || severity === 'HIGH';
+  }).length;
 }
 
 function buildGapSeverityData(publishedAnalyses: PublishedAnalysis[]) {
@@ -540,7 +554,7 @@ function LatestReportBriefChart({ published, evaluation }: { published: Publishe
   const metricData = [
     { name: 'Gaps', value: analysis?.gaps?.length ?? analysis?.weaknesses?.length ?? 0, fill: '#ef4444' },
     { name: 'Recommendations', value: analysis?.recommendations?.length ?? 0, fill: '#10b981' },
-    { name: 'Charts', value: analysis?.charts?.length ?? 0, fill: '#2563eb' },
+    { name: 'Threats', value: countThreatSignals(published), fill: '#f97316' },
     { name: 'Actions', value: analysis?.actionPlan?.length ?? 0, fill: '#7c3aed' },
   ];
   const totalSignals = metricData.reduce((sum, item) => sum + item.value, 0);
@@ -563,7 +577,7 @@ function LatestReportBriefChart({ published, evaluation }: { published: Publishe
 
       <div className="bg-white p-5 ring-1 ring-slate-200">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-sm font-black text-slate-950">Report signal mix</p>
+          <p className="text-sm font-black text-slate-950">Evaluation signal mix</p>
           <span className="bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800 ring-1 ring-cyan-100">{totalSignals} signals</span>
         </div>
         <div className="h-72">
@@ -658,9 +672,9 @@ function OrganisationDecisionChartPack({
   const digitalReadinessData = findAnalysisChartData(latestPublished, ['digital readiness', 'digital'], reportSignals);
   const gisReadinessData = findAnalysisChartData(latestPublished, ['gis readiness', 'gis'], reportSignals);
   const technicalProficiencyData = findAnalysisChartData(latestPublished, ['technical proficiency', 'technical', 'skill'], reportSignals);
-  const operationalChallengeData = findAnalysisChartData(latestPublished, ['operational challenge', 'challenge', 'constraint'], reportSignals);
+  const threatData = findAnalysisChartData(latestPublished, ['threat', 'risk', 'operational challenge', 'challenge', 'constraint'], reportSignals);
   const diagnosticChecklistData = findAnalysisChartData(latestPublished, ['diagnostic checklist', 'diagnostic', 'checklist'], reportSignals);
-  const gapData = gapSeverityData.length > 0 ? gapSeverityData : reportSignals.filter((item) => item.name === 'Gaps' || item.name === 'Recommendations' || item.name === 'Actions');
+  const gapData = gapSeverityData.length > 0 ? gapSeverityData : reportSignals.filter((item) => item.name === 'Gaps' || item.name === 'Threats' || item.name === 'Actions');
   const colors = ['#2563eb', '#0f766e', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
 
   return (
@@ -751,9 +765,9 @@ function OrganisationDecisionChartPack({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <DecisionChartPanel title="Operational challenge" description="Main pressure points and operating constraints from the analysis.">
+        <DecisionChartPanel title="Threats" description="Highest-risk pressure points and operating constraints from the analysis.">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={operationalChallengeData} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
+            <AreaChart data={threatData} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
               <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
@@ -763,7 +777,7 @@ function OrganisationDecisionChartPack({
           </ResponsiveContainer>
         </DecisionChartPanel>
 
-        <DecisionChartPanel title="Diagnostic checklist" description="Report signal mix from the latest diagnostic checklist.">
+        <DecisionChartPanel title="Diagnostic checklist" description="Decision signals from the latest diagnostic checklist.">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={diagnosticChecklistData} margin={{ top: 10, right: 12, left: -12, bottom: 34 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1503,11 +1517,10 @@ function SuperAdminDashboard() {
   ], [orgSummaries.length, selectedOrgId, selectedSummary]);
 
   const selectedOrgLatestReport = useMemo(() => {
-    if (selectedOrgId === 'ALL') return null;
     return scopedReports
       .slice()
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0] || null;
-  }, [scopedReports, selectedOrgId]);
+  }, [scopedReports]);
 
   const selectedOrgLatestEvaluation = useMemo(() => {
     if (!selectedOrgLatestReport?.evaluationId) return undefined;
@@ -1575,215 +1588,17 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
       </div>
 
       {selectedOrgId === 'ALL' && (
-        <>
-      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
-        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-950">Activity trend for {viewLabel}</h2>
-              <p className="text-xs text-slate-500">Responses, projects, and published insight output across the last six months.</p>
-            </div>
-            <Pill label="Timeline" color="green" />
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={monthlyTrendData} margin={{ top: 12, right: 18, left: -8, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="responses" fill="#0f766e" fillOpacity={0.18} stroke="#0f766e" strokeWidth={2} />
-                <Bar dataKey="projects" fill="#2563eb" radius={[0, 0, 0, 0]} />
-                <Line type="monotone" dataKey="reports" stroke="#f97316" strokeWidth={3} dot={{ r: 3 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-950">Portfolio maturity signal</h2>
-              <p className="text-xs text-slate-500">A practical proxy from completion, coverage, active work, and user footprint.</p>
-            </div>
-            <Pill label={selectedSummary.completionLabel} color="amber" />
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={maturityRadarData} outerRadius={92}>
-                <PolarGrid stroke="#cbd5e1" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#334155', fontSize: 10 }} />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
-                <Radar name="Score" dataKey="score" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.22} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-          <h2 className="text-base font-bold text-slate-950">What exists in scope</h2>
-          <p className="mb-4 text-xs text-slate-500">Record volume by operational object.</p>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={moduleData} margin={{ top: 8, right: 10, left: -12, bottom: 35 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={52} />
-                <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-                <Bar dataKey="value" fill="#0891b2" radius={[0, 0, 0, 0]}>
-                  {moduleData.map((entry, index) => (
-                    <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-          <h2 className="text-base font-bold text-slate-950">Evaluation status mix</h2>
-          <p className="mb-4 text-xs text-slate-500">Shows where active delivery attention is sitting.</p>
-          {statusData.length > 0 ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={46} outerRadius={86} paddingAngle={0}>
-                    {statusData.map((entry, index) => (
-                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-                  <Legend iconType="square" wrapperStyle={{ color: '#334155', fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="flex h-64 items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No project status data yet.</div>
-          )}
-        </div>
-
-        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-          <h2 className="text-base font-bold text-slate-950">Completion distribution</h2>
-          <p className="mb-4 text-xs text-slate-500">Response quality split by submitted completion band.</p>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={completionDistribution} margin={{ top: 8, right: 10, left: -12, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-                <Area type="monotone" dataKey="value" stroke="#f97316" fill="#fed7aa" fillOpacity={0.75} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-950">
-                {selectedOrgId === 'ALL' ? 'Organisation comparison' : 'Selected organisation operating mix'}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {selectedOrgId === 'ALL'
-                  ? 'Which clients are generating responses, projects, and stronger completion.'
-                  : 'How people, forms, questions, answers, and active work stack up for this organisation.'}
-              </p>
-            </div>
-            <Pill label={selectedOrgId === 'ALL' ? 'Ranked' : 'Operating mix'} color="blue" />
-          </div>
-          {selectedOrgId === 'ALL' ? (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={orgComparisonData} margin={{ top: 12, right: 16, left: -8, bottom: 45 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={62} />
-                  <YAxis yAxisId="left" allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                  <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#475569', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar yAxisId="left" dataKey="responses" fill="#0f766e" radius={[0, 0, 0, 0]} />
-                  <Bar yAxisId="left" dataKey="projects" fill="#2563eb" radius={[0, 0, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="completion" stroke="#dc2626" strokeWidth={3} dot={{ r: 3 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={selectedOrgOperatingData} margin={{ top: 12, right: 16, left: -8, bottom: 45 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={62} />
-                  <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="value" name="Count" radius={[0, 0, 0, 0]}>
-                    {selectedOrgOperatingData.map((entry, index) => (
-                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Bar>
-                  <Line type="monotone" dataKey="value" name="Signal" stroke="#dc2626" strokeWidth={3} dot={{ r: 3 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-          <h2 className="text-base font-bold text-slate-950">Sector footprint</h2>
-          <p className="mb-4 text-xs text-slate-500">Client portfolio spread by recorded sector.</p>
-          {sectorData.length > 0 ? (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={sectorData} dataKey="value" nameKey="name" outerRadius={94}>
-                    {sectorData.map((entry, index) => (
-                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-                  <Legend iconType="square" wrapperStyle={{ color: '#334155', fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="flex h-72 items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No sector data yet.</div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-4">
-        <div className="border border-slate-300 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-          <h2 className="text-base font-bold text-slate-950">Form depth and uptake</h2>
-          <p className="mb-4 text-xs text-slate-500">Largest instruments compared with responses received.</p>
-          {formDepthData.length > 0 ? (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={formDepthData} layout="vertical" margin={{ top: 8, right: 16, left: 25, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis type="number" allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} width={90} />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="questions" fill="#7c3aed" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="responses" fill="#0f766e" radius={[0, 0, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="flex h-72 items-center justify-center border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">No form data yet.</div>
-          )}
-        </div>
-      </div>
-        </>
+        <OrganisationDecisionChartPack
+          viewLabel={viewLabel}
+          activityTrendData={monthlyTrendData}
+          portfolioRadarData={maturityRadarData}
+          formDepthData={formDepthData}
+          sectorData={sectorData}
+          latestPublished={selectedOrgLatestReport}
+          publishedAnalyses={scopedReports}
+          fallbackWorkspaceData={selectedOrgWorkspaceData}
+        />
       )}
-
       {selectedOrgId !== 'ALL' && (
         <div className="space-y-4">
           <OrganisationDecisionChartPack
@@ -1801,7 +1616,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
             <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">Latest report brief</p>
-                <h2 className="mt-1 text-xl font-black text-slate-950">A short executive note. The decision charts are shown above.</h2>
+                <h2 className="mt-1 text-xl font-black text-slate-950">A short executive note. The evaluation signals are shown above.</h2>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Pill label={`${scopedReports.length} published`} color={scopedReports.length > 0 ? 'green' : 'amber'} />
@@ -1815,7 +1630,7 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
               <div className="border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                 <DashboardIcon name="chart" className="mx-auto h-9 w-9 text-slate-500" />
                 <p className="mt-3 text-sm font-bold text-slate-900">No published analysis for this organisation yet.</p>
-                <p className="mt-1 text-sm text-slate-500">The insight charts above use live organization data until a published analysis is available.</p>
+                <p className="mt-1 text-sm text-slate-500">The evaluation signals above use live organization data until a published analysis is available.</p>
               </div>
             )}
           </div>
@@ -1835,10 +1650,10 @@ Centralised platform for managing client organisations, form rollouts, diagnosti
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
-                  <th className="py-3 pr-4 font-bold">Organisation</th>
+                  <th className="py-3 pr-4 font-bold">Organization</th>
                   <th className="py-3 pr-4 font-bold">Sector</th>
-                  <th className="py-3 pr-4 font-bold">Projects</th>
-                  <th className="py-3 pr-4 font-bold">Responses</th>
+                  <th className="py-3 pr-4 font-bold">Enquiry</th>
+                  <th className="py-3 pr-4 font-bold">Respondent units</th>
                   <th className="py-3 pr-4 font-bold">Completion</th>
                   <th className="py-3 pr-4 font-bold">Reports</th>
                 </tr>
@@ -2314,7 +2129,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-4 mb-5">
               <div>
                 <h2 className="text-lg font-bold text-slate-950">Latest report brief</h2>
-                <p className="mt-0.5 text-sm text-slate-500">A short executive note. The decision charts are shown above.</p>
+                <p className="mt-0.5 text-sm text-slate-500">A short executive note. The evaluation signals are shown above.</p>
               </div>
               <span className="text-2xl font-bold text-accent">{filteredPublishedAnalyses.length}</span>
             </div>

@@ -43,7 +43,7 @@ interface Diagnosis {
 
 const MASTER_PROMPT = `You are an expert organisational analyst. You have been given submitted form responses from a professional evaluation covering organisational health, GIS readiness, digital transformation, technical skills, and governance.
 
-Carefully read every question and answer. Then produce a comprehensive structured analysis that covers ALL of the following dimensions:
+Carefully read every question and answer. Treat the evaluation and implementation plan as a 6-month programme. Then produce a comprehensive structured analysis that covers ALL of the following dimensions:
 
 1. OVERALL ORGANISATIONAL HEALTH — executive summary, SWOT (strengths, weaknesses, opportunities, threats/gaps), and prioritised recommendations.
 2. GIS READINESS — assess geospatial capability maturity (Nascent / Emerging / Developing / Advanced), infrastructure, data management, and staff competency in GIS.
@@ -51,7 +51,7 @@ Carefully read every question and answer. Then produce a comprehensive structure
 4. TECHNICAL SKILLS — map identified skills against required capabilities, highlight critical skill gaps, training needs, and career development priorities.
 5. GOVERNANCE & COMPLIANCE — assess policy adherence, risk management maturity, accountability structures, and regulatory compliance gaps.
 6. CHART DATA — generate multiple chart datasets (one per domain above) with realistic scores derived from the actual responses.
-7. ACTION PLAN — produce a practical, prioritised action plan with clear ownership (who), deliverable (what), method (how), and timeline (when) for the top findings.
+7. ACTION PLAN — produce a practical, prioritised 6-month action plan with clear ownership (who), deliverable (what), method (how), and timeline (when) for the top findings.
 8. ORGANOGRAM — if the responses contain enough organisational structure information (roles, departments, reporting lines), generate a hierarchical organogram.
 
 Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences, prose, or any text outside the JSON object:
@@ -62,6 +62,7 @@ Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences
   "strengths": ["..."],
   "weaknesses": ["..."],
   "opportunities": ["..."],
+  "threats": ["Concrete implementation, service-delivery, compliance, adoption, or data-integrity threat"],
   "gaps": [
     "CRITICAL: Description of a critical gap",
     "HIGH: Description of a high-severity gap",
@@ -70,14 +71,15 @@ Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences
   ],
   "recommendations": ["Prioritised recommendation 1", "Prioritised recommendation 2"],
   "actionPlan": [
-    {"who":"Role or team","what":"Specific deliverable","how":"Approach and method","when":"Timeline e.g. Within 30 days"}
+    {"who":"Role or team","what":"Specific deliverable","how":"Approach and method","when":"6-month milestone e.g. Month 1, Months 2-3, Months 4-5, or Month 6"}
   ],
   "charts": [
     {"title":"GIS Readiness by Domain","data":[{"label":"Infrastructure","value":0},{"label":"Data Management","value":0},{"label":"Staff GIS Skills","value":0},{"label":"Governance","value":0},{"label":"Workflows","value":0},{"label":"Spatial Data Assets","value":0},{"label":"Leadership Buy-in","value":0}]},
     {"title":"Digital Readiness Scores","data":[{"label":"Technology Infra","value":0},{"label":"Process Automation","value":0},{"label":"Digital Culture","value":0},{"label":"Data Quality","value":0},{"label":"Leadership Alignment","value":0},{"label":"Connectivity","value":0},{"label":"Change Readiness","value":0}]},
     {"title":"Technical Skills Proficiency by Department","data":[{"label":"Department 1","value":0},{"label":"Department 2","value":0}]},
     {"title":"Governance Maturity","data":[{"label":"Policy Framework","value":0},{"label":"Risk Management","value":0},{"label":"Compliance Structures","value":0},{"label":"Accountability","value":0},{"label":"Security Policies","value":0},{"label":"Audit Trail","value":0}]},
-    {"title":"Overall Organisational Readiness","data":[{"label":"GIS Readiness","value":0},{"label":"Digital Transformation","value":0},{"label":"Technical Skills","value":0},{"label":"Governance","value":0},{"label":"Operations","value":0},{"label":"Change Readiness","value":0},{"label":"Revenue Systems","value":0}]}
+    {"title":"Overall Organisational Readiness","data":[{"label":"GIS Readiness","value":0},{"label":"Digital Transformation","value":0},{"label":"Technical Skills","value":0},{"label":"Governance","value":0},{"label":"Operations","value":0},{"label":"Change Readiness","value":0},{"label":"Revenue Systems","value":0}]},
+    {"title":"Threat Exposure","data":[{"label":"Record Loss","value":0},{"label":"Service Delay","value":0},{"label":"Compliance Risk","value":0},{"label":"Low Adoption","value":0},{"label":"Data Integrity","value":0}]}
   ],
   "organogram": {
     "nodes": [{"id":"1","label":"Role name","group":"Department name"}],
@@ -87,6 +89,8 @@ Return ONLY valid JSON in this exact shape. Do NOT include markdown, code fences
 
 IMPORTANT RULES:
 - gaps MUST be prefixed with severity: "CRITICAL: ...", "HIGH: ...", "MEDIUM: ...", or "LOW: ..."
+- threats MUST list the main risks that could undermine implementation or organisational performance
+- recommendations, threats, and action-plan timing MUST be realistic within the 6-month evaluation period
 - organogram links MUST use the exact label text from nodes (not the id numbers) in the source and target fields
 - chart values should be consistent within each chart and grounded in the submitted responses
 - Base all scores and findings strictly on the actual form responses provided. Do not invent data.
