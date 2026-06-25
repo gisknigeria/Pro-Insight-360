@@ -245,7 +245,7 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
           <button type="button"
             onClick={() => router.push(`/organisations/organogram?orgId=${org.id}`)}
             className="inline-flex items-center gap-1.5 border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800 hover:bg-teal-100 transition">
-            <AppIcon name="sitemap" className="h-6 w-6" /> Organogram
+            <AppIcon name="sitemap" className="h-6 w-6" /> Organogram Intake
           </button>
           <button type="button"
             onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
@@ -569,7 +569,7 @@ export default function OrganisationsPage() {
         <div className="flex gap-2">
           <Link href="/organisations/organogram"
             className="inline-flex items-center gap-2 border border-teal-300/30 bg-teal-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-slate-950/20 transition-colors hover:bg-teal-400">
-            <AppIcon name="sitemap" className="h-6 w-6" /> Organogram
+            <AppIcon name="sitemap" className="h-6 w-6" /> Organogram Intake
           </Link>
           <button type="button" onClick={() => router.push('/forms/new')}
             className="inline-flex items-center gap-2 border border-amber-300/30 bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-slate-950/20 transition-colors hover:bg-amber-300">
