@@ -409,6 +409,7 @@ interface OrgCardProps {
   onDelete: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function OrgCard({ analysis, isSelected, onSelect, onDelete }: OrgCardProps) {
   const nodeCount = analysis.analysis?.organogram?.nodes?.length ?? 0;
   const deptCount = new Set(analysis.analysis?.organogram?.nodes?.map(n => n.group).filter(Boolean)).size;
@@ -665,15 +666,48 @@ export default function OrganogramPage() {
             description="Organograms are generated when you publish an analysis that includes organisational structure data." />
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
+        <div className="space-y-5">
           {/* ── Left: Org list ── */}
-          <div className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 mb-2">Client organisations</p>
-            {analyses.map(a => (
-              <OrgCard key={a.id} analysis={a} isSelected={selectedId === a.id}
-                onSelect={() => { setSelectedId(a.id); setEditing(false); }}
-                onDelete={() => deletePublishedAnalysis(a.id)} />
-            ))}
+          <div className="border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Client organisations</p>
+              {selected && (
+                <button
+                  type="button"
+                  onClick={() => deletePublishedAnalysis(selected.id)}
+                  className="border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100"
+                >
+                  Delete selected
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {analyses.map((analysis) => {
+                const isSelected = selectedId === analysis.id;
+                const nodeCount = analysis.analysis?.organogram?.nodes?.length ?? 0;
+                const deptCount = new Set(analysis.analysis?.organogram?.nodes?.map(node => node.group).filter(Boolean)).size;
+                return (
+                  <button
+                    key={analysis.id}
+                    type="button"
+                    onClick={() => { setSelectedId(analysis.id); setEditing(false); }}
+                    className={`shrink-0 border px-4 py-3 text-left transition-colors ${
+                      isSelected
+                        ? 'border-teal-500 bg-teal-50 text-teal-900'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-200 hover:bg-white'
+                    }`}
+                  >
+                    <span className="block max-w-[220px] truncate text-sm font-black">
+                      {analysis.recipientName ?? 'Unknown organisation'}
+                    </span>
+                    <span className="mt-1 flex items-center gap-3 text-[11px] font-semibold text-slate-500">
+                      <span className="inline-flex items-center gap-1"><AppIcon name="users" className="h-3.5 w-3.5" /> {nodeCount} roles</span>
+                      <span className="inline-flex items-center gap-1"><AppIcon name="building" className="h-3.5 w-3.5" /> {deptCount} depts</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* ── Right: Action panel ── */}
