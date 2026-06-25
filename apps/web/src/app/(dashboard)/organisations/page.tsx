@@ -243,6 +243,11 @@ function OrgDetail({ org, forms, units, evaluations, onRefresh, onDeleteUnit, on
             <AppIcon name="plus" className="h-6 w-6" /> Unit
           </button>
           <button type="button"
+            onClick={() => router.push(`/organisations/organogram?orgId=${org.id}`)}
+            className="inline-flex items-center gap-1.5 border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800 hover:bg-teal-100 transition">
+            <AppIcon name="sitemap" className="h-6 w-6" /> Organogram
+          </button>
+          <button type="button"
             onClick={() => router.push(`/forms/new?orgId=${org.id}`)}
             className="inline-flex items-center gap-1.5 border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-slate-950 hover:bg-amber-50 transition shadow-sm">
             <AppIcon name="plus" className="h-6 w-6" /> Form
@@ -559,9 +564,13 @@ export default function OrganisationsPage() {
             <h1 className="text-3xl font-bold tracking-tight text-white">Organisations</h1>
             <span className="inline-flex items-center justify-center border border-cyan-300/30 bg-slate-900 px-3 py-1 text-xs font-bold text-cyan-200">{orgs.length}</span>
           </div>
-          <p className="mt-1 text-sm text-slate-300">Manage client organisations, forms, units and projects.</p>
+          <p className="mt-1 text-sm text-slate-300">Supports client profiling, enquiry management, organogram development, unit configuration and structural mapping to evaluate institutional capacity.</p>
         </div>
         <div className="flex gap-2">
+          <Link href="/organisations/organogram"
+            className="inline-flex items-center gap-2 border border-teal-300/30 bg-teal-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-slate-950/20 transition-colors hover:bg-teal-400">
+            <AppIcon name="sitemap" className="h-6 w-6" /> Organogram
+          </Link>
           <button type="button" onClick={() => router.push('/forms/new')}
             className="inline-flex items-center gap-2 border border-amber-300/30 bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-slate-950/20 transition-colors hover:bg-amber-300">
             <AppIcon name="plus" className="h-6 w-6" /> Create Form

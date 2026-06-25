@@ -638,11 +638,10 @@ function AnalysisChartCard({ chart }: { chart: { title?: string; data?: Array<{ 
   );
 }
 
-function DecisionChartPanel({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+function DecisionChartPanel({ title, children }: { title: string;  children: ReactNode }) {
   return (
     <div className="border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
       <h2 className="text-base font-bold text-slate-950">{title}</h2>
-      <p className="mb-4 text-xs text-slate-500">{description}</p>
       <div className="h-72">{children}</div>
     </div>
   );
@@ -680,7 +679,7 @@ function OrganisationDecisionChartPack({
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
-        <DecisionChartPanel title="Activity trend" description={`Responses, projects, and published reports for ${viewLabel}.`}>
+        <DecisionChartPanel title="Activity trend">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={activityTrendData} margin={{ top: 12, right: 18, left: -8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -695,7 +694,7 @@ function OrganisationDecisionChartPack({
           </ResponsiveContainer>
         </DecisionChartPanel>
 
-        <DecisionChartPanel title="Portfolio" description="Completion, response depth, active work, reports, and user coverage.">
+        <DecisionChartPanel title="Portfolio" >
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={portfolioRadarData} outerRadius={92}>
               <PolarGrid stroke="#cbd5e1" />
@@ -709,7 +708,7 @@ function OrganisationDecisionChartPack({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <DecisionChartPanel title="Enquiry tools" description="Largest questionnaires compared with responses received.">
+        <DecisionChartPanel title="Enquiry tools" >
           {formDepthData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={formDepthData} layout="vertical" margin={{ top: 8, right: 16, left: 25, bottom: 8 }}>
@@ -727,7 +726,7 @@ function OrganisationDecisionChartPack({
           )}
         </DecisionChartPanel>
 
-        <DecisionChartPanel title="Sector footprint" description="The organisation sector or portfolio sector spread.">
+        <DecisionChartPanel title="Sector footprint" >
           {sectorData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -749,8 +748,8 @@ function OrganisationDecisionChartPack({
           ['Digital readiness', 'Digital process maturity from the latest published analysis.', digitalReadinessData, '#2563eb'],
           ['GIS readiness', 'GIS capability and adoption signals from the latest analysis.', gisReadinessData, '#0f766e'],
           ['Technical proficiency', 'Skills, support capacity, and technical readiness indicators.', technicalProficiencyData, '#7c3aed'],
-        ].map(([title, description, data, color]) => (
-          <DecisionChartPanel key={title as string} title={title as string} description={description as string}>
+        ].map(([title,  data, color]) => (
+          <DecisionChartPanel key={title as string} title={title as string} >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data as ChartDataPoint[]} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -765,19 +764,19 @@ function OrganisationDecisionChartPack({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <DecisionChartPanel title="Threats" description="Highest-risk pressure points and operating constraints from the analysis.">
+        <DecisionChartPanel title="Threats" >
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={threatData} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
+            <BarChart data={threatData} margin={{ top: 8, right: 10, left: -12, bottom: 42 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} interval={0} angle={-24} textAnchor="end" height={60} />
               <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 11 }} />
               <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 12 }} />
-              <Area type="monotone" dataKey="value" stroke="#f97316" fill="#fed7aa" fillOpacity={0.78} />
-            </AreaChart>
+              <Bar dataKey="value" fill="#f97316" />
+            </BarChart>
           </ResponsiveContainer>
         </DecisionChartPanel>
 
-        <DecisionChartPanel title="Diagnostic checklist" description="Decision signals from the latest diagnostic checklist.">
+        <DecisionChartPanel title="Diagnostic checklist" >
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={diagnosticChecklistData} margin={{ top: 10, right: 12, left: -12, bottom: 34 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -790,7 +789,7 @@ function OrganisationDecisionChartPack({
           </ResponsiveContainer>
         </DecisionChartPanel>
 
-        <DecisionChartPanel title="Gap severity" description="Critical, high, medium, and low gaps from published analysis.">
+        <DecisionChartPanel title="Gap severity" >
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={gapData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={88} paddingAngle={0}>
@@ -1556,7 +1555,7 @@ function SuperAdminDashboard() {
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight">Executive Dashboard</h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-Centralised platform for managing client organisations, form rollouts, diagnostic workflows, implementation tracking, and governance reporting            </p>
+Centralised platform for managing client organisations, form rollouts, diagnostic workflows, implementation tracking, and governance reporting   </p>
           </div>
           <label className="min-w-[280px] text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
             Dashboard scope

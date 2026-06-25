@@ -680,7 +680,7 @@ function SuperAdminInsightPage() {
       <DashboardHero
         eyebrow="Super Admin"
         title="Insights Engine"
-        description="Review every organisation's forms, published analyses, draft insight work, and client-facing visibility from one executive workspace."
+        description="Generates actionable insights from diagnostic analysis to support process optimisation, business re-engineering and continuous organisational improvement."
         meta={<span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Insight command center</span>}
       />
 

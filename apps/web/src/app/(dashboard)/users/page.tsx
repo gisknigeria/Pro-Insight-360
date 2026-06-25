@@ -151,12 +151,12 @@ export default function UsersPage() {
         <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-white">Users</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Work Force</h1>
             <span className="inline-flex items-center justify-center border border-cyan-300/30 bg-slate-900 px-3 py-1 text-xs font-bold text-cyan-200">
               {users.length}
             </span>
           </div>
-          <p className="mt-1.5 text-sm text-slate-300">Manage system users, roles, and access permissions.</p>
+          <p className="mt-1.5 text-sm text-slate-300">Manages users, roles, permissions and workforce controls for secure platform administration and governance.</p>
         </div>
         <Link
           href="/users/new"

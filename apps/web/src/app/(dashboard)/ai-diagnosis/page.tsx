@@ -354,10 +354,9 @@ export default function AIDiagnosisPage() {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
-            <h1 className="text-3xl font-bold tracking-tight text-white">AI Diagnosis & Analysis</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Analytics Engine</h1>
             <p className="mt-1.5 text-sm text-slate-300">
-              Copy form responses → paste to ChatGPT or Claude → import the result here → approve and publish to your client.
-            </p>
+Generates intelligent reports, action plans and customised insights for performance monitoring, decision support and digital readiness.            </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-2 border border-white/10 bg-white/10 px-4 py-2.5 text-sm sm:flex">

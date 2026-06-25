@@ -48,7 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Analytics',    href: '/ai-diagnosis', icon: 'analytics',  roles: ['SUPER_ADMIN'],  color: 'from-fuchsia-400 to-purple-600' },
   { label: 'Insights',                href: '/insight',      icon: 'search',     roles: ['CLIENT_ADMIN'], color: 'from-cyan-400 to-sky-600' },
   { label: 'Organogram',              href: '/organogram',   icon: 'tree',       roles: ['CLIENT_ADMIN'], color: 'from-teal-400 to-teal-600' },
-  { label: 'Users',                   href: '/users',        icon: 'user',       roles: ['SUPER_ADMIN'],  color: 'from-rose-400 to-red-600' },
+  { label: 'Work Force',                   href: '/users',        icon: 'user',       roles: ['SUPER_ADMIN'],  color: 'from-rose-400 to-red-600' },
 ];
 
 const roleLabels: Record<UserRole, string> = {

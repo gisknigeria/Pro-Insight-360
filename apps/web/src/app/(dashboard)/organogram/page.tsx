@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { isClientAdmin as checkClientAdmin } from '@/lib/auth';
 import OrgChart from '@/components/organogram/OrgChart';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AppIcon } from '@/components/ui/app-icons';
-import { DashboardHero, DashboardMetricCard, DashboardPageFrame } from '@/components/ui/dashboard-chrome';
+import { DashboardMetricCard, DashboardPageFrame } from '@/components/ui/dashboard-chrome';
 import type { OrgRow } from '@/components/organogram/OrgChartUploader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -33,22 +32,6 @@ interface PublishedAnalysis {
   } | null;
 }
 
-interface OrganisationOption {
-  id: string;
-  name: string;
-  sector?: string | null;
-}
-
-interface OrganogramIntakeResponse {
-  id: string;
-  organisationId: string;
-  organisationName: string;
-  submittedAt: string;
-  submittedBy?: { name?: string | null; role?: string | null } | null;
-  intake: unknown;
-  prompt: string;
-  publishedAt?: string | null;
-}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -140,6 +123,10 @@ function inferOwnerFromText(text: string, departments: string[]) {
   return 'Executive sponsor';
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 function StructureInsightPanel({ rows, analysis }: { rows: OrgRow[]; analysis?: PublishedAnalysis['analysis'] | null }) {
   const insights = useMemo(() => buildStructureInsights(rows, analysis), [rows, analysis]);
   const [copied, setCopied] = useState(false);
@@ -229,6 +216,101 @@ function StructureInsightPanel({ rows, analysis }: { rows: OrgRow[]; analysis?: 
   );
 }
 
+function ActionAssignmentPanel({ rows, analysis }: { rows: OrgRow[]; analysis?: PublishedAnalysis['analysis'] | null }) {
+  const insights = useMemo(() => buildStructureInsights(rows, analysis), [rows, analysis]);
+  const [assignments, setAssignments] = useState<Record<number, { owner: string; status: string }>>({});
+  const ownerOptions = [
+    ...insights.departments,
+    ...rows.map(row => row.name),
+    'Executive sponsor',
+    'External implementation partner',
+  ].filter((value, index, values) => value && values.indexOf(value) === index);
+
+  const actionItems = insights.ownershipItems.length > 0
+    ? insights.ownershipItems
+    : [{ title: 'No published action items yet', owner: 'Executive sponsor', detail: 'Publish analysis recommendations to create assignable actions.' }];
+
+  function updateAssignment(index: number, patch: Partial<{ owner: string; status: string }>) {
+    setAssignments(current => ({
+      ...current,
+      [index]: {
+        owner: current[index]?.owner || actionItems[index]?.owner || ownerOptions[0] || 'Executive sponsor',
+        status: current[index]?.status || 'Not started',
+        ...patch,
+      },
+    }));
+  }
+
+  return (
+    <div className="border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">4. Action</p>
+          <h2 className="mt-1 text-xl font-black text-slate-950">Action Hub</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-500">
+            Assign recommendations as trackable actions with responsible departments, individual owners, timelines, accountability context, and implementation status.
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-slate-950 px-4 py-3 text-white">
+            <p className="text-lg font-black">{actionItems.length}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Actions</p>
+          </div>
+          <div className="bg-teal-50 px-4 py-3 text-teal-800">
+            <p className="text-lg font-black">{insights.departments.length}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider">Departments</p>
+          </div>
+          <div className="bg-amber-50 px-4 py-3 text-amber-800">
+            <p className="text-lg font-black">{insights.overloadedManagers.length}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider">Watch</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {actionItems.map((item, index) => {
+          const current = assignments[index] || { owner: item.owner, status: 'Not started' };
+          return (
+            <div key={`${item.title}-${index}`} className="border border-slate-200 bg-slate-50 p-4">
+              <div className="grid gap-4 xl:grid-cols-[1fr_220px_180px] xl:items-start">
+                <div>
+                  <p className="text-sm font-black text-slate-950">{item.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.detail || 'No delivery detail provided yet.'}</p>
+                  <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-teal-700">Suggested owner: {item.owner}</p>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Responsible party</span>
+                  <select
+                    value={current.owner}
+                    onChange={(event) => updateAssignment(index, { owner: event.target.value })}
+                    className="w-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-teal-500"
+                  >
+                    {ownerOptions.map(owner => (
+                      <option key={owner} value={owner}>{owner}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Status</span>
+                  <select
+                    value={current.status}
+                    onChange={(event) => updateAssignment(index, { status: event.target.value })}
+                    className="w-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-teal-500"
+                  >
+                    {['Not started', 'Assigned', 'In progress', 'Blocked', 'Completed'].map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function buildOrganogramReportSections(rows: OrgRow[], analysis?: PublishedAnalysis['analysis'] | null) {
   const insights = buildStructureInsights(rows, analysis);
   return [
@@ -266,13 +348,13 @@ function EditPanel({ organogram, onSave, onCancel }: EditPanelProps) {
   async function handleSave() {
     setError('');
     try {
-      const nodes = JSON.parse(nodesText);
-      const links = JSON.parse(linksText);
+      const nodes: unknown = JSON.parse(nodesText);
+      const links: unknown = JSON.parse(linksText);
       if (!Array.isArray(nodes) || !Array.isArray(links)) throw new Error('Both must be arrays.');
       setSaving(true);
       await onSave({ nodes, links });
-    } catch (e: any) {
-      setError(e?.message ?? 'Invalid JSON');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Invalid JSON'));
     } finally {
       setSaving(false);
     }
@@ -298,21 +380,21 @@ function EditPanel({ organogram, onSave, onCancel }: EditPanelProps) {
       <div className="grid gap-4 xl:grid-cols-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-            Nodes - <code className="text-[10px]">[{"{"}"id","label","group"{"}"}]</code>
+            Nodes - <code className="text-[10px]">{'[{ "id", "label", "group" }]'}</code>
           </p>
           <textarea value={nodesText} onChange={e => setNodesText(e.target.value)} rows={14}
             className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-mono text-slate-800 focus:border-blue-400 focus:outline-none resize-none" />
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-            Links - <code className="text-[10px]">[{"{"}"source","target","relation"{"}"}]</code>
+            Links - <code className="text-[10px]">{'[{ "source", "target", "relation" }]'}</code>
           </p>
           <textarea value={linksText} onChange={e => setLinksText(e.target.value)} rows={14}
             className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-mono text-slate-800 focus:border-blue-400 focus:outline-none resize-none" />
         </div>
       </div>
       <p className="text-[11px] text-slate-400">
-        Tip: In links, use the exact label text from nodes in source/target (e.g. "General Manager (GM)"). Saving will update the chart for both admin and client immediately.
+        Tip: In links, use the exact label text from nodes in source/target, for example General Manager (GM). Saving will update the chart for both admin and client immediately.
       </p>
     </div>
   );
@@ -389,7 +471,6 @@ function OrgCard({ analysis, isSelected, onSelect, onDelete }: OrgCardProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OrganogramPage() {
-  const [isClient, setIsClient] = useState(false);
   const [clientRole, setClientRole] = useState(false);
   const [analyses, setAnalyses] = useState<PublishedAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
@@ -397,68 +478,37 @@ export default function OrganogramPage() {
   const [selectedId, setSelectedId] = useState<string>('');
   const [editing, setEditing] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
-  const [organisations, setOrganisations] = useState<OrganisationOption[]>([]);
-  const [selectedOrganisationId, setSelectedOrganisationId] = useState('');
-  const [intakeLink, setIntakeLink] = useState('');
-  const [intakeResponses, setIntakeResponses] = useState<OrganogramIntakeResponse[]>([]);
-  const [intakeLoading, setIntakeLoading] = useState(false);
-  const [intakeMsg, setIntakeMsg] = useState('');
-  const [publishingResponseId, setPublishingResponseId] = useState('');
-  const [organogramDrafts, setOrganogramDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setIsClient(true);
-    setClientRole(checkClientAdmin());
-  }, []);
+    let cancelled = false;
 
-  const loadAnalyses = useCallback(async () => {
-    setLoading(true); setError('');
-    try {
+    async function loadAnalyses() {
       const isClientAdminRole = checkClientAdmin();
-      const endpoint = isClientAdminRole ? '/published-analyses' : '/published-analyses/all';
-      const data = await apiFetch<PublishedAnalysis[]>(endpoint);
-      const withOrg = data.filter(
-        pa => pa.analysis?.organogram?.nodes && pa.analysis.organogram.nodes.length > 0
-      );
-      setAnalyses(withOrg);
-      if (withOrg.length > 0 && !selectedId) setSelectedId(withOrg[0].id);
-    } catch (err: any) {
-      setError(err?.message || 'Unable to load organogram data.');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedId]);
+      if (cancelled) return;
 
-  useEffect(() => { if (isClient) loadAnalyses(); }, [isClient]);
-
-  const loadIntakeResponses = useCallback(async () => {
-    setIntakeLoading(true);
-    try {
-      const responses = await apiFetch<OrganogramIntakeResponse[]>('/organogram-intake-responses');
-      setIntakeResponses(responses);
-    } catch {
-      setIntakeResponses([]);
-    } finally {
-      setIntakeLoading(false);
+      setClientRole(isClientAdminRole);
+      setLoading(true);
+      setError('');
+      try {
+        const endpoint = isClientAdminRole ? '/published-analyses' : '/published-analyses/all';
+        const data = await apiFetch<PublishedAnalysis[]>(endpoint);
+        const withOrg = data.filter(
+          pa => pa.analysis?.organogram?.nodes && pa.analysis.organogram.nodes.length > 0
+        );
+        if (cancelled) return;
+        setAnalyses(withOrg);
+        setSelectedId(current => current || withOrg[0]?.id || '');
+      } catch (error) {
+        if (!cancelled) setError(getErrorMessage(error, 'Unable to load organogram data.'));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
+
+    Promise.resolve().then(loadAnalyses);
+    return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    if (!isClient || clientRole) return;
-
-    async function loadAdminIntakeData() {
-      try {
-        const orgs = await apiFetch<OrganisationOption[]>('/organisations');
-        setOrganisations(orgs);
-        if (orgs.length > 0) setSelectedOrganisationId(prev => prev || orgs[0].id);
-      } catch {
-        setOrganisations([]);
-      }
-      loadIntakeResponses();
-    }
-
-    loadAdminIntakeData();
-  }, [clientRole, isClient, loadIntakeResponses]);
 
   const selected = useMemo(
     () => analyses.find(a => a.id === selectedId) ?? null,
@@ -505,67 +555,8 @@ export default function OrganogramPage() {
     setTimeout(() => setSaveMsg(''), 4000);
   }
 
-  async function createIntakeLink() {
-    if (!selectedOrganisationId) {
-      setIntakeMsg('Please select an organisation first.');
-      return;
-    }
 
-    setIntakeMsg('');
-    const created = await apiFetch<{ token: string }>('/organogram-intake-links', {
-      method: 'POST',
-      body: JSON.stringify({ organisationId: selectedOrganisationId }),
-    });
-    const link = `${window.location.origin}/organogram-intake?token=${created.token}`;
-    setIntakeLink(link);
-    await navigator.clipboard.writeText(link).catch(() => undefined);
-    setIntakeMsg('Link created and copied. Send it to the person filling the structure.');
-  }
-
-  async function copyText(text: string, message: string) {
-    await navigator.clipboard.writeText(text);
-    setIntakeMsg(message);
-    setTimeout(() => setIntakeMsg(''), 3500);
-  }
-
-  async function publishIntakeOrganogram(response: OrganogramIntakeResponse) {
-    const raw = organogramDrafts[response.id] || '';
-    if (!raw.trim()) {
-      setIntakeMsg('Paste the organogram JSON from ChatGPT or Claude before publishing.');
-      return;
-    }
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      setIntakeMsg('The pasted organogram is not valid JSON.');
-      return;
-    }
-
-    const organogram = parsed.organogram ?? parsed;
-    if (!Array.isArray(organogram.nodes) || !Array.isArray(organogram.links)) {
-      setIntakeMsg('JSON must include organogram.nodes and organogram.links arrays.');
-      return;
-    }
-
-    setPublishingResponseId(response.id);
-    try {
-      const result = await apiFetch<{ message: string }>(`/organogram-intake-responses/${response.id}/publish`, {
-        method: 'POST',
-        body: JSON.stringify({ organogram }),
-      });
-      setIntakeMsg(result.message || 'Organogram published.');
-      await loadIntakeResponses();
-      await loadAnalyses();
-    } catch (err: any) {
-      setIntakeMsg(err?.message || 'Unable to publish organogram.');
-    } finally {
-      setPublishingResponseId('');
-    }
-  }
-
-  if (!isClient || loading) {
+  if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <div className="h-10 w-10 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin mb-4" />
@@ -584,8 +575,8 @@ export default function OrganogramPage() {
       <DashboardPageFrame>
         <div className="border border-slate-900 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
                           <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Client Admin</p>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Organogram</h1>
-          <p className="mt-1.5 text-sm text-slate-300">Your organisation's hierarchy, reporting structure, ownership lines, and published accountability report.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Action Hub</h1>
+          <p className="mt-1.5 text-sm text-slate-300">Track recommendations, responsible owners, reporting structure, and accountability lines from the published analysis.</p>
         </div>
         {analyses.length === 0 ? (
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -617,6 +608,9 @@ export default function OrganogramPage() {
               ))}
             </div>
             <div className="mb-6">
+              <ActionAssignmentPanel rows={orgRows} analysis={selected?.analysis} />
+            </div>
+            <div className="mb-6">
               <StructureInsightPanel rows={orgRows} analysis={selected?.analysis} />
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -645,9 +639,9 @@ export default function OrganogramPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Super Admin</p>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Organisation Charts</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Action Hub</h1>
             <p className="mt-1.5 text-sm text-slate-300">
-              View, edit, and publish organograms across all client organisations.
+              Assign analysis recommendations to departments, individual owners, and implementation partners using the published organogram as accountability context.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 border border-white/10 bg-white/10 px-4 py-2.5">
@@ -655,135 +649,7 @@ export default function OrganogramPage() {
             <span className="text-sm font-bold text-white">{analyses.length} organisation{analyses.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href="/organogram-intake"
-            target="_blank"
-            className="inline-flex items-center justify-center border border-cyan-300/30 bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:border-cyan-300 hover:bg-slate-800"
-          >
-            Open standalone intake form
-          </Link>
-          <p className="flex items-center text-xs font-medium text-slate-300">
-            Send this to a CEO or HR lead, then paste the generated prompt into ChatGPT or Claude.
-          </p>
-        </div>
-      </div>
 
-      <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-teal-600">Standalone organogram form</p>
-            <h2 className="mt-1 text-lg font-bold text-slate-900">Create a client-specific intake link</h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-500">
-              Select an organisation you already created, copy the link, and send it to the CEO or HR lead. Their response will appear below for AI conversion and publishing.
-            </p>
-          </div>
-          <Link
-            href="/organisations/new"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100"
-          >
-            Create organisation
-          </Link>
-        </div>
-
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(220px,360px)_auto_1fr] lg:items-end">
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Organisation</span>
-            <select
-              value={selectedOrganisationId}
-              onChange={(event) => { setSelectedOrganisationId(event.target.value); setIntakeLink(''); }}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-            >
-              <option value="">Select organisation</option>
-              {organisations.map((org) => (
-                <option key={org.id} value={org.id}>{org.name}</option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={createIntakeLink}
-            disabled={!selectedOrganisationId}
-            className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-700 disabled:opacity-50"
-          >
-            Generate copy link
-          </button>
-          {intakeLink && (
-            <div className="flex min-w-0 gap-2 rounded-xl border border-teal-100 bg-teal-50 p-2">
-              <input readOnly value={intakeLink} className="min-w-0 flex-1 bg-transparent px-2 text-xs font-semibold text-teal-900 outline-none" />
-              <button type="button" onClick={() => copyText(intakeLink, 'Link copied.')} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-teal-700">
-                Copy
-              </button>
-            </div>
-          )}
-        </div>
-
-        {intakeMsg && (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            {intakeMsg}
-          </div>
-        )}
-
-        <div className="mt-6 border-t border-slate-100 pt-5">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Submitted organogram responses</h3>
-              <p className="text-sm text-slate-500">Copy the AI prompt, paste the generated organogram JSON back here, then publish to the organisation account.</p>
-            </div>
-            <button type="button" onClick={loadIntakeResponses} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">
-              Refresh
-            </button>
-          </div>
-
-          {intakeLoading ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Loading responses...</div>
-          ) : intakeResponses.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">No submitted organogram responses yet.</div>
-          ) : (
-            <div className="space-y-4">
-              {intakeResponses.map((response) => (
-                <div key={response.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">{response.organisationName}</p>
-                      <p className="text-xs text-slate-500">
-                        Submitted {new Date(response.submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {response.submittedBy?.name ? ` by ${response.submittedBy.name}` : ''}
-                        {response.submittedBy?.role ? ` (${response.submittedBy.role})` : ''}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {response.publishedAt && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Published</span>}
-                      <button type="button" onClick={() => copyText(JSON.stringify(response.intake, null, 2), 'Raw response copied.')} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600">
-                        Copy response
-                      </button>
-                      <button type="button" onClick={() => copyText(response.prompt, 'AI prompt copied. Paste it into ChatGPT or Claude.')} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white">
-                        Copy response + prompt
-                      </button>
-                    </div>
-                  </div>
-                  <textarea
-                    value={organogramDrafts[response.id] ?? ''}
-                    onChange={(event) => setOrganogramDrafts(prev => ({ ...prev, [response.id]: event.target.value }))}
-                    rows={7}
-                    placeholder='Paste ChatGPT/Claude JSON here, e.g. {"organogram":{"nodes":[...],"links":[...]}}'
-                    className="w-full rounded-xl border border-slate-200 bg-white p-3 font-mono text-xs text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                  />
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => publishIntakeOrganogram(response)}
-                      disabled={publishingResponseId === response.id}
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50"
-                    >
-                      {publishingResponseId === response.id ? 'Publishing...' : 'Publish organogram to organisation'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {saveMsg && (
@@ -810,7 +676,7 @@ export default function OrganogramPage() {
             ))}
           </div>
 
-          {/* ── Right: Chart panel ── */}
+          {/* ── Right: Action panel ── */}
           <div className="space-y-5">
             {selected && (
               <>
@@ -850,6 +716,8 @@ export default function OrganogramPage() {
                     </div>
                   )}
                 </div>
+
+                <ActionAssignmentPanel rows={orgRows} analysis={selected.analysis} />
 
                 <StructureInsightPanel rows={orgRows} analysis={selected.analysis} />
 
