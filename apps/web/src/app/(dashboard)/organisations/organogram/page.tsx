@@ -4,7 +4,7 @@ import { AppIcon } from '@/components/ui/app-icons';
 import { DashboardPageFrame } from '@/components/ui/dashboard-chrome';
 
 interface OrganisationOrganogramPageProps {
-  searchParams?: Promise<{ orgId?: string }> | { orgId?: string };
+  searchParams?: Promise<{ orgId?: string }>;
 }
 
 export default async function OrganisationOrganogramPage({ searchParams }: OrganisationOrganogramPageProps) {
