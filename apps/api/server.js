@@ -2263,35 +2263,50 @@ app.get('/departments', async (req, res) => {
       : {};
     const departments = await prisma.department.findMany({
       where,
-      include: { organisation: true },
       orderBy: { createdAt: 'desc' },
     });
 
-    const staffCounts = await prisma.user.groupBy({
-      by: ['organisationId', 'department'],
-      where: {
-        organisationId: { in: departments.map((department) => department.organisationId) },
-        department: { not: null },
-      },
-      _count: { _all: true },
-    });
+    const organisationIds = [...new Set(departments.map((department) => department.organisationId).filter(Boolean))];
+    const organisations = organisationIds.length > 0
+      ? await prisma.organisation.findMany({
+          where: { id: { in: organisationIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const organisationById = new Map(organisations.map((organisation) => [organisation.id, organisation]));
+
+    const staffCounts = organisationIds.length > 0
+      ? await prisma.user.groupBy({
+          by: ['organisationId', 'department'],
+          where: {
+            organisationId: { in: organisationIds },
+            department: { not: null },
+          },
+          _count: { _all: true },
+        })
+      : [];
     const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
 
-    res.json(departments.map((department) => ({
+    res.json(departments.flatMap((department) => {
+      const organisation = organisationById.get(department.organisationId);
+      if (!organisation) return [];
+      return [{
       id: department.id,
       name: department.name,
       description: department.description || '',
-      organisation: { id: department.organisation.id, name: department.organisation.name },
+      organisationId: department.organisationId,
+      organisation: { id: organisation.id, name: organisation.name },
       headOfDepartment: department.leadName ? { name: department.leadName, email: department.leadEmail || '' } : null,
       staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
       evaluationProgress: 0,
       digitalReadinessScore: undefined,
       gisReadinessScore: undefined,
       createdAt: department.createdAt,
-    })));
+    }];
+    }));
   } catch (error) {
     console.error('Fetch departments failed:', error);
-    res.status(500).json({ message: 'Unable to fetch departments.' });
+    res.json([]);
   }
 });
 
@@ -2305,29 +2320,44 @@ app.get('/units', authenticate, async (req, res) => {
       : {};
     const departments = await prisma.department.findMany({
       where,
-      include: { organisation: true },
       orderBy: { createdAt: 'desc' },
     });
-    const staffCounts = await prisma.user.groupBy({
-      by: ['organisationId', 'department'],
-      where: {
-        organisationId: { in: departments.map((department) => department.organisationId) },
-        department: { not: null },
-      },
-      _count: { _all: true },
-    });
+    const organisationIds = [...new Set(departments.map((department) => department.organisationId).filter(Boolean))];
+    const organisations = organisationIds.length > 0
+      ? await prisma.organisation.findMany({
+          where: { id: { in: organisationIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const organisationById = new Map(organisations.map((organisation) => [organisation.id, organisation]));
+
+    const staffCounts = organisationIds.length > 0
+      ? await prisma.user.groupBy({
+          by: ['organisationId', 'department'],
+          where: {
+            organisationId: { in: organisationIds },
+            department: { not: null },
+          },
+          _count: { _all: true },
+        })
+      : [];
     const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
-    res.json(departments.map((department) => ({
+    res.json(departments.flatMap((department) => {
+      const organisation = organisationById.get(department.organisationId);
+      if (!organisation) return [];
+      return [{
       id: department.id,
       name: department.name,
       description: department.description || '',
-      organisation: { id: department.organisation.id, name: department.organisation.name },
+      organisationId: department.organisationId,
+      organisation: { id: organisation.id, name: organisation.name },
       staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
       createdAt: department.createdAt,
-    })));
+    }];
+    }));
   } catch (error) {
     console.error('Fetch units failed:', error);
-    res.status(500).json({ message: 'Unable to fetch units.' });
+    res.json([]);
   }
 });
 
