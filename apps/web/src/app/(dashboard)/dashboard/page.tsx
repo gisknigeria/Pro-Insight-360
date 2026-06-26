@@ -283,9 +283,9 @@ function Pill({ label, color = 'slate' }: { label: string; color?: 'slate' | 'bl
 }
 
 function buildOrgRows(published: PublishedAnalysis | null) {
-  if (!published?.analysis?.organogram?.nodes) return [];
+  if (!Array.isArray(published?.analysis?.organogram?.nodes)) return [];
   const nodes = published.analysis.organogram.nodes;
-  const links = published.analysis.organogram.links || [];
+  const links = Array.isArray(published.analysis.organogram.links) ? published.analysis.organogram.links : [];
   const rows: Array<{ name: string; title: string; reportsTo: string }> = [];
 
   nodes.forEach((node) => {
@@ -300,6 +300,58 @@ function buildOrgRows(published: PublishedAnalysis | null) {
   });
 
   return rows;
+}
+
+function toStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item) => item !== null && item !== undefined).map(String);
+  if (typeof value === 'string' && value.trim()) return [value.trim()];
+  return [];
+}
+
+function toActionPlanArray(value: unknown): Array<{ who?: string; what?: string; how?: string; when?: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    .map((item) => ({
+      who: item.who ? String(item.who) : undefined,
+      what: item.what ? String(item.what) : undefined,
+      how: item.how ? String(item.how) : undefined,
+      when: item.when ? String(item.when) : undefined,
+    }));
+}
+
+function toChartArray(value: unknown): Array<{ title?: string; data?: Array<{ label?: string; name?: string; value?: number; count?: number }> }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    .map((item) => ({
+      title: item.title ? String(item.title) : undefined,
+      data: Array.isArray(item.data) ? item.data as Array<{ label?: string; name?: string; value?: number; count?: number }> : [],
+    }));
+}
+
+function normalizePublishedAnalysis(published: PublishedAnalysis): PublishedAnalysis {
+  const analysis = published.analysis;
+  if (!analysis) return published;
+  return {
+    ...published,
+    analysis: {
+      ...analysis,
+      strengths: toStringArray(analysis.strengths),
+      weaknesses: toStringArray(analysis.weaknesses),
+      opportunities: toStringArray(analysis.opportunities),
+      recommendations: toStringArray(analysis.recommendations),
+      threats: toStringArray(analysis.threats),
+      risks: toStringArray(analysis.risks),
+      gaps: toStringArray(analysis.gaps),
+      actionPlan: toActionPlanArray(analysis.actionPlan),
+      charts: toChartArray(analysis.charts),
+      organogram: {
+        nodes: Array.isArray(analysis.organogram?.nodes) ? analysis.organogram.nodes : [],
+        links: Array.isArray(analysis.organogram?.links) ? analysis.organogram.links : [],
+      },
+    },
+  };
 }
 
 function parseAnalysisGap(gapText: string): { severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; text: string } {
@@ -1272,7 +1324,7 @@ function SuperAdminDashboard() {
         setEvaluations(evaluationData);
         setForms(formData);
         setDepartments(departmentData);
-        setReports(reportData);
+        setReports(Array.isArray(reportData) ? reportData.map(normalizePublishedAnalysis) : []);
         setResponses(responseData);
         setUsers(userData);
       } finally {
@@ -1795,10 +1847,13 @@ export default function DashboardPage() {
         setEvaluations(allEvaluations);
         setResponses(allResponses);
         setGapSummaries(allGaps);
-        setPublishedAnalyses(allPublishedAnalyses);
+        const normalizedPublishedAnalyses = Array.isArray(allPublishedAnalyses)
+          ? allPublishedAnalyses.map(normalizePublishedAnalysis)
+          : [];
+        setPublishedAnalyses(normalizedPublishedAnalyses);
 
         const orgEvaluations = allEvaluations.filter((evaluation) => evaluation.organisation?.id === user.organisation.id);
-        const publishedForOrg = allPublishedAnalyses
+        const publishedForOrg = normalizedPublishedAnalyses
           .filter((analysis) => analysis.evaluationId && orgEvaluations.some((evaluation) => evaluation.id === analysis.evaluationId))
           .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 

@@ -2360,20 +2360,24 @@ app.get('/departments', async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    const staffCounts = await prisma.user.groupBy({
-      by: ['organisationId', 'department'],
-      where: {
-        organisationId: { in: departments.map((department) => department.organisationId) },
-        department: { not: null },
-      },
-      _count: { _all: true },
-    });
+    const organisationIds = [...new Set(departments.map((department) => department.organisationId).filter(Boolean))];
+    const staffCounts = organisationIds.length > 0
+      ? await prisma.user.groupBy({
+          by: ['organisationId', 'department'],
+          where: {
+            organisationId: { in: organisationIds },
+            department: { not: null },
+          },
+          _count: { _all: true },
+        })
+      : [];
     const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
 
-    res.json(departments.map((department) => ({
+    res.json(departments.filter((department) => department.organisation).map((department) => ({
       id: department.id,
       name: department.name,
       description: department.description || '',
+      organisationId: department.organisationId,
       organisation: { id: department.organisation.id, name: department.organisation.name },
       headOfDepartment: department.leadName ? { name: department.leadName, email: department.leadEmail || '' } : null,
       staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
@@ -2401,19 +2405,23 @@ app.get('/units', authenticate, async (req, res) => {
       include: { organisation: true },
       orderBy: { createdAt: 'desc' },
     });
-    const staffCounts = await prisma.user.groupBy({
-      by: ['organisationId', 'department'],
-      where: {
-        organisationId: { in: departments.map((department) => department.organisationId) },
-        department: { not: null },
-      },
-      _count: { _all: true },
-    });
+    const organisationIds = [...new Set(departments.map((department) => department.organisationId).filter(Boolean))];
+    const staffCounts = organisationIds.length > 0
+      ? await prisma.user.groupBy({
+          by: ['organisationId', 'department'],
+          where: {
+            organisationId: { in: organisationIds },
+            department: { not: null },
+          },
+          _count: { _all: true },
+        })
+      : [];
     const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
-    res.json(departments.map((department) => ({
+    res.json(departments.filter((department) => department.organisation).map((department) => ({
       id: department.id,
       name: department.name,
       description: department.description || '',
+      organisationId: department.organisationId,
       organisation: { id: department.organisation.id, name: department.organisation.name },
       staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
       createdAt: department.createdAt,
