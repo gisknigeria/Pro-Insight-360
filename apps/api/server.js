@@ -55,6 +55,58 @@ function getJsonValue(value) {
   }
 }
 
+function toStringArray(value) {
+  if (Array.isArray(value)) return value.filter((item) => item !== null && item !== undefined).map(String);
+  if (typeof value === 'string' && value.trim()) return [value.trim()];
+  return [];
+}
+
+function toActionPlanArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      who: item.who ? String(item.who) : undefined,
+      what: item.what ? String(item.what) : undefined,
+      how: item.how ? String(item.how) : undefined,
+      when: item.when ? String(item.when) : undefined,
+    }));
+}
+
+function toChartArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      title: item.title ? String(item.title) : undefined,
+      data: Array.isArray(item.data) ? item.data : [],
+    }));
+}
+
+function normalizePublishedAnalysisContent(analysis) {
+  if (!analysis || typeof analysis !== 'object') return null;
+  const organogram = analysis.organogram && typeof analysis.organogram === 'object' ? analysis.organogram : null;
+  return {
+    ...analysis,
+    strengths: toStringArray(analysis.strengths),
+    weaknesses: toStringArray(analysis.weaknesses),
+    opportunities: toStringArray(analysis.opportunities),
+    recommendations: toStringArray(analysis.recommendations),
+    threats: toStringArray(analysis.threats),
+    risks: toStringArray(analysis.risks),
+    gaps: toStringArray(analysis.gaps),
+    actionPlan: toActionPlanArray(analysis.actionPlan),
+    charts: toChartArray(analysis.charts),
+    organogram: organogram
+      ? {
+          ...organogram,
+          nodes: Array.isArray(organogram.nodes) ? organogram.nodes : [],
+          links: Array.isArray(organogram.links) ? organogram.links : [],
+        }
+      : null,
+  };
+}
+
 async function findDuplicateFormTitleForOrganisation({ organisationId, title, excludeFormId }) {
   const normalizedTitle = String(title || '').trim().toLowerCase();
   if (!organisationId || !normalizedTitle) return null;
@@ -2356,11 +2408,17 @@ app.get('/departments', async (req, res) => {
       : {};
     const departments = await prisma.department.findMany({
       where,
-      include: { organisation: true },
       orderBy: { createdAt: 'desc' },
     });
 
     const organisationIds = [...new Set(departments.map((department) => department.organisationId).filter(Boolean))];
+    const organisations = organisationIds.length > 0
+      ? await prisma.organisation.findMany({
+          where: { id: { in: organisationIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const organisationById = new Map(organisations.map((organisation) => [organisation.id, organisation]));
     const staffCounts = organisationIds.length > 0
       ? await prisma.user.groupBy({
           by: ['organisationId', 'department'],
@@ -2373,19 +2431,23 @@ app.get('/departments', async (req, res) => {
       : [];
     const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
 
-    res.json(departments.filter((department) => department.organisation).map((department) => ({
+    res.json(departments.flatMap((department) => {
+      const organisation = organisationById.get(department.organisationId);
+      if (!organisation) return [];
+      return [{
       id: department.id,
       name: department.name,
       description: department.description || '',
       organisationId: department.organisationId,
-      organisation: { id: department.organisation.id, name: department.organisation.name },
+      organisation: { id: organisation.id, name: organisation.name },
       headOfDepartment: department.leadName ? { name: department.leadName, email: department.leadEmail || '' } : null,
       staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
       evaluationProgress: 0,
       digitalReadinessScore: undefined,
       gisReadinessScore: undefined,
       createdAt: department.createdAt,
-    })));
+    }];
+    }));
   } catch (error) {
     console.error('Fetch departments failed:', error);
     res.status(500).json({ message: 'Unable to fetch departments.' });
@@ -2402,10 +2464,16 @@ app.get('/units', authenticate, async (req, res) => {
       : {};
     const departments = await prisma.department.findMany({
       where,
-      include: { organisation: true },
       orderBy: { createdAt: 'desc' },
     });
     const organisationIds = [...new Set(departments.map((department) => department.organisationId).filter(Boolean))];
+    const organisations = organisationIds.length > 0
+      ? await prisma.organisation.findMany({
+          where: { id: { in: organisationIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const organisationById = new Map(organisations.map((organisation) => [organisation.id, organisation]));
     const staffCounts = organisationIds.length > 0
       ? await prisma.user.groupBy({
           by: ['organisationId', 'department'],
@@ -2417,15 +2485,19 @@ app.get('/units', authenticate, async (req, res) => {
         })
       : [];
     const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
-    res.json(departments.filter((department) => department.organisation).map((department) => ({
+    res.json(departments.flatMap((department) => {
+      const organisation = organisationById.get(department.organisationId);
+      if (!organisation) return [];
+      return [{
       id: department.id,
       name: department.name,
       description: department.description || '',
       organisationId: department.organisationId,
-      organisation: { id: department.organisation.id, name: department.organisation.name },
+      organisation: { id: organisation.id, name: organisation.name },
       staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
       createdAt: department.createdAt,
-    })));
+    }];
+    }));
   } catch (error) {
     console.error('Fetch units failed:', error);
     res.status(500).json({ message: 'Unable to fetch units.' });
@@ -2958,7 +3030,7 @@ app.get('/published-analyses', authenticate, async (req, res) => {
           evaluationId: metadata.evaluationId || null,
           formVersion: metadata.formVersion || 1,
           summary: metadata.summary || '',
-          analysis: metadata.analysis || null,
+          analysis: normalizePublishedAnalysisContent(metadata.analysis),
           sidebarPinned: Boolean(metadata.sidebarPinned),
           sidebarTitle: metadata.sidebarTitle || metadata.analysis?.title || metadata.summary || '',
         };
@@ -2993,7 +3065,7 @@ app.get('/published-analyses/all', authenticate, roleGuard(['SUPER_ADMIN', 'CONS
         evaluationId: metadata.evaluationId || null,
         formVersion: metadata.formVersion || 1,
         summary: metadata.summary || '',
-        analysis: metadata.analysis || null,
+        analysis: normalizePublishedAnalysisContent(metadata.analysis),
         sidebarPinned: Boolean(metadata.sidebarPinned),
         sidebarTitle: metadata.sidebarTitle || metadata.analysis?.title || metadata.summary || '',
       };
