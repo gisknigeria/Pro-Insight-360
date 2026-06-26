@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
-import { apiFetch } from '@/lib/api';
 
 interface Department {
   id: string;
@@ -23,26 +22,15 @@ export default function DepartmentsPage() {
   const router = useRouter();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    let active = true;
-    apiFetch<Department[]>('/departments')
-      .then((data) => {
-        if (!active) return;
-        setDepartments(Array.isArray(data) ? data : []);
-        setError('');
-      })
-      .catch((err) => {
-        if (!active) return;
-        setDepartments([]);
-        setError(err instanceof Error ? err.message : 'Unable to load departments.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => { active = false; };
+    const token = localStorage.getItem('accessToken');
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/departments`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then(setDepartments)
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -85,10 +73,6 @@ export default function DepartmentsPage() {
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-          {error}
         </div>
       ) : departments.length === 0 ? (
         <EmptyState

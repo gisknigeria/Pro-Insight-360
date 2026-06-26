@@ -55,58 +55,6 @@ function getJsonValue(value) {
   }
 }
 
-function toStringArray(value) {
-  if (Array.isArray(value)) return value.filter((item) => item !== null && item !== undefined).map(String);
-  if (typeof value === 'string' && value.trim()) return [value.trim()];
-  return [];
-}
-
-function toActionPlanArray(value) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item) => item && typeof item === 'object')
-    .map((item) => ({
-      who: item.who ? String(item.who) : undefined,
-      what: item.what ? String(item.what) : undefined,
-      how: item.how ? String(item.how) : undefined,
-      when: item.when ? String(item.when) : undefined,
-    }));
-}
-
-function toChartArray(value) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item) => item && typeof item === 'object')
-    .map((item) => ({
-      title: item.title ? String(item.title) : undefined,
-      data: Array.isArray(item.data) ? item.data : [],
-    }));
-}
-
-function normalizePublishedAnalysisContent(analysis) {
-  if (!analysis || typeof analysis !== 'object') return null;
-  const organogram = analysis.organogram && typeof analysis.organogram === 'object' ? analysis.organogram : null;
-  return {
-    ...analysis,
-    strengths: toStringArray(analysis.strengths),
-    weaknesses: toStringArray(analysis.weaknesses),
-    opportunities: toStringArray(analysis.opportunities),
-    recommendations: toStringArray(analysis.recommendations),
-    threats: toStringArray(analysis.threats),
-    risks: toStringArray(analysis.risks),
-    gaps: toStringArray(analysis.gaps),
-    actionPlan: toActionPlanArray(analysis.actionPlan),
-    charts: toChartArray(analysis.charts),
-    organogram: organogram
-      ? {
-          ...organogram,
-          nodes: Array.isArray(organogram.nodes) ? organogram.nodes : [],
-          links: Array.isArray(organogram.links) ? organogram.links : [],
-        }
-      : null,
-  };
-}
-
 async function findDuplicateFormTitleForOrganisation({ organisationId, title, excludeFormId }) {
   const normalizedTitle = String(title || '').trim().toLowerCase();
   if (!organisationId || !normalizedTitle) return null;
@@ -702,104 +650,6 @@ async function getCurrentDbUser(req) {
   });
 }
 
-async function deleteOrganisationAndOwnedData(organisationId) {
-  const organisation = await prisma.organisation.findUnique({
-    where: { id: organisationId },
-    include: { users: { select: { id: true } }, evaluations: { select: { id: true } } },
-  });
-
-  if (!organisation) return null;
-
-  const evaluationIds = organisation.evaluations.map((evaluation) => evaluation.id);
-  const userIds = organisation.users.map((user) => user.id);
-  const forms = await prisma.form.findMany({
-    where: { evaluationId: { in: evaluationIds } },
-    select: { id: true },
-  });
-  const formIds = forms.map((form) => form.id);
-  const questions = await prisma.question.findMany({
-    where: { formId: { in: formIds } },
-    select: { id: true },
-  });
-  const questionIds = questions.map((question) => question.id);
-  const responses = await prisma.response.findMany({
-    where: { formId: { in: formIds } },
-    select: { id: true },
-  });
-  const responseIds = responses.map((response) => response.id);
-  const diagnoses = await prisma.diagnosis.findMany({
-    where: { evaluationId: { in: evaluationIds } },
-    select: { id: true },
-  });
-  const diagnosisIds = diagnoses.map((diagnosis) => diagnosis.id);
-  const reports = await prisma.report.findMany({
-    where: { evaluationId: { in: evaluationIds } },
-    select: { id: true },
-  });
-  const reportIds = reports.map((report) => report.id);
-
-  const publishedLogs = await prisma.auditLog.findMany({
-    where: { action: 'DIAGNOSIS_PUBLISHED' },
-    select: { id: true, metadata: true },
-  });
-  const publishedLogIds = publishedLogs
-    .filter((log) => {
-      const metadata = log.metadata && typeof log.metadata === 'object' ? log.metadata : {};
-      return metadata.organisationId === organisationId
-        || evaluationIds.includes(metadata.evaluationId)
-        || userIds.includes(metadata.recipientId);
-    })
-    .map((log) => log.id);
-
-  await prisma.$transaction([
-    prisma.auditLog.deleteMany({ where: { id: { in: publishedLogIds } } }),
-    prisma.sharedLink.deleteMany({ where: { reportId: { in: reportIds } } }),
-    prisma.recommendation.deleteMany({ where: { diagnosisId: { in: diagnosisIds } } }),
-    prisma.diagnosisVersion.deleteMany({ where: { diagnosisId: { in: diagnosisIds } } }),
-    prisma.answer.deleteMany({
-      where: {
-        OR: [
-          { responseId: { in: responseIds } },
-          { questionId: { in: questionIds } },
-        ],
-      },
-    }),
-    prisma.conflict.deleteMany({
-      where: {
-        OR: [
-          { evaluationId: { in: evaluationIds } },
-          { questionId: { in: questionIds } },
-        ],
-      },
-    }),
-    prisma.conditionalLogic.deleteMany({ where: { questionId: { in: questionIds } } }),
-    prisma.formAssignment.deleteMany({ where: { formId: { in: formIds } } }),
-    prisma.response.deleteMany({ where: { id: { in: responseIds } } }),
-    prisma.question.deleteMany({ where: { id: { in: questionIds } } }),
-    prisma.form.deleteMany({ where: { id: { in: formIds } } }),
-    prisma.evaluationConsultant.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
-    prisma.scoreResult.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
-    prisma.diagnosis.deleteMany({ where: { id: { in: diagnosisIds } } }),
-    prisma.report.deleteMany({ where: { id: { in: reportIds } } }),
-    prisma.workflowMap.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
-    prisma.organogram.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
-    prisma.document.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
-    prisma.evaluation.deleteMany({ where: { id: { in: evaluationIds } } }),
-    prisma.department.deleteMany({ where: { organisationId } }),
-    prisma.user.updateMany({ where: { organisationId }, data: { organisationId: null } }),
-    prisma.organisation.delete({ where: { id: organisationId } }),
-  ]);
-
-  return {
-    id: organisation.id,
-    name: organisation.name,
-    deletedEvaluations: evaluationIds.length,
-    deletedForms: formIds.length,
-    detachedUsers: userIds.length,
-    deletedPublishedAnalyses: publishedLogIds.length,
-  };
-}
-
 app.post('/responses/public/submit', async (req, res) => {
   try {
     const { formId, answers, respondentName, respondentEmail } = req.body;
@@ -999,15 +849,20 @@ app.post('/organisations', async (req, res) => {
 app.delete('/organisations/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await deleteOrganisationAndOwnedData(id);
-    if (!deleted) {
+    const organisation = await prisma.organisation.findUnique({
+      where: { id },
+      include: { users: true, evaluations: true },
+    });
+    if (!organisation) {
       return res.status(404).json({ message: 'Organisation not found.' });
     }
 
-    res.json({
-      message: 'Organisation deleted successfully.',
-      ...deleted,
-    });
+    if (organisation.users.length > 0 || organisation.evaluations.length > 0) {
+      return res.status(400).json({ message: 'Cannot delete organisation with linked users or evaluations.' });
+    }
+
+    await prisma.organisation.delete({ where: { id } });
+    res.json({ message: 'Organisation deleted successfully.' });
   } catch (error) {
     console.error('Delete organisation failed:', error);
     res.status(500).json({ message: 'Unable to delete organisation.' });
@@ -2408,46 +2263,32 @@ app.get('/departments', async (req, res) => {
       : {};
     const departments = await prisma.department.findMany({
       where,
+      include: { organisation: true },
       orderBy: { createdAt: 'desc' },
     });
 
-    const organisationIds = [...new Set(departments.map((department) => department.organisationId).filter(Boolean))];
-    const organisations = organisationIds.length > 0
-      ? await prisma.organisation.findMany({
-          where: { id: { in: organisationIds } },
-          select: { id: true, name: true },
-        })
-      : [];
-    const organisationById = new Map(organisations.map((organisation) => [organisation.id, organisation]));
-    const staffCounts = organisationIds.length > 0
-      ? await prisma.user.groupBy({
-          by: ['organisationId', 'department'],
-          where: {
-            organisationId: { in: organisationIds },
-            department: { not: null },
-          },
-          _count: { _all: true },
-        })
-      : [];
+    const staffCounts = await prisma.user.groupBy({
+      by: ['organisationId', 'department'],
+      where: {
+        organisationId: { in: departments.map((department) => department.organisationId) },
+        department: { not: null },
+      },
+      _count: { _all: true },
+    });
     const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
 
-    res.json(departments.flatMap((department) => {
-      const organisation = organisationById.get(department.organisationId);
-      if (!organisation) return [];
-      return [{
+    res.json(departments.map((department) => ({
       id: department.id,
       name: department.name,
       description: department.description || '',
-      organisationId: department.organisationId,
-      organisation: { id: organisation.id, name: organisation.name },
+      organisation: { id: department.organisation.id, name: department.organisation.name },
       headOfDepartment: department.leadName ? { name: department.leadName, email: department.leadEmail || '' } : null,
       staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
       evaluationProgress: 0,
       digitalReadinessScore: undefined,
       gisReadinessScore: undefined,
       createdAt: department.createdAt,
-    }];
-    }));
+    })));
   } catch (error) {
     console.error('Fetch departments failed:', error);
     res.status(500).json({ message: 'Unable to fetch departments.' });
@@ -2464,40 +2305,26 @@ app.get('/units', authenticate, async (req, res) => {
       : {};
     const departments = await prisma.department.findMany({
       where,
+      include: { organisation: true },
       orderBy: { createdAt: 'desc' },
     });
-    const organisationIds = [...new Set(departments.map((department) => department.organisationId).filter(Boolean))];
-    const organisations = organisationIds.length > 0
-      ? await prisma.organisation.findMany({
-          where: { id: { in: organisationIds } },
-          select: { id: true, name: true },
-        })
-      : [];
-    const organisationById = new Map(organisations.map((organisation) => [organisation.id, organisation]));
-    const staffCounts = organisationIds.length > 0
-      ? await prisma.user.groupBy({
-          by: ['organisationId', 'department'],
-          where: {
-            organisationId: { in: organisationIds },
-            department: { not: null },
-          },
-          _count: { _all: true },
-        })
-      : [];
+    const staffCounts = await prisma.user.groupBy({
+      by: ['organisationId', 'department'],
+      where: {
+        organisationId: { in: departments.map((department) => department.organisationId) },
+        department: { not: null },
+      },
+      _count: { _all: true },
+    });
     const countMap = new Map(staffCounts.map((item) => [`${item.organisationId}::${String(item.department || '').trim()}`, item._count._all]));
-    res.json(departments.flatMap((department) => {
-      const organisation = organisationById.get(department.organisationId);
-      if (!organisation) return [];
-      return [{
+    res.json(departments.map((department) => ({
       id: department.id,
       name: department.name,
       description: department.description || '',
-      organisationId: department.organisationId,
-      organisation: { id: organisation.id, name: organisation.name },
+      organisation: { id: department.organisation.id, name: department.organisation.name },
       staffCount: countMap.get(`${department.organisationId}::${department.name}`) || 0,
       createdAt: department.createdAt,
-    }];
-    }));
+    })));
   } catch (error) {
     console.error('Fetch units failed:', error);
     res.status(500).json({ message: 'Unable to fetch units.' });
@@ -3030,7 +2857,7 @@ app.get('/published-analyses', authenticate, async (req, res) => {
           evaluationId: metadata.evaluationId || null,
           formVersion: metadata.formVersion || 1,
           summary: metadata.summary || '',
-          analysis: normalizePublishedAnalysisContent(metadata.analysis),
+          analysis: metadata.analysis || null,
           sidebarPinned: Boolean(metadata.sidebarPinned),
           sidebarTitle: metadata.sidebarTitle || metadata.analysis?.title || metadata.summary || '',
         };
@@ -3065,7 +2892,7 @@ app.get('/published-analyses/all', authenticate, roleGuard(['SUPER_ADMIN', 'CONS
         evaluationId: metadata.evaluationId || null,
         formVersion: metadata.formVersion || 1,
         summary: metadata.summary || '',
-        analysis: normalizePublishedAnalysisContent(metadata.analysis),
+        analysis: metadata.analysis || null,
         sidebarPinned: Boolean(metadata.sidebarPinned),
         sidebarTitle: metadata.sidebarTitle || metadata.analysis?.title || metadata.summary || '',
       };
