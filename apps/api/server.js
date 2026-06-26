@@ -650,6 +650,104 @@ async function getCurrentDbUser(req) {
   });
 }
 
+async function deleteOrganisationAndOwnedData(organisationId) {
+  const organisation = await prisma.organisation.findUnique({
+    where: { id: organisationId },
+    include: { users: { select: { id: true } }, evaluations: { select: { id: true } } },
+  });
+
+  if (!organisation) return null;
+
+  const evaluationIds = organisation.evaluations.map((evaluation) => evaluation.id);
+  const userIds = organisation.users.map((user) => user.id);
+  const forms = await prisma.form.findMany({
+    where: { evaluationId: { in: evaluationIds } },
+    select: { id: true },
+  });
+  const formIds = forms.map((form) => form.id);
+  const questions = await prisma.question.findMany({
+    where: { formId: { in: formIds } },
+    select: { id: true },
+  });
+  const questionIds = questions.map((question) => question.id);
+  const responses = await prisma.response.findMany({
+    where: { formId: { in: formIds } },
+    select: { id: true },
+  });
+  const responseIds = responses.map((response) => response.id);
+  const diagnoses = await prisma.diagnosis.findMany({
+    where: { evaluationId: { in: evaluationIds } },
+    select: { id: true },
+  });
+  const diagnosisIds = diagnoses.map((diagnosis) => diagnosis.id);
+  const reports = await prisma.report.findMany({
+    where: { evaluationId: { in: evaluationIds } },
+    select: { id: true },
+  });
+  const reportIds = reports.map((report) => report.id);
+
+  const publishedLogs = await prisma.auditLog.findMany({
+    where: { action: 'DIAGNOSIS_PUBLISHED' },
+    select: { id: true, metadata: true },
+  });
+  const publishedLogIds = publishedLogs
+    .filter((log) => {
+      const metadata = log.metadata && typeof log.metadata === 'object' ? log.metadata : {};
+      return metadata.organisationId === organisationId
+        || evaluationIds.includes(metadata.evaluationId)
+        || userIds.includes(metadata.recipientId);
+    })
+    .map((log) => log.id);
+
+  await prisma.$transaction([
+    prisma.auditLog.deleteMany({ where: { id: { in: publishedLogIds } } }),
+    prisma.sharedLink.deleteMany({ where: { reportId: { in: reportIds } } }),
+    prisma.recommendation.deleteMany({ where: { diagnosisId: { in: diagnosisIds } } }),
+    prisma.diagnosisVersion.deleteMany({ where: { diagnosisId: { in: diagnosisIds } } }),
+    prisma.answer.deleteMany({
+      where: {
+        OR: [
+          { responseId: { in: responseIds } },
+          { questionId: { in: questionIds } },
+        ],
+      },
+    }),
+    prisma.conflict.deleteMany({
+      where: {
+        OR: [
+          { evaluationId: { in: evaluationIds } },
+          { questionId: { in: questionIds } },
+        ],
+      },
+    }),
+    prisma.conditionalLogic.deleteMany({ where: { questionId: { in: questionIds } } }),
+    prisma.formAssignment.deleteMany({ where: { formId: { in: formIds } } }),
+    prisma.response.deleteMany({ where: { id: { in: responseIds } } }),
+    prisma.question.deleteMany({ where: { id: { in: questionIds } } }),
+    prisma.form.deleteMany({ where: { id: { in: formIds } } }),
+    prisma.evaluationConsultant.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
+    prisma.scoreResult.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
+    prisma.diagnosis.deleteMany({ where: { id: { in: diagnosisIds } } }),
+    prisma.report.deleteMany({ where: { id: { in: reportIds } } }),
+    prisma.workflowMap.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
+    prisma.organogram.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
+    prisma.document.deleteMany({ where: { evaluationId: { in: evaluationIds } } }),
+    prisma.evaluation.deleteMany({ where: { id: { in: evaluationIds } } }),
+    prisma.department.deleteMany({ where: { organisationId } }),
+    prisma.user.updateMany({ where: { organisationId }, data: { organisationId: null } }),
+    prisma.organisation.delete({ where: { id: organisationId } }),
+  ]);
+
+  return {
+    id: organisation.id,
+    name: organisation.name,
+    deletedEvaluations: evaluationIds.length,
+    deletedForms: formIds.length,
+    detachedUsers: userIds.length,
+    deletedPublishedAnalyses: publishedLogIds.length,
+  };
+}
+
 app.post('/responses/public/submit', async (req, res) => {
   try {
     const { formId, answers, respondentName, respondentEmail } = req.body;
@@ -849,20 +947,15 @@ app.post('/organisations', async (req, res) => {
 app.delete('/organisations/:id', roleGuard(['SUPER_ADMIN', 'CONSULTANT', 'CLIENT_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { id } = req.params;
-    const organisation = await prisma.organisation.findUnique({
-      where: { id },
-      include: { users: true, evaluations: true },
-    });
-    if (!organisation) {
+    const deleted = await deleteOrganisationAndOwnedData(id);
+    if (!deleted) {
       return res.status(404).json({ message: 'Organisation not found.' });
     }
 
-    if (organisation.users.length > 0 || organisation.evaluations.length > 0) {
-      return res.status(400).json({ message: 'Cannot delete organisation with linked users or evaluations.' });
-    }
-
-    await prisma.organisation.delete({ where: { id } });
-    res.json({ message: 'Organisation deleted successfully.' });
+    res.json({
+      message: 'Organisation deleted successfully.',
+      ...deleted,
+    });
   } catch (error) {
     console.error('Delete organisation failed:', error);
     res.status(500).json({ message: 'Unable to delete organisation.' });

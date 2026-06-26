@@ -21,6 +21,8 @@ interface PublishedAnalysis {
   publishedBy?: string;
   recipientId?: string;
   recipientName?: string;
+  organisationId?: string | null;
+  organisationName?: string | null;
   evaluationId?: string | null;
   summary: string;
   analysis: {
@@ -545,15 +547,46 @@ export default function OrganogramPage() {
   async function deletePublishedAnalysis(id: string) {
     if (!window.confirm('Delete this published organogram?')) return;
 
-    await apiFetch(`/published-analyses/${id}`, { method: 'DELETE' });
-    setAnalyses(prev => {
-      const next = prev.filter(item => item.id !== id);
-      if (selectedId === id) setSelectedId(next[0]?.id ?? '');
-      return next;
-    });
-    setEditing(false);
-    setSaveMsg('Published organogram deleted.');
-    setTimeout(() => setSaveMsg(''), 4000);
+    try {
+      await apiFetch(`/published-analyses/${id}`, { method: 'DELETE' });
+      setAnalyses(prev => {
+        const next = prev.filter(item => item.id !== id);
+        if (selectedId === id) setSelectedId(next[0]?.id ?? '');
+        return next;
+      });
+      setEditing(false);
+      setSaveMsg('Published organogram deleted.');
+      setTimeout(() => setSaveMsg(''), 4000);
+    } catch (error) {
+      window.alert(getErrorMessage(error, 'Unable to delete published organogram.'));
+    }
+  }
+
+  async function deleteOrganisationFromActionHub(analysis: PublishedAnalysis) {
+    if (!analysis.organisationId) {
+      await deletePublishedAnalysis(analysis.id);
+      return;
+    }
+
+    const name = analysis.organisationName || analysis.recipientName || 'this organisation';
+    const confirmed = window.confirm(
+      `Delete ${name}? This removes its projects, forms, reports, published Action Hub entries, and organisation record. Linked user accounts will be kept but detached.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await apiFetch(`/organisations/${analysis.organisationId}`, { method: 'DELETE' });
+      setAnalyses(prev => {
+        const next = prev.filter(item => item.organisationId !== analysis.organisationId);
+        if (selectedId === analysis.id) setSelectedId(next[0]?.id ?? '');
+        return next;
+      });
+      setEditing(false);
+      setSaveMsg(`${name} deleted from Action Hub.`);
+      setTimeout(() => setSaveMsg(''), 4000);
+    } catch (error) {
+      window.alert(getErrorMessage(error, 'Unable to delete organisation.'));
+    }
   }
 
 
@@ -619,7 +652,7 @@ export default function OrganogramPage() {
               {orgRows.length > 0
                 ? <OrgChart
                     rows={orgRows}
-                    reportTitle={`${selected?.recipientName || 'Organisation'} organogram report`}
+                    reportTitle={`${selected?.organisationName || selected?.recipientName || 'Organisation'} organogram report`}
                     reportSummary={selected?.analysis?.executiveSummary || 'Organisational structure and accountability report.'}
                     reportSections={buildOrganogramReportSections(orgRows, selected?.analysis)}
                   />
@@ -674,10 +707,10 @@ export default function OrganogramPage() {
               {selected && (
                 <button
                   type="button"
-                  onClick={() => deletePublishedAnalysis(selected.id)}
+                  onClick={() => deleteOrganisationFromActionHub(selected)}
                   className="border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100"
                 >
-                  Delete selected
+                  Delete organisation
                 </button>
               )}
             </div>
@@ -698,7 +731,7 @@ export default function OrganogramPage() {
                     }`}
                   >
                     <span className="block max-w-[220px] truncate text-sm font-black">
-                      {analysis.recipientName ?? 'Unknown organisation'}
+                      {analysis.organisationName ?? analysis.recipientName ?? 'Unknown organisation'}
                     </span>
                     <span className="mt-1 flex items-center gap-3 text-[11px] font-semibold text-slate-500">
                       <span className="inline-flex items-center gap-1"><AppIcon name="users" className="h-3.5 w-3.5" /> {nodeCount} roles</span>
@@ -718,7 +751,7 @@ export default function OrganogramPage() {
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-lg font-bold text-slate-900">{selected.recipientName ?? 'Organisation'}</p>
+                      <p className="text-lg font-bold text-slate-900">{selected.organisationName ?? selected.recipientName ?? 'Organisation'}</p>
                       <p className="text-sm text-slate-500 mt-0.5">
                         {orgRows.length} roles · {departments.length} departments
                       </p>
@@ -770,7 +803,7 @@ export default function OrganogramPage() {
                   {orgRows.length > 0
                     ? <OrgChart
                         rows={orgRows}
-                        reportTitle={`${selected.recipientName || 'Organisation'} organogram report`}
+                        reportTitle={`${selected.organisationName || selected.recipientName || 'Organisation'} organogram report`}
                         reportSummary={selected.analysis?.executiveSummary || 'Organisational structure and accountability report.'}
                         reportSections={buildOrganogramReportSections(orgRows, selected.analysis)}
                       />
